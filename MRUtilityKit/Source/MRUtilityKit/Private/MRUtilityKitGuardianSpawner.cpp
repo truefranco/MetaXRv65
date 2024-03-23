@@ -89,7 +89,7 @@ void AMRUKGuardianSpawner::SetGuardianMaterial(UMaterialInstance* Material)
 
 	// Attach procedural meshes to the rest of the anchors. The walls have already meshes applied
 	// because of the first step and will therefore be ignored by this code automatically.
-	for (const auto Anchor : CurrentRoom->AllAnchors)
+	for (const auto& Anchor : CurrentRoom->AllAnchors)
 	{
 		if (!Anchor || Anchor == CurrentRoom->FloorAnchor || Anchor == CurrentRoom->CeilingAnchor || CurrentRoom->IsWallAnchor(Anchor))
 		{

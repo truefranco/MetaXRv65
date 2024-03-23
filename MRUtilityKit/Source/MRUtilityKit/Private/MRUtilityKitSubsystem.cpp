@@ -285,7 +285,7 @@ AMRUKAnchor* UMRUKSubsystem::TryGetClosestSurfacePosition(const FVector& WorldPo
 			continue;
 		}
 		double SurfaceDistance = DBL_MAX;
-		const auto Anchor = Room->TryGetClosestSurfacePosition(WorldPosition, OutSurfacePosition, SurfaceDistance, LabelFilter, MaxDistance);
+		const auto& Anchor = Room->TryGetClosestSurfacePosition(WorldPosition, OutSurfacePosition, SurfaceDistance, LabelFilter, MaxDistance);
 		if (Anchor && SurfaceDistance < ClosestSurfaceDistance)
 		{
 			ClosestAnchor = Anchor;
@@ -304,7 +304,7 @@ AMRUKAnchor* UMRUKSubsystem::IsPositionInSceneVolume(const FVector& WorldPositio
 		{
 			continue;
 		}
-		const auto Anchor = Room->IsPositionInSceneVolume(WorldPosition, TestVerticalBounds, Tolerance);
+		const auto& Anchor = Room->IsPositionInSceneVolume(WorldPosition, TestVerticalBounds, Tolerance);
 		if (Anchor)
 		{
 			return Anchor;

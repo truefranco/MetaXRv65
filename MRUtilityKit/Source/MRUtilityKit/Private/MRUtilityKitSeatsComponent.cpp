@@ -13,7 +13,7 @@ LICENSE file in the root directory of this source tree.
 
 void UMRUKSeatsComponent::CalculateSeatPoses(double SeatWidth)
 {
-	const auto Anchor = Cast<AMRUKAnchor>(GetOwner());
+	const auto& Anchor = Cast<AMRUKAnchor>(GetOwner());
 	if (!Anchor)
 	{
 		return;

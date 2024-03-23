@@ -406,7 +406,7 @@ namespace OculusXRHMD
 	{
 		TrackingOrigin = InOrigin;
 		ovrpTrackingOrigin ovrpOrigin = ovrpTrackingOrigin_EyeLevel;
-		if (InOrigin == EHMDTrackingOrigin::Floor)
+		if (InOrigin == EHMDTrackingOrigin::LocalFloor)
 			ovrpOrigin = ovrpTrackingOrigin_FloorLevel;
 
 		if (InOrigin == EHMDTrackingOrigin::Stage)
@@ -427,7 +427,7 @@ namespace OculusXRHMD
 
 	EHMDTrackingOrigin::Type FOculusXRHMD::GetTrackingOrigin() const
 	{
-		EHMDTrackingOrigin::Type rv = EHMDTrackingOrigin::Eye;
+		EHMDTrackingOrigin::Type rv = EHMDTrackingOrigin::View;
 		ovrpTrackingOrigin ovrpOrigin = ovrpTrackingOrigin_EyeLevel;
 
 		if (FOculusXRHMDModule::GetPluginWrapper().GetInitialized() && OVRP_SUCCESS(FOculusXRHMDModule::GetPluginWrapper().GetTrackingOriginType2(&ovrpOrigin)))
@@ -435,10 +435,10 @@ namespace OculusXRHMD
 			switch (ovrpOrigin)
 			{
 				case ovrpTrackingOrigin_EyeLevel:
-					rv = EHMDTrackingOrigin::Eye;
+					rv = EHMDTrackingOrigin::View;
 					break;
 				case ovrpTrackingOrigin_FloorLevel:
-					rv = EHMDTrackingOrigin::Floor;
+					rv = EHMDTrackingOrigin::LocalFloor;
 					break;
 				case ovrpTrackingOrigin_Stage:
 					rv = EHMDTrackingOrigin::Stage;
@@ -481,7 +481,7 @@ namespace OculusXRHMD
 
 		if (NextFrameToRender)
 		{
-			const bool floorLevel = GetTrackingOrigin() != EHMDTrackingOrigin::Eye;
+			const bool floorLevel = GetTrackingOrigin() != EHMDTrackingOrigin::View;
 			ovrpPoseStatef poseState;
 			FOculusXRHMDModule::GetPluginWrapper().Update3(ovrpStep_Render, NextFrameToRender->FrameNumber, 0.0);
 			FOculusXRHMDModule::GetPluginWrapper().GetNodePoseState3(ovrpStep_Render, NextFrameToRender->FrameNumber, ovrpNode_Head, &poseState);
@@ -2401,7 +2401,7 @@ namespace OculusXRHMD
 	{
 		Flags.Raw = 0;
 		OCFlags.Raw = 0;
-		TrackingOrigin = EHMDTrackingOrigin::Type::Eye;
+		TrackingOrigin = EHMDTrackingOrigin::Type::View;
 		DeltaControlRotation = FRotator::ZeroRotator; // used from ApplyHmdRotation
 		LastPlayerOrientation = FQuat::Identity;
 		LastPlayerLocation = FVector::ZeroVector;
@@ -4166,7 +4166,7 @@ namespace OculusXRHMD
 		return true;
 	}
 
-#if !UE_VERSION_OLDER_THAN(5, 3, 0)
+#if !UE_VERSION_OLDER_THAN(5, 4, 0)
 	BEGIN_SHADER_PARAMETER_STRUCT(FDrawRectangleParameters, )
 	SHADER_PARAMETER(FVector4f, PosScaleBias)
 	SHADER_PARAMETER(FVector4f, UVScaleBias)
@@ -4260,7 +4260,7 @@ namespace OculusXRHMD
 		FIntPoint TextureSize = DepthTexture->GetDesc().Extent;
 		FIntRect ScreenRect = InView.UnscaledViewRect;
 
-#if UE_VERSION_OLDER_THAN(5, 3, 0)
+#if UE_VERSION_OLDER_THAN(5, 4, 0)
 		PixelShader->SetParameters(RHICmdList, PixelShader.GetPixelShader(), DepthSampler, DepthTexture, DepthFactors, ScreenToDepthMatrices, InView.StereoViewIndex);
 #else
 		FRHIBatchedShaderParameters& BatchedParameters = RHICmdList.GetScratchShaderParameters();

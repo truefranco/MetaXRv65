@@ -571,7 +571,7 @@ void UOculusXRAnchorLaunchCaptureFlow::OnCaptureFinish(FOculusXRUInt64 RequestId
 {
 	if (Request != RequestId.GetValue())
 	{
-		UE_LOG(LogOculusXRAnchors, Warning, TEXT("%llu request id doesn't match %llu. Ignoring request."), RequestId, Request);
+		UE_LOG(LogOculusXRAnchors, Warning, TEXT("%llu request id doesn't match %llu. Ignoring request."), RequestId.GetValue(), Request);
 		return;
 	}
 

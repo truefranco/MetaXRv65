@@ -47,7 +47,7 @@ void AMRUKRoom::EndPlay(const EEndPlayReason::Type EndPlayReason)
 
 void AMRUKRoom::Destroyed()
 {
-	for (const auto Anchor : AllAnchors)
+	for (const auto& Anchor : AllAnchors)
 	{
 		OnAnchorRemoved.Broadcast(Anchor);
 		Anchor->Destroy();
@@ -74,7 +74,7 @@ void AMRUKRoom::LoadFromData(UMRUKRoomData* RoomData)
 	TArray<TObjectPtr<AMRUKAnchor>> AnchorsCreated;
 	TArray<TObjectPtr<AMRUKAnchor>> AnchorsUpdated;
 
-	for (const auto AnchorData : RoomData->AnchorsData)
+	for (const auto& AnchorData : RoomData->AnchorsData)
 	{
 		auto AnchorFound = AnchorsToRemove.FindByPredicate([AnchorData](TObjectPtr<AMRUKAnchor> Anchor) {
 			return Anchor && Anchor->SpaceQueryResult.UUID == AnchorData->SpaceQuery.UUID;
@@ -619,7 +619,7 @@ AMRUKAnchor* AMRUKRoom::TryGetClosestSurfacePosition(const FVector& WorldPositio
 	OutSurfacePosition = FVector::Zero();
 	AMRUKAnchor* ClosestAnchor = nullptr;
 
-	for (const auto Anchor : AllAnchors)
+	for (const auto& Anchor : AllAnchors)
 	{
 		if (!Anchor || !Anchor->PassesLabelFilter(LabelFilter))
 		{
@@ -891,7 +891,7 @@ AMRUKAnchor* AMRUKRoom::GetLargestSurface(const FString& Label) const
 	double LargestSurfaceArea = 0.0;
 	const auto LabelUpper = Label.ToUpper();
 
-	for (const auto Anchor : AllAnchors)
+	for (const auto& Anchor : AllAnchors)
 	{
 		if (!Anchor || !Anchor->HasLabel(Label))
 		{

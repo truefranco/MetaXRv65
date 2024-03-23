@@ -85,13 +85,13 @@ void UOculusXRAnchorComponent::SetUUID(FOculusXRUUID NewUUID)
 	if (AnchorUUID.IsValidUUID())
 	{
 		UE_LOG(LogOculusXRAnchors, Warning, TEXT("Anchor component already has valid UUID, cannot re-assign a new UUID. Component: %s  --  Space: %llu  --  UUID: %s"),
-			*GetName(), AnchorHandle, *AnchorUUID.ToString());
+			*GetName(), AnchorHandle.GetValue(), *AnchorUUID.ToString());
 		return;
 	}
 
 	if (!NewUUID.IsValidUUID())
 	{
-		UE_LOG(LogOculusXRAnchors, Warning, TEXT("New UUID provided to component is invalid, cannot assign. Component: %s  --  Space: %llu"), *GetName(), AnchorHandle);
+		UE_LOG(LogOculusXRAnchors, Warning, TEXT("New UUID provided to component is invalid, cannot assign. Component: %s  --  Space: %llu"), *GetName(), AnchorHandle.GetValue());
 		return;
 	}
 

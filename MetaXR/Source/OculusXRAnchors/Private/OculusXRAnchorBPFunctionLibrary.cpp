@@ -7,7 +7,7 @@
 #include "OculusXRRoomLayoutManager.h"
 #include "OculusXRAnchorManager.h"
 #include "Kismet/BlueprintFunctionLibrary.h"
-
+#pragma warning (disable : 4702 )
 AActor* UOculusXRAnchorBPFunctionLibrary::SpawnActorWithAnchorHandle(UObject* WorldContextObject, FOculusXRUInt64 Handle, FOculusXRUUID UUID, EOculusXRSpaceStorageLocation Location, UClass* ActorClass,
 	AActor* Owner, APawn* Instigator, ESpawnActorCollisionHandlingMethod CollisionHandlingMethod)
 {

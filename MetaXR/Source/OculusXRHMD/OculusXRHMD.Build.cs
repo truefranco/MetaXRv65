@@ -60,7 +60,7 @@ namespace UnrealBuildTool.Rules
 					"HeadMountedDisplay",
 				});
 
-			if (Target.Version.MajorVersion > 5 || (Target.Version.MajorVersion == 5 && Target.Version.MinorVersion >= 3))
+			if (Target.Version.MajorVersion > 5 || (Target.Version.MajorVersion == 5 && Target.Version.MinorVersion >= 4))
 			{
 				PublicDependencyModuleNames.AddRange(
 					new string[]

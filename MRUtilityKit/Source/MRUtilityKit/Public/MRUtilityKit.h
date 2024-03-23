@@ -201,7 +201,7 @@ struct MRUTILITYKIT_API FMRUKSpawnActor
 };
 
 UENUM(BlueprintType)
-enum class EMRUKFallbackToProceduralOverwrite
+enum class EMRUKFallbackToProceduralOverwrite : uint8
 {
 	/// Don't override the fallback to procedural standard behaviour.
 	Default,

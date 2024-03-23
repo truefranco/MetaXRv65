@@ -7,7 +7,7 @@
 #include "Logging/MessageLog.h"
 
 #define LOCTEXT_NAMESPACE "OculusFunctionLibrary"
-
+#pragma warning (disable : 4702 )
 //-------------------------------------------------------------------------------------------------
 // UOculusXRFunctionLibrary
 //-------------------------------------------------------------------------------------------------
