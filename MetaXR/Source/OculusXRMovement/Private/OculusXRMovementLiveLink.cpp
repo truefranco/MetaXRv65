@@ -21,37 +21,52 @@ namespace
 
 namespace MetaXRMovement
 {
-	template <typename MetaXRDataFields>
-	void InitializeRoleStaticData(FLiveLinkSkeletonStaticData& StaticData)
+	template <>
+	void FEyeSubject::InitializeRoleStaticData(FLiveLinkSkeletonStaticData& StaticData) const
 	{
-		constexpr auto FieldsCount = static_cast<uint8>(MetaXRDataFields::COUNT);
+		constexpr auto FieldsCount = static_cast<uint8>(EOculusXREye::COUNT);
 		StaticData.BoneNames.Reserve(FieldsCount);
 		for (uint8 XRBone = 0; XRBone < FieldsCount; ++XRBone)
 		{
-			StaticData.BoneNames.Add(UEnum::GetValueAsName(static_cast<MetaXRDataFields>(XRBone)));
+			StaticData.BoneNames.Add(UEnum::GetValueAsName(static_cast<EOculusXREye>(XRBone)));
 			StaticData.BoneParents.Add(NoParent);
 		}
 	}
-	template <typename MetaXRDataFields>
-	void InitializeRoleStaticData(FLiveLinkBaseStaticData& StaticData)
+
+	template <>
+	void FBodySubject::InitializeRoleStaticData(FLiveLinkSkeletonStaticData& StaticData) const
 	{
-		constexpr auto FieldsCount = static_cast<uint8>(MetaXRDataFields::COUNT);
+		constexpr auto FieldsCount = static_cast<uint8>(EOculusXRBoneID::COUNT);
+		StaticData.BoneNames.Reserve(FieldsCount);
+		for (uint8 XRBone = 0; XRBone < FieldsCount; ++XRBone)
+		{
+			StaticData.BoneNames.Add(UEnum::GetValueAsName(static_cast<EOculusXRBoneID>(XRBone)));
+			StaticData.BoneParents.Add(NoParent);
+		}
+	}
+
+
+	template <>
+	void FFaceSubject::InitializeRoleStaticData(FLiveLinkBaseStaticData& StaticData) const
+	{
+		constexpr auto FieldsCount = static_cast<uint8>(EOculusXRFaceExpression::COUNT);
 		StaticData.PropertyNames.Reserve(FieldsCount);
 		for (uint8 XRProperty = 0; XRProperty < FieldsCount; ++XRProperty)
 		{
-			StaticData.PropertyNames.Add(UEnum::GetValueAsName(static_cast<MetaXRDataFields>(XRProperty)));
+			StaticData.PropertyNames.Add(UEnum::GetValueAsName(static_cast<EOculusXRFaceExpression>(XRProperty)));
 		}
 	}
-	template <typename MetaXRDataFields, typename MetaXRState, typename RoleTypeStaticData, typename RoleTypeFrameData, typename Role>
-	FLiveLinkStaticDataStruct TSubject<MetaXRDataFields, MetaXRState, RoleTypeStaticData, RoleTypeFrameData, Role>::StaticData() const
+
+	template <typename MetaXRState, typename RoleTypeStaticData, typename RoleTypeFrameData, typename Role>
+	FLiveLinkStaticDataStruct TSubject<MetaXRState, RoleTypeStaticData, RoleTypeFrameData, Role>::StaticData() const
 	{
 		FLiveLinkStaticDataStruct StaticDataStruct(RoleTypeStaticData::StaticStruct());
 		RoleTypeStaticData& RoleStaticData(*StaticDataStruct.Cast<RoleTypeStaticData>());
-		InitializeRoleStaticData<MetaXRDataFields>(RoleStaticData);
+		InitializeRoleStaticData(RoleStaticData);
 		return StaticDataStruct;
 	}
-	template <typename MetaXRDataFields, typename MetaXRState, typename RoleTypeStaticData, typename RoleTypeFrameData, typename Role>
-	FLiveLinkFrameDataStruct TSubject<MetaXRDataFields, MetaXRState, RoleTypeStaticData, RoleTypeFrameData, Role>::FrameData()
+	template <typename MetaXRState, typename RoleTypeStaticData, typename RoleTypeFrameData, typename Role>
+	FLiveLinkFrameDataStruct TSubject<MetaXRState, RoleTypeStaticData, RoleTypeFrameData, Role>::FrameData()
 	{
 		FLiveLinkFrameDataStruct FrameDataStruct(RoleTypeFrameData::StaticStruct());
 		RoleTypeFrameData& FrameData(*FrameDataStruct.Cast<RoleTypeFrameData>());
@@ -223,7 +238,8 @@ namespace MetaXRMovement
 		Client = nullptr;
 		SourceGuid.Invalidate();
 
-		if (!(Body.Stop() && Face.Stop() && Eye.Stop()))
+		if (!(
+				Body.Stop() && Face.Stop() && Eye.Stop()))
 		{
 			UE_LOG(LogOculusXRMovement, Error, TEXT("At least one of the trackers cannot stop."));
 		}
@@ -302,7 +318,8 @@ namespace MetaXRMovement
 
 		LiveLinkInit.AddAnnotation(StringCast<ANSICHAR>(*Eye.Name.ToString()).Get(), ResultToText[static_cast<int>(EyeInit)])
 			.AddAnnotation(StringCast<ANSICHAR>(*Face.Name.ToString()).Get(), ResultToText[static_cast<int>(FaceInit)])
-			.AddAnnotation(StringCast<ANSICHAR>(*Body.Name.ToString()).Get(), ResultToText[static_cast<int>(BodyInit)]);
+			.AddAnnotation(StringCast<ANSICHAR>(*Body.Name.ToString()).Get(), ResultToText[static_cast<int>(BodyInit)])
+			;
 	}
 
 	template <typename SubjectT>

@@ -17,7 +17,7 @@
 namespace MetaXRMovement
 {
 
-	template <typename MetaXRDataFields, typename MetaXRState, typename RoleTypeStaticData, typename RoleTypeFrameData, typename RoleT>
+	template <typename MetaXRState, typename RoleTypeStaticData, typename RoleTypeFrameData, typename RoleT>
 	class TSubject
 	{
 	public:
@@ -38,12 +38,13 @@ namespace MetaXRMovement
 		bool bStarted;
 		MetaXRState LastState;
 
+		void InitializeRoleStaticData(RoleTypeStaticData& StaticData) const;
 		void UpdateFrame(RoleTypeFrameData& FrameData);
 	};
 
-	using FEyeSubject = TSubject<EOculusXREye, FOculusXREyeGazesState, FLiveLinkSkeletonStaticData, FLiveLinkAnimationFrameData, ULiveLinkAnimationRole>;
-	using FFaceSubject = TSubject<EOculusXRFaceExpression, FOculusXRFaceState, FLiveLinkBaseStaticData, FLiveLinkBaseFrameData, ULiveLinkBasicRole>;
-	using FBodySubject = TSubject<EOculusXRBoneID, FOculusXRBodyState, FLiveLinkSkeletonStaticData, FLiveLinkAnimationFrameData, ULiveLinkAnimationRole>;
+	using FEyeSubject = TSubject<FOculusXREyeGazesState, FLiveLinkSkeletonStaticData, FLiveLinkAnimationFrameData, ULiveLinkAnimationRole>;
+	using FFaceSubject = TSubject<FOculusXRFaceState, FLiveLinkBaseStaticData, FLiveLinkBaseFrameData, ULiveLinkBasicRole>;
+	using FBodySubject = TSubject<FOculusXRBodyState, FLiveLinkSkeletonStaticData, FLiveLinkAnimationFrameData, ULiveLinkAnimationRole>;
 
 	class LiveLinkSource : public ILiveLinkSource, public FTickableGameObject
 	{
@@ -101,6 +102,7 @@ namespace MetaXRMovement
 		TOptional<FLiveLinkSubjectKey> KeyEye;
 		TOptional<FLiveLinkSubjectKey> KeyFace;
 		TOptional<FLiveLinkSubjectKey> KeyBody;
+
 		// Subjects
 		FEyeSubject Eye;
 		FFaceSubject Face;

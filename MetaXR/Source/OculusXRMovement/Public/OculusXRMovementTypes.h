@@ -108,6 +108,7 @@ enum class EOculusXRBoneID : uint8
 	BodyRightFootTransverse = 82,
 	BodyRightFootBall = 83,
 	COUNT = 84 UMETA(Hidden),
+	None = 255 UMETA(Hidden),
 };
 
 USTRUCT(BlueprintType)
@@ -151,6 +152,7 @@ public:
 	UPROPERTY(BlueprintReadOnly, Category = "OculusXR|Movement")
 	TArray<FOculusXRBodyJoint> Joints;
 };
+
 
 UENUM(BlueprintType)
 enum class EFaceTrackingDataSource : uint8

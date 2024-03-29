@@ -21,6 +21,7 @@ FOculusXRBodyState::FOculusXRBodyState()
 	Joints.SetNum(static_cast<int32>(EOculusXRBoneID::COUNT));
 }
 
+
 FOculusXRFaceState::FOculusXRFaceState()
 	: bIsValid(false)
 	, bIsEyeFollowingBlendshapesValid(false)

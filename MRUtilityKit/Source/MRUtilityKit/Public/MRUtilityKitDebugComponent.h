@@ -92,5 +92,5 @@ private:
 	UPROPERTY()
 	TObjectPtr<AActor> ActiveAnchorSpaceActor = nullptr;
 
-	void OrientTextActorToPlayer();
+	void OrientTextActorToPlayer() const;
 };

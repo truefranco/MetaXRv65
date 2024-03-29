@@ -24,34 +24,34 @@ namespace
 {
 	bool IsConvex(const FVector& PrevPoint, const FVector& CurrPoint, const FVector& NextPoint)
 	{
-		FVector Edge1 = PrevPoint - CurrPoint;
-		FVector Edge2 = NextPoint - CurrPoint;
+		const FVector Edge1 = PrevPoint - CurrPoint;
+		const FVector Edge2 = NextPoint - CurrPoint;
 
-		float CrossProductZ = Edge1.Y * Edge2.Z - Edge1.Z * Edge2.Y;
+		const double CrossProductZ = Edge1.Y * Edge2.Z - Edge1.Z * Edge2.Y;
 
 		return CrossProductZ <= 0;
 	}
 
 	bool PointInTriangle(const FVector& A, const FVector& B, const FVector& C, const FVector& P)
 	{
-		FVector AB = B - A;
-		FVector BC = C - B;
-		FVector CA = A - C;
+		const FVector AB = B - A;
+		const FVector BC = C - B;
+		const FVector CA = A - C;
 
-		FVector AP = P - A;
-		FVector BP = P - B;
-		FVector CP = P - C;
+		const FVector AP = P - A;
+		const FVector BP = P - B;
+		const FVector CP = P - C;
 
-		float CrossProductZ1 = AB.Y * AP.Z - AB.Z * AP.Y;
-		float CrossProductZ2 = BC.Y * BP.Z - BC.Z * BP.Y;
-		float CrossProductZ3 = CA.Y * CP.Z - CA.Z * CP.Y;
+		const double CrossProductZ1 = AB.Y * AP.Z - AB.Z * AP.Y;
+		const double CrossProductZ2 = BC.Y * BP.Z - BC.Z * BP.Y;
+		const double CrossProductZ3 = CA.Y * CP.Z - CA.Z * CP.Y;
 
 		return (CrossProductZ1 >= 0) && (CrossProductZ2 >= 0) && (CrossProductZ3 >= 0);
 	}
 
 	bool IsEar(const TArray<FVector>& Vertices, const TArray<int32>& Indices, int32 PrevIndex, int32 CurrIndex, int32 NextIndex)
 	{
-		int32 NumPoints = Indices.Num();
+		const int32 NumPoints = Indices.Num();
 
 		const FVector& PrevPoint = Vertices[PrevIndex];
 		const FVector& CurrPoint = Vertices[CurrIndex];
@@ -59,10 +59,10 @@ namespace
 
 		for (int32 i = 0; i < NumPoints; ++i)
 		{
-			int32 Index = Indices[i];
+			const int32 Index = Indices[i];
 			if (Index != PrevIndex && Index != CurrIndex && Index != NextIndex)
 			{
-				FVector TestPoint = Vertices[Index];
+				const FVector TestPoint = Vertices[Index];
 
 				if (PointInTriangle(PrevPoint, CurrPoint, NextPoint, TestPoint))
 				{
@@ -137,9 +137,9 @@ namespace
 		{
 			const auto RelativeRotation = SceneComponent->GetRelativeRotationCache().RotatorToQuat(SceneComponent->GetRelativeRotation());
 			const auto Rotation = AccumulatedRotation * RelativeRotation;
-			FVector RotatedXAxis = Rotation.GetAxisX();
-			FVector RotatedYAxis = Rotation.GetAxisY();
-			FVector RotatedZAxis = Rotation.GetAxisZ();
+			const FVector RotatedXAxis = Rotation.GetAxisX();
+			const FVector RotatedYAxis = Rotation.GetAxisY();
+			const FVector RotatedZAxis = Rotation.GetAxisZ();
 			FVector RotatedScale;
 			if (FMath::Abs(RotatedXAxis.X) >= UE_INV_SQRT_2)
 			{
@@ -180,10 +180,10 @@ namespace
 				RotatedScale.Z = UnRotatedScale.Z;
 			}
 
-			FVector OldScale = SceneComponent->GetRelativeScale3D();
-			FVector NewScale = ParentReciprocalScale * RotatedScale * OldScale;
+			const FVector OldScale = SceneComponent->GetRelativeScale3D();
+			const FVector NewScale = ParentReciprocalScale * RotatedScale * OldScale;
 			SceneComponent->SetRelativeScale3D(NewScale);
-			FVector NewParentReciprocalScale = ParentReciprocalScale * (OldScale / NewScale);
+			const FVector NewParentReciprocalScale = ParentReciprocalScale * (OldScale / NewScale);
 			for (auto Child : SceneComponent->GetAttachChildren())
 			{
 				if (Child)
@@ -208,8 +208,7 @@ bool AMRUKAnchor::LoadFromData(UMRUKAnchorData* AnchorData)
 
 	bool Changed = false;
 
-	auto Seat = GetComponentByClass<UMRUKSeatsComponent>();
-	if (Seat && !HasLabel(FMRUKLabels::Couch))
+	if (const auto Seat = GetComponentByClass<UMRUKSeatsComponent>(); Seat && !HasLabel(FMRUKLabels::Couch))
 	{
 		Seat->UnregisterComponent();
 		Seat->DestroyComponent();
@@ -219,14 +218,14 @@ bool AMRUKAnchor::LoadFromData(UMRUKAnchorData* AnchorData)
 	SpaceQueryResult = AnchorData->SpaceQuery;
 
 	SetActorTransform(AnchorData->Transform, false, nullptr, ETeleportType::ResetPhysics);
-	auto NewSemanticClassifications = AnchorData->SemanticClassifications;
+	const auto NewSemanticClassifications = AnchorData->SemanticClassifications;
 	if (NewSemanticClassifications != SemanticClassifications)
 	{
 		Changed = true;
 	}
 	SemanticClassifications = NewSemanticClassifications;
 
-	FString Semantics = FString::Join(SemanticClassifications, TEXT("-"));
+	const FString Semantics = FString::Join(SemanticClassifications, TEXT("-"));
 	UE_LOG(LogMRUK, Log, TEXT("SpatialAnchor label is %s"), *Semantics);
 
 	if (PlaneBounds != AnchorData->PlaneBounds)
@@ -271,16 +270,16 @@ bool AMRUKAnchor::IsPositionInBoundary(const FVector2D& Position)
 
 	for (int i = 1; i <= PlaneBoundary2D.Num(); i++)
 	{
-		FVector2D P1 = PlaneBoundary2D[i - 1];
-		FVector2D P2 = PlaneBoundary2D[i % PlaneBoundary2D.Num()];
+		const FVector2D P1 = PlaneBoundary2D[i - 1];
+		const FVector2D P2 = PlaneBoundary2D[i % PlaneBoundary2D.Num()];
 		if (Position.Y > FMath::Min(P1.Y, P2.Y) && Position.Y <= FMath::Max(P1.Y, P2.Y))
 		{
 			if (Position.X <= FMath::Max(P1.X, P2.X))
 			{
 				if (P1.Y != P2.Y)
 				{
-					auto Frac = (Position.Y - P1.Y) / (P2.Y - P1.Y);
-					auto XIntersection = P1.X + Frac * (P2.X - P1.X);
+					const auto Frac = (Position.Y - P1.Y) / (P2.Y - P1.Y);
+					const auto XIntersection = P1.X + Frac * (P2.X - P1.X);
 					if (P1.X == P2.X || Position.X <= XIntersection)
 					{
 						Intersections++;
@@ -324,12 +323,12 @@ FVector AMRUKAnchor::GenerateRandomPositionOnPlaneFromStream(const FRandomStream
 		Mesh.TotalArea = 0.0f;
 		for (int i = 0; i < Mesh.Triangles.Num(); i += 3)
 		{
-			auto i0 = Mesh.Triangles[i];
-			auto i1 = Mesh.Triangles[i + 1];
-			auto i2 = Mesh.Triangles[i + 2];
-			auto V0 = Mesh.Vertices[i0];
-			auto V1 = Mesh.Vertices[i1];
-			auto V2 = Mesh.Vertices[i2];
+			const auto I0 = Mesh.Triangles[i];
+			const auto I1 = Mesh.Triangles[i + 1];
+			const auto I2 = Mesh.Triangles[i + 2];
+			auto V0 = Mesh.Vertices[I0];
+			auto V1 = Mesh.Vertices[I1];
+			auto V2 = Mesh.Vertices[I2];
 			auto Cross = FVector::CrossProduct(V1 - V0, V2 - V0);
 			float Area = Cross.Length() * 0.5f;
 			Mesh.TotalArea += Area;
@@ -338,15 +337,15 @@ FVector AMRUKAnchor::GenerateRandomPositionOnPlaneFromStream(const FRandomStream
 		CachedMesh.Emplace(MoveTemp(Mesh));
 	}
 
-	const auto& Mesh = CachedMesh.GetValue();
+	const auto& [Vertices, Triangles, Areas, TotalArea] = CachedMesh.GetValue();
 
 	// Pick a random triangle weighted by surface area (triangles with larger surface
 	// area have more chance of being chosen)
-	auto Rand = RandomStream.FRandRange(0.0f, Mesh.TotalArea);
+	auto Rand = RandomStream.FRandRange(0.0f, TotalArea);
 	int TriangleIndex = 0;
-	for (; TriangleIndex < Mesh.Areas.Num() - 1; ++TriangleIndex)
+	for (; TriangleIndex < Areas.Num() - 1; ++TriangleIndex)
 	{
-		Rand -= Mesh.Areas[TriangleIndex];
+		Rand -= Areas[TriangleIndex];
 		if (Rand <= 0.0f)
 		{
 			break;
@@ -354,12 +353,12 @@ FVector AMRUKAnchor::GenerateRandomPositionOnPlaneFromStream(const FRandomStream
 	}
 
 	// Get the vertices of the chosen triangle
-	auto i0 = Mesh.Triangles[TriangleIndex * 3];
-	auto i1 = Mesh.Triangles[TriangleIndex * 3 + 1];
-	auto i2 = Mesh.Triangles[TriangleIndex * 3 + 2];
-	auto V0 = Mesh.Vertices[i0];
-	auto V1 = Mesh.Vertices[i1];
-	auto V2 = Mesh.Vertices[i2];
+	const auto I0 = Triangles[TriangleIndex * 3];
+	const auto I1 = Triangles[TriangleIndex * 3 + 1];
+	const auto I2 = Triangles[TriangleIndex * 3 + 2];
+	const auto V0 = Vertices[I0];
+	const auto V1 = Vertices[I1];
+	const auto V2 = Vertices[I2];
 
 	// Calculate a random point on that triangle
 	float U = RandomStream.FRandRange(0.0f, 1.0f);
@@ -673,7 +672,7 @@ double AMRUKAnchor::GetClosestSurfacePosition(const FVector& TestPosition, FVect
 	if (PlaneBounds.bIsValid)
 	{
 		const auto BestPoint2D = PlaneBounds.GetClosestPointTo(FVector2D(TestPositionLocal.Y, TestPositionLocal.Z));
-		FVector BestPoint(0.0, BestPoint2D.X, BestPoint2D.Y);
+		const FVector BestPoint(0.0, BestPoint2D.X, BestPoint2D.Y);
 		const auto Distance = FVector::Distance(BestPoint, TestPositionLocal);
 		if (Distance < ClosestDistance)
 		{
@@ -846,6 +845,9 @@ AActor* AMRUKAnchor::SpawnInterior(const TSubclassOf<class AActor>& ActorClass, 
 			case EMRUKSpawnerScalingMode::NoScaling:
 				Scale = FVector::OneVector;
 				break;
+			case EMRUKSpawnerScalingMode::Stretch:
+				// Nothing to do
+				break;
 		}
 
 		// Calculate the offset between the base of the two bounding boxes. Note that the anchor is on the
@@ -889,6 +891,9 @@ AActor* AMRUKAnchor::SpawnInterior(const TSubclassOf<class AActor>& ActorClass, 
 			case EMRUKSpawnerScalingMode::NoScaling:
 				Scale2D = FVector2D::UnitVector;
 				break;
+			case EMRUKSpawnerScalingMode::Stretch:
+				// Nothing to do
+				break;
 		}
 
 		const auto Offset2D = PlaneBounds.GetCenter() - ChildBounds2D.GetCenter() * Scale2D;
@@ -928,7 +933,7 @@ TSharedRef<FJsonObject> AMRUKAnchor::JsonSerialize()
 		GetComponents<UProceduralMeshComponent>(ProcMeshComponents);
 		for (const auto& Component : ProcMeshComponents)
 		{
-			auto ProcMeshComponent = Cast<UProceduralMeshComponent>(Component);
+			const auto ProcMeshComponent = Cast<UProceduralMeshComponent>(Component);
 			if (ProcMeshComponent && ProcMeshComponent->ComponentHasTag("GlobalMesh"))
 			{
 				ensure(ProcMeshComponent->GetNumSections() == 1);
@@ -936,7 +941,7 @@ TSharedRef<FJsonObject> AMRUKAnchor::JsonSerialize()
 				auto GlobalMeshJson = MakeShared<FJsonObject>();
 				GlobalMeshJson->SetField(TEXT("UUID"), MRUKSerialize(SpaceQueryResult.UUID));
 
-				auto ProcMeshSection = ProcMeshComponent->GetProcMeshSection(0);
+				const auto ProcMeshSection = ProcMeshComponent->GetProcMeshSection(0);
 
 				TArray<TSharedPtr<FJsonValue>> PositionsJson;
 				for (const auto& Vertex : ProcMeshSection->ProcVertexBuffer)
@@ -966,17 +971,17 @@ bool AMRUKAnchor::RayCastPlane(const FRay& LocalRay, float MaxDist, FMRUKHit& Ou
 	if (LocalRay.Direction.X >= UE_KINDA_SMALL_NUMBER)
 	{
 		// Distance to the plane from the ray origin along the ray's direction
-		float Dist = -LocalRay.Origin.X / LocalRay.Direction.X;
+		const float Dist = -LocalRay.Origin.X / LocalRay.Direction.X;
 		// If the distance is negative or less than the maximum distance then ignore it
 		if (Dist >= 0.0f && (MaxDist <= 0 || Dist < MaxDist))
 		{
-			FVector HitPos = LocalRay.PointAt(Dist);
+			const FVector HitPos = LocalRay.PointAt(Dist);
 			// Ensure the hit is within the plane extends and within the boundary
-			FVector2D Pos2D(HitPos.Y, HitPos.Z);
+			const FVector2D Pos2D(HitPos.Y, HitPos.Z);
 			if (PlaneBounds.IsInside(Pos2D) && IsPositionInBoundary(Pos2D))
 			{
 				// Transform the result back into world space
-				auto Transform = GetTransform();
+				const auto Transform = GetTransform();
 				OutHit.HitPosition = Transform.TransformPositionNoScale(HitPos);
 				OutHit.HitNormal = Transform.TransformVectorNoScale(-FVector::XAxisVector);
 				OutHit.HitDistance = Dist;
@@ -1029,11 +1034,11 @@ bool AMRUKAnchor::RayCastVolume(const FRay& LocalRay, float MaxDist, FMRUKHit& O
 	}
 	if (DistNear >= 0 && DistNear <= DistFar && (MaxDist <= 0 || DistNear < MaxDist))
 	{
-		FVector HitPos = LocalRay.PointAt(DistNear);
+		const FVector HitPos = LocalRay.PointAt(DistNear);
 		FVector HitNormal = FVector::ZeroVector;
 		HitNormal.Component(HitAxis) = LocalRay.Direction.Component(HitAxis) > 0 ? -1 : 1;
 		// Transform the result back into world space
-		auto Transform = GetTransform();
+		const auto Transform = GetTransform();
 		OutHit.HitPosition = Transform.TransformPositionNoScale(HitPos);
 		OutHit.HitNormal = Transform.TransformVectorNoScale(HitNormal);
 		OutHit.HitDistance = DistNear;

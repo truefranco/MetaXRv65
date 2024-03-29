@@ -7,7 +7,7 @@
 #include "OculusXRAnchorTypes.h"
 #include "OculusXRAnchorComponents.h"
 #include "OculusXRAnchorBPFunctionLibrary.generated.h"
-
+#pragma warning (disable : 4702 )
 //Helper
 UCLASS()
 class OCULUSXRANCHORS_API UOculusXRAnchorBPFunctionLibrary : public UBlueprintFunctionLibrary

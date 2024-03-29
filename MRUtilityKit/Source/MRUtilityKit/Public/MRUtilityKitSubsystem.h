@@ -16,11 +16,27 @@ LICENSE file in the root directory of this source tree.
 #include "MRUtilityKitRoom.h"
 #include "MRUtilityKit.h"
 #include "MRUtilityKitData.h"
-#include "MRUtilityKitAnchorActorSpawner.h"
 #include "MRUtilityKitSubsystem.generated.h"
 
 /**
- * The scene toolkit subsystem allows to load and access the scene data.
+ * The Mixed Reality Utility Kit subsystem.
+ *
+ * This subsystem acts as a container for scene/anchor data. It has methods to load
+ * the scene data from the device or a JSON file. After the scene data has been loaded
+ * it will be stored inside the subsystem to make it possible to query the data from
+ * everywhere. In addition, it offers methods to fulfill queries on the scene data
+ * like ray casts or simple content placement.
+ *
+ * The subsystem only contains core functionality that is useful for most cases.
+ * More specific functionality is part of actors. For example, if your goal is to spawn
+ * meshes in the place of scene anchors you can place the AMRUKAnchorActorSpawner in the
+ * level to do this. When a level loads you would first load the anchor data from the
+ * device with this subsystem by calling LoadSceneFromDevice() and then the AMRUKAnchorActorSpawner
+ * will listen for the subsystem to load the scene data and then spawn the actors accordingly.
+ *
+ * You can expect methods in this subsystem to take all loaded rooms into consideration when computing.
+ * If you want to use a method only on a single specific room, there is most of the time a method
+ * with the same name on the AMRUKRoom.
  */
 UCLASS(ClassGroup = MRUtilityKit)
 class MRUTILITYKIT_API UMRUKSubsystem : public UGameInstanceSubsystem, public FTickableGameObject
@@ -101,7 +117,7 @@ public:
 
 	/**
 	 * Cast a ray and collect hits against the volumes and plane bounds in every room in the scene.
-     * The order of the hits in the array is not specified.
+	 * The order of the hits in the array is not specified.
 	 * @param Origin      Origin The origin of the ray.
 	 * @param Direction   Direction The direction of the ray.
 	 * @param MaxDist     The maximum distance the ray should travel.
@@ -114,7 +130,10 @@ public:
 	bool RaycastAll(const FVector& Origin, const FVector& Direction, float MaxDist, const FMRUKLabelFilter& LabelFilter, TArray<FMRUKHit>& OutHits, TArray<AMRUKAnchor*>& OutAnchors);
 
 	/**
-	 * Return the room that the user is currently in. (NOTE: This is not yet fully implemented and only returns the first room).
+	 * Return the room that the headset is currently in. If the headset is not in any given room
+	 * then it will return the room the headset was last in when this function was called.
+	 * If the headset hasn't been in a valid room yet then return the first room in the list.
+	 * If no rooms have been loaded yet then return null.
 	 */
 	UFUNCTION(BlueprintCallable, Category = "MR Utility Kit")
 	AMRUKRoom* GetCurrentRoom() const;
@@ -159,6 +178,48 @@ public:
 	AMRUKAnchor* TryGetClosestSurfacePosition(const FVector& WorldPosition, FVector& OutSurfacePosition, const FMRUKLabelFilter& LabelFilter, double MaxDistance = 0.0);
 
 	/**
+	 * Finds the closest seat given a ray.
+	 * @param RayOrigin The origin of the ray.
+	 * @param RayDirection The direction of the ray.
+	 * @param OutSeatTransform The seat pose.
+	 * @return If any seat was found the Anchor that has seats available will be returned. Otherwise a null pointer.
+	 */
+	UFUNCTION(BlueprintCallable, Category = "MR Utility Kit")
+	AMRUKAnchor* TryGetClosestSeatPose(const FVector& RayOrigin, const FVector& RayDirection, FTransform& OutSeatTransform);
+
+	/**
+	 * Get a suggested pose (position & rotation) from a raycast to place objects on surfaces in the scene.
+	 * There are different positioning modes available. Default just uses the position where the raycast
+	 * hit the object. Edge snaps the position to the edge that is nearest to the user and Center simply
+	 * centers the position on top of the surface.
+	 * @param RayOrigin         The origin of the ray.
+	 * @param RayDirection      The direction of the ray.
+	 * @param MaxDist           The maximum distance the ray should travel.
+	 * @param LabelFilter       The label filter can be used to include/exclude certain labels from the search.
+	 * @param OutPose           The calculated pose.
+	 * @param PositioningMethod The method that should be used for determining the position on the surface.
+	 * @return                  The anchor that was hit by the ray if any. Otherwise a null pointer.
+	 */
+	UFUNCTION(BlueprintCallable, Category = "MR Utility Kit", meta = (AutoCreateRefTerm = "LabelFilter"))
+	AMRUKAnchor* GetBestPoseFromRaycast(const FVector& RayOrigin, const FVector& RayDirection, double MaxDist, const FMRUKLabelFilter& LabelFilter, FTransform& OutPose, EMRUKPositioningMethod PositioningMethod = EMRUKPositioningMethod::Default);
+
+	/**
+	 * Return the longest wall in the current room that has no other walls behind it.
+	 * @param Tolerance The tolerance to use when determing wall that are behind.
+	 * @return          The wall anchor that is the key wall in the room.
+	 */
+	UFUNCTION(BlueprintCallable, Category = "MR Utility Kit")
+	AMRUKAnchor* GetKeyWall(double Tolerance = 0.1);
+
+	/**
+	 * Return the largest surface for a given label in the current room.
+	 * @param Label The label of the surfaces to search in.
+	 * @return      The anchor that has the largest surface if any. Otherwise, a null pointer.
+	 */
+	UFUNCTION(BlueprintCallable, Category = "MR Utility Kit")
+	AMRUKAnchor* GetLargestSurface(const FString& Label);
+
+	/**
 	 * Checks if the given position is on or inside of any scene volume in the rooms.
 	 * All rooms will be checked and the first anchors scene volume that has the point on or inside it will be returned.
 	 * @param WorldPosition      The position in world space to check
@@ -173,7 +234,7 @@ public:
 	 * Spawn meshes on the position of the anchors of each room.
 	 * The actors should have Z as up Y as right and X as forward.
 	 * The pivot point should be in the bottom center.
-	 * @param SpawnGroups                A map wich tells to spawn which actor to a given label.
+	 * @param SpawnGroups                A map which tells to spawn which actor to a given label.
 	 * @param ProceduralMaterial         Material to apply on top of the procedural mesh if any.
 	 * @param ShouldFallbackToProcedural Whether or not it should by default fallback to generating a procedural mesh if no actor class has been specified for a label.
 	 * @return                           The spawned actors.
@@ -185,7 +246,7 @@ public:
 	 * Spawn meshes on the position of the anchors of each room from a random stream.
 	 * The actors should have Z as up Y as right and X as forward.
 	 * The pivot point should be in the bottom center.
-	 * @param SpawnGroups                A map wich tells to spawn which actor to a given label.
+	 * @param SpawnGroups                A map which tells to spawn which actor to a given label.
 	 * @param RandomStream               A random generator to choose randomly between actor classes if there a multiple for one label.
 	 * @param ProceduralMaterial         Material to apply on top of the procedural mesh if any.
 	 * @param ShouldFallbackToProcedural Whether or not it should by default fallback to generating a procedural mesh if no actor class has been specified for a label.
@@ -211,11 +272,9 @@ public:
 	UOculusXRRoomLayoutManagerComponent* GetRoomLayoutManager();
 
 private:
-	UOculusXRRoomLayoutManagerComponent* RoomLayoutManager = nullptr;
-
 	AMRUKRoom* SpawnRoom();
 
-	void FinishedLoading(bool success);
+	void FinishedLoading(bool Success);
 
 	// FTickableGameObject interface
 	virtual void Tick(float DeltaTime) override;
@@ -237,5 +296,11 @@ private:
 
 	TMap<TSubclassOf<AActor>, FBox> ActorClassBoundsCache;
 
+	UPROPERTY()
 	AActor* RoomLayoutManagerActor = nullptr;
+	UPROPERTY()
+	UOculusXRRoomLayoutManagerComponent* RoomLayoutManager = nullptr;
+	UPROPERTY()
+	mutable AMRUKRoom* CachedCurrentRoom = nullptr;
+	mutable int64 CachedCurrentRoomFrame = 0;
 };

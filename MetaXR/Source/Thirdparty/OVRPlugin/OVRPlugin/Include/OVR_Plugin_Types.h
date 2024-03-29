@@ -29,7 +29,7 @@
 // Note: OVRP_MINOR_VERSION == OCULUS_SDK_VERSION + 32
 
 #define OVRP_MAJOR_VERSION 1
-#define OVRP_MINOR_VERSION 94
+#define OVRP_MINOR_VERSION 95
 #define OVRP_PATCH_VERSION 0
 
 #define OVRP_VERSION OVRP_MAJOR_VERSION, OVRP_MINOR_VERSION, OVRP_PATCH_VERSION
@@ -48,7 +48,7 @@
 #ifndef OVRP_EXPORT
 #ifdef _WIN32
 #define OVRP_EXPORT __declspec(dllexport)
-#elif defined(__ANDROID__)
+#elif defined(__ANDROID__) || defined(__APPLE__)
 #define OVRP_EXPORT __attribute__((visibility("default")))
 #else
 #define OVRP_EXPORT
@@ -1877,10 +1877,11 @@ typedef enum ovrpBodyJointSet_ {
 
 
 
+// Must match XrBodyTrackingFidelityMETA
 typedef enum ovrpBodyTrackingFidelity2_ {
   ovrpBodyTrackingFidelity2_Low = 1,
   ovrpBodyTrackingFidelity2_High = 2,
-  ovrpBodyTrackingFidelity2_MaxEnum = 0xf7777777
+  ovrpBodyTrackingFidelity2_EnumSize = 0x7fffffff,
 } ovrpBodyTrackingFidelity2;
 
 
@@ -2328,8 +2329,7 @@ typedef enum ovrpEventType_ {
 
 
 
-
-
+  ovrpEventType_PassthroughLayerResumed = 500,
 
 
 
@@ -3448,13 +3448,10 @@ typedef struct ovrpPassthroughPreferences_ {
 
 
 
-
-
-
-
-
-
-
+typedef struct ovrpEventDataPassthroughLayerResumed_ {
+  ovrpEventType EventType;
+  int LayerId;
+} ovrpEventDataPassthroughLayerResumed;
 
 
 
@@ -3510,6 +3507,58 @@ typedef enum {
   ovrpEnvironmentDepthCreateFlag_None = 0,
   ovrpEnvironmentDepthCreateFlag_RemoveHands = 1 << 0,
 } ovrpEnvironmentDepthCreateFlag;
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 #ifdef __clang__
 #pragma clang diagnostic pop

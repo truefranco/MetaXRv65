@@ -242,7 +242,7 @@ namespace OculusXRHMD
 		virtual void PreRenderViewFamily_RenderThread(FRDGBuilder& GraphBuilder, FSceneViewFamily& InViewFamily) override;
 		virtual void PreRenderView_RenderThread(FRDGBuilder& GraphBuilder, FSceneView& InView) override;
 		virtual void PostRenderViewFamily_RenderThread(FRDGBuilder& GraphBuilder, FSceneViewFamily& InViewFamily) override;
-#if UE_VERSION_OLDER_THAN(5, 4, 0)
+#if UE_VERSION_OLDER_THAN(5, 3, 0)
 		virtual void PostRenderBasePassMobile_RenderThread(FRHICommandListImmediate& RHICmdList, FSceneView& InView) override;
 #ifdef WITH_OCULUS_BRANCH
 		virtual void PostSceneColorRenderingMobile_RenderThread(FRHICommandListImmediate& RHICmdList, FSceneView& InView) override;
@@ -255,7 +255,7 @@ namespace OculusXRHMD
 #endif
 		virtual void PostRenderBasePassDeferred_RenderThread(FRDGBuilder& GraphBuilder, FSceneView& InView, const FRenderTargetBindingSlots& RenderTargets, TRDGUniformBufferRef<FSceneTextureUniformParameters> SceneTextures) override;
 		virtual int32 GetPriority() const override;
-#ifdef WITH_OCULUS_LATE_LATCHING
+#ifdef WITH_OCULUS_BRANCH
 		virtual bool LateLatchingEnabled() const override;
 		virtual void PreLateLatchingViewFamily_RenderThread(FRHICommandListImmediate& RHICmdList, FSceneViewFamily& InViewFamily) override;
 #endif
@@ -356,7 +356,7 @@ namespace OculusXRHMD
 		void ResetControlRotation() const;
 		void UpdateFoveationOffsets_RenderThread();
 		bool ComputeEnvironmentDepthParameters_RenderThread(FVector2f& DepthFactors, FMatrix44f ScreenToDepth[ovrpEye_Count], FMatrix44f DepthViewProj[ovrpEye_Count], int& SwapchainIndex);
-#if UE_VERSION_OLDER_THAN(5, 4, 0)
+#if UE_VERSION_OLDER_THAN(5, 3, 0)
 		void RenderHardOcclusions_RenderThread(FRHICommandListImmediate& RHICmdList, const FSceneView& InView);
 #else
 		void RenderHardOcclusions_RenderThread(FRHICommandList& RHICmdList, const FSceneView& InView);
@@ -586,7 +586,7 @@ namespace OculusXRHMD
 		bool bNeedReAllocateDepthTexture_RenderThread;
 		bool bNeedReAllocateFoveationTexture_RenderThread;
 		bool bNeedReAllocateMotionVectorTexture_RenderThread;
-#if !UE_VERSION_OLDER_THAN(5, 4, 0)
+#if !UE_VERSION_OLDER_THAN(5, 3, 0)
 		TSharedPtr<FOculusXRFoveatedRenderingImageGenerator, ESPMode::ThreadSafe> FoveationImageGenerator;
 #endif // !UE_VERSION_OLDER_THAN(5, 3, 0)
 

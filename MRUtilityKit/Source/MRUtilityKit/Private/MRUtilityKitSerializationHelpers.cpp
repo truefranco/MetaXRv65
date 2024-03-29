@@ -24,7 +24,7 @@ TSharedPtr<FJsonValue> MRUKSerialize(const FOculusXRUUID& UUID)
 
 void MRUKDeserialize(const FJsonValue& Value, FOculusXRUUID& UUID)
 {
-	auto Hex = Value.AsString();
+	const auto Hex = Value.AsString();
 	if (Hex.Len() == OCULUSXR_UUID_SIZE * 2)
 	{
 		HexToBytes(Hex, UUID.UUIDBytes);
@@ -48,7 +48,7 @@ void MRUKDeserialize(const FJsonValue& Value, double& Number)
 
 TSharedPtr<FJsonValue> MRUKSerialize(const FOculusXRRoomLayout& RoomLayout)
 {
-	TSharedRef<FJsonObject> JsonObject = MakeShareable(new FJsonObject);
+	const TSharedRef<FJsonObject> JsonObject = MakeShareable(new FJsonObject);
 	// Note: No need to serialize the list of room object UUIDs since it is just the list of
 	// all anchors in the room
 	JsonObject->SetField("FloorUuid", MRUKSerialize(RoomLayout.FloorUuid));
@@ -59,7 +59,7 @@ TSharedPtr<FJsonValue> MRUKSerialize(const FOculusXRRoomLayout& RoomLayout)
 
 void MRUKDeserialize(const FJsonValue& Value, FOculusXRRoomLayout& RoomLayout)
 {
-	auto Object = Value.AsObject();
+	const auto Object = Value.AsObject();
 	MRUKDeserialize(*Object->GetField<EJson::None>("FloorUuid"), RoomLayout.FloorUuid);
 	MRUKDeserialize(*Object->GetField<EJson::None>("CeilingUuid"), RoomLayout.CeilingUuid);
 	MRUKDeserialize(*Object->GetField<EJson::None>("WallsUuid"), RoomLayout.WallsUuid);

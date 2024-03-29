@@ -27,7 +27,7 @@ void AMRUKGuardianSpawner::SpawnGuardian()
 		SetGuardianMaterial(GuardianMaterial);
 	}
 
-	for (auto GuardianActor : GuardianActors)
+	for (const auto GuardianActor : GuardianActors)
 	{
 		GuardianActor->SetActorHiddenInGame(IsHidden());
 	}
@@ -44,14 +44,14 @@ void AMRUKGuardianSpawner::SetGuardianMaterial(UMaterialInstance* Material)
 	DynamicGuardianMaterial = UMaterialInstanceDynamic::Create(GuardianMaterial, this);
 	DynamicGuardianMaterial->SetVectorParameterValue(TEXT("WallScale"), FVector(GridDensity));
 
-	auto GameInstance = GetGameInstance();
+	const auto GameInstance = GetGameInstance();
 	if (!GameInstance)
 	{
 		// We are probably currently just in the editor and didn't started a play session.
 		return;
 	}
-	auto Subsystem = GameInstance->GetSubsystem<UMRUKSubsystem>();
-	auto CurrentRoom = Subsystem->GetCurrentRoom();
+	const auto Subsystem = GameInstance->GetSubsystem<UMRUKSubsystem>();
+	const auto CurrentRoom = Subsystem->GetCurrentRoom();
 	if (!CurrentRoom)
 	{
 		return;
@@ -72,19 +72,19 @@ void AMRUKGuardianSpawner::SetGuardianMaterial(UMaterialInstance* Material)
 		GuardianActors.Push(GuardianActor);
 
 		// Generate procedural mesh
-		auto ProceduralMesh = NewObject<UProceduralMeshComponent>(GuardianActor, TEXT("GuardianMesh"));
-		Anchor->GenerateProceduralAnchorMesh(*ProceduralMesh, PlaneUVAdjustments, true, false);
+		const auto ProceduralMesh = NewObject<UProceduralMeshComponent>(GuardianActor, TEXT("GuardianMesh"));
+		Anchor->GenerateProceduralAnchorMesh(*ProceduralMesh, PlaneUVAdjustments, true, false, 0.01);
 		ProceduralMesh->SetMaterial(0, DynamicGuardianMaterial);
 		GuardianActor->CreateGuardian(ProceduralMesh);
 	};
 
 	// Attach procedural meshes to the walls first because they are connected.
 	TArray<FMRUKAnchorWithPlaneUVs> AnchorsWithPlaneUVs;
-	TArray<FMRUKTexCoordModes> WallTextureCoordinateModes = { { EMRUKCoordModeU::Metric, EMRUKCoordModeV::Metric } };
+	const TArray<FMRUKTexCoordModes> WallTextureCoordinateModes = { { EMRUKCoordModeU::Metric, EMRUKCoordModeV::Metric } };
 	CurrentRoom->ComputeWallMeshUVAdjustments(WallTextureCoordinateModes, AnchorsWithPlaneUVs);
-	for (const auto& AnchorWithPlaneUVs : AnchorsWithPlaneUVs)
+	for (const auto& [Anchor, PlaneUVs] : AnchorsWithPlaneUVs)
 	{
-		SpawnGuardian(AnchorWithPlaneUVs.Anchor, AnchorWithPlaneUVs.PlaneUVs);
+		SpawnGuardian(Anchor, PlaneUVs);
 	}
 
 	// Attach procedural meshes to the rest of the anchors. The walls have already meshes applied
@@ -119,8 +119,8 @@ void AMRUKGuardianSpawner::Tick(float DeltaSeconds)
 
 	if (EnableFade)
 	{
-		auto Subsystem = GetGameInstance()->GetSubsystem<UMRUKSubsystem>();
-		auto CurrentRoom = Subsystem->GetCurrentRoom();
+		const auto Subsystem = GetGameInstance()->GetSubsystem<UMRUKSubsystem>();
+		const auto CurrentRoom = Subsystem->GetCurrentRoom();
 		if (!CurrentRoom)
 		{
 			return;

@@ -722,6 +722,8 @@ OVRP_EXPORT ovrpResult ovrp_GetViewportStencil(
     ovrpUInt16* indices,
     int* indexCount);
 
+OVRP_EXPORT ovrpResult ovrp_SetDeveloperTelemetryConsent(ovrpBool consent);
+
 OVRP_EXPORT ovrpResult ovrp_SendEvent(const char* eventName, const char* param);
 
 OVRP_EXPORT ovrpResult ovrp_SendEvent2(const char* eventName, const char* param, const char* source);
@@ -769,6 +771,10 @@ OVRP_EXPORT ovrpResult ovrp_AreControllerDrivenHandPosesNatural(ovrpBool* natura
 
 OVRP_EXPORT ovrpResult ovrp_SetWideMotionModeHandPoses(ovrpBool wideMotionModeHandPoses);
 OVRP_EXPORT ovrpResult ovrp_IsWideMotionModeHandPosesEnabled(ovrpBool* enabled);
+
+
+
+
 
 
 
@@ -1155,6 +1161,23 @@ OVRP_EXPORT ovrpResult ovrp_SetEnvironmentDepthHandRemoval(ovrpBool enabled);
 OVRP_EXPORT ovrpResult ovrp_StartEnvironmentDepth();
 OVRP_EXPORT ovrpResult ovrp_StopEnvironmentDepth();
 OVRP_EXPORT ovrpResult ovrp_GetEnvironmentDepthFrameDesc(ovrpEye eyeId, ovrpEnvironmentDepthFrameDesc* frameDesc);
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 #ifdef __cplusplus
 }

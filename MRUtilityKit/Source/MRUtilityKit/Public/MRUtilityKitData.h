@@ -63,7 +63,7 @@ public:
 
 	bool NeedAnchorLocalization = false;
 
-	void LoadFromDevice(FOculusXRSpaceQueryResult SpaceQuery, int32 MaxQueries = 64);
+	void LoadFromDevice(const FOculusXRSpaceQueryResult& SpaceQueryResult, int32 MaxQueries = 64);
 	void LoadFromJson(const FJsonValue& Value);
 };
 
@@ -91,6 +91,7 @@ public:
 	UPROPERTY()
 	TArray<TObjectPtr<UMRUKAnchorData>> AnchorsData;
 
+	UPROPERTY()
 	AMRUKLocalizer* LocalizationActor = nullptr;
 
 	void LoadFromDevice(FOculusXRSpaceQueryResult SpaceQuery, int32 MaxQueries = 64);

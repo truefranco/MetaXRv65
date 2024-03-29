@@ -110,7 +110,8 @@ bool UOculusXRHMDRuntimeSettings::CanEditChange(const FProperty* InProperty) con
 
 // Disable settings for marketplace release that are only compatible with the Oculus engine fork
 #ifndef WITH_OCULUS_BRANCH
-		if (PropertyName == GET_MEMBER_NAME_CHECKED(UOculusXRHMDRuntimeSettings, FoveatedRenderingMethod) || PropertyName == GET_MEMBER_NAME_CHECKED(UOculusXRHMDRuntimeSettings, bSupportEyeTrackedFoveatedRendering))
+		if (PropertyName == GET_MEMBER_NAME_CHECKED(UOculusXRHMDRuntimeSettings, FoveatedRenderingMethod) || PropertyName == GET_MEMBER_NAME_CHECKED(UOculusXRHMDRuntimeSettings, bSupportEyeTrackedFoveatedRendering) || PropertyName == GET_MEMBER_NAME_CHECKED(UOculusXRHMDRuntimeSettings, bDynamicResolution))
+
 		{
 			bIsEditable = false;
 		}

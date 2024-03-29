@@ -15,6 +15,10 @@
 #include "Interfaces/IPluginManager.h"
 #include "ShaderCore.h"
 #include "OculusXRTelemetry.h"
+#if PLATFORM_WINDOWS
+#include "OculusXRSimulator.h"
+#include "OculusXRSyntheticEnvironmentServer.h"
+#endif
 
 #if !PLATFORM_ANDROID
 #if !UE_BUILD_SHIPPING
@@ -298,6 +302,15 @@ TSharedPtr<class IXRTrackingSystem, ESPMode::ThreadSafe> FOculusXRHMDModule::Cre
 #if OCULUS_HMD_SUPPORTED_PLATFORMS
 	if (bPreInit || (GIsEditor && PLATFORM_WINDOWS))
 	{
+		//If -HMDSimulator is used as the command option to launch UE, use simulator runtime instead of the physical HMD runtime (like PC-Link).
+		if (FParse::Param(FCommandLine::Get(), TEXT("HMDSimulator")))
+		{
+			if (!IsSimulatorActivated())
+			{
+				ToggleOpenXRRuntime();
+			}
+		}
+
 		OculusXRHMD::FOculusXRHMDPtr OculusXRHMD = FSceneViewExtensions::NewExtension<OculusXRHMD::FOculusXRHMD>();
 
 		if (OculusXRHMD->Startup())
@@ -384,6 +397,36 @@ bool FOculusXRHMDModule::IsStandaloneStereoOnlyDevice()
 	return FAndroidMisc::GetDeviceMake() == FString("Oculus");
 #else
 	return false;
+#endif
+}
+
+bool FOculusXRHMDModule::IsSimulatorActivated()
+{
+#if PLATFORM_WINDOWS
+	return FMetaXRSimulator::IsSimulatorActivated();
+#else
+	return false;
+#endif
+}
+
+void FOculusXRHMDModule::ToggleOpenXRRuntime()
+{
+#if PLATFORM_WINDOWS
+	FMetaXRSimulator::ToggleOpenXRRuntime();
+#endif
+}
+
+void FOculusXRHMDModule::LaunchEnvironment(FString EnvironmentName)
+{
+#if PLATFORM_WINDOWS
+	FMetaXRSES::LaunchEnvironment(EnvironmentName);
+#endif
+}
+
+void FOculusXRHMDModule::StopServer()
+{
+#if PLATFORM_WINDOWS
+	FMetaXRSES::StopServer();
 #endif
 }
 

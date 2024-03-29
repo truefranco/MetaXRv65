@@ -10,12 +10,6 @@
 
 #define LOCTEXT_NAMESPACE "OculusXRMovement"
 
-namespace XRSpaceFlags
-{
-	const uint64 XR_SPACE_LOCATION_ORIENTATION_VALID_BIT = 0x00000001;
-	const uint64 XR_SPACE_LOCATION_POSITION_VALID_BIT = 0x00000002;
-} // namespace XRSpaceFlags
-
 bool OculusXRMovement::IsFullBodyTrackingEnabled()
 {
 	bool bResult = false;
@@ -73,6 +67,7 @@ bool OculusXRMovement::GetBodyState(FOculusXRBodyState& outOculusXRBodyState, fl
 
 	return false;
 }
+
 
 bool OculusXRMovement::IsBodyTrackingEnabled()
 {

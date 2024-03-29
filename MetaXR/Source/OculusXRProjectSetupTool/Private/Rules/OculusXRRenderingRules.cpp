@@ -105,6 +105,7 @@ namespace OculusXRRenderingRules
 		OutShouldRestartEditor = false;
 	}
 
+#ifdef WITH_OCULUS_BRANCH
 	bool FEnableDynamicResolutionRule::IsApplied() const
 	{
 		const UOculusXRHMDRuntimeSettings* Settings = GetMutableDefault<UOculusXRHMDRuntimeSettings>();
@@ -117,6 +118,7 @@ namespace OculusXRRenderingRules
 		OCULUSXR_UPDATE_SETTINGS(UOculusXRHMDRuntimeSettings, bDynamicResolution, true);
 		OutShouldRestartEditor = false;
 	}
+#endif
 
 	bool FDisableLensFlareRule::IsApplied() const
 	{

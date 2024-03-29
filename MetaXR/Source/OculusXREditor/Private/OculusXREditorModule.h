@@ -6,6 +6,7 @@
 #include "IOculusXREditorModule.h"
 #include "Modules/ModuleInterface.h"
 #include "IDetailCustomization.h"
+#include "PlatformIconInfo.h"
 #include "Input/Reply.h"
 #include "Layout/Visibility.h"
 
@@ -63,6 +64,17 @@ class IDetailLayoutBuilder;
 
 class FOculusXRHMDSettingsDetailsCustomization : public IDetailCustomization
 {
+private:
+	FOculusXRHMDSettingsDetailsCustomization();
+
+	FPlatformIconInfo LaunchImageLandscape;
+
+	const FString EngineAndroidPath;
+	const FString GameAndroidPath;
+	const FString VRSplashPath;
+
+	IDetailLayoutBuilder* SavedLayoutBuilder;
+
 public:
 	/** Makes a new instance of this detail layout class for a specific detail view requesting it */
 	static TSharedRef<IDetailCustomization> MakeInstance();
@@ -72,8 +84,16 @@ public:
 	// End of IDetailCustomization interface
 
 	EVisibility GetContextualPassthroughWarningVisibility() const;
+	ECheckBoxState GetShowLaunchImageCheckBoxState() const;
+	bool IsLaunchImageEnabled() const;
+
+	void OnShowLaunchImageCheckStateChanged(const ECheckBoxState NewState);
+	bool OnLaunchImageChanged(const FString& InChosenImage);
+
+	EVisibility GetSystemSplashImageWarningVisibility() const;
 
 	FReply PluginClickPerfFn(bool text);
 	FReply PluginClickPlatFn(bool text);
 	FReply DisableEngineSplash(bool text);
+	FReply AddSplashImage(bool text);
 };

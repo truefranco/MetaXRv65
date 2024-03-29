@@ -208,6 +208,7 @@ bool OculusPluginWrapper::InitializeOculusPluginWrapper(OculusPluginWrapper* wra
 		OCULUS_BIND_ENTRY_POINT(AutoThreadScheduling),
 		OCULUS_BIND_ENTRY_POINT(GetGPUFrameTime),
 		OCULUS_BIND_ENTRY_POINT(GetViewportStencil),
+		OCULUS_BIND_ENTRY_POINT(SetDeveloperTelemetryConsent),
 		OCULUS_BIND_ENTRY_POINT(SendEvent),
 		OCULUS_BIND_ENTRY_POINT(SendEvent2),
 		OCULUS_BIND_ENTRY_POINT(AddCustomMetadata),

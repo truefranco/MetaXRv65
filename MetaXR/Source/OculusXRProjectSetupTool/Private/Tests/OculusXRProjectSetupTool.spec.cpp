@@ -20,6 +20,18 @@ namespace
 BEGIN_DEFINE_SPEC(FOculusXRProjectSetupToolSpec, TEXT("Project Setup Tool"), EAutomationTestFlags::ProductFilter | EAutomationTestFlags::ApplicationContextMask)
 UOculusXRRuleProcessorSubsystem* ProcessorSubsystem;
 bool bShouldRestartEditor = false;
+TSet<FName> RulesThatRequireRestart = {
+	FName("Feature_AllowAlphaToneMapperPassthrough"),
+	FName("Rendering_DisableAmbientOcclusion"),
+	FName("Rendering_DisablePostProcessing"),
+	FName("Rendering_EnableForwardShading"),
+	FName("Rendering_EnableInstancedStereo"),
+	FName("Rendering_EnableMultiView"),
+	FName("Rendering_EnableStaticLighting"),
+	FName("Rendering_MobileShaderAllowDistanceFieldShadows"),
+	FName("Rendering_MobileShaderAllowMovableDirectionalLights"),
+	FName("Rendering_UseHalfPrecisionFloat")
+};
 
 void Setup();
 END_DEFINE_SPEC(FOculusXRProjectSetupToolSpec)
@@ -95,7 +107,7 @@ void FOculusXRProjectSetupToolSpec::Define()
 			It(TEXT("Test " + Rule->GetId().ToString()), [this, Rule] {
 				Rule->Apply(bShouldRestartEditor);
 				TestTrue(TEXT("Rule is applied"), Rule->IsApplied());
-				TestFalse(TEXT("Restart is pending"), bShouldRestartEditor);
+				TestEqual(TEXT("Restart is pending"), RulesThatRequireRestart.Contains(Rule->GetId()), bShouldRestartEditor);
 			});
 		}
 	});
@@ -106,7 +118,7 @@ void FOculusXRProjectSetupToolSpec::Define()
 			It(TEXT("Test " + Rule->GetId().ToString()), [this, Rule] {
 				Rule->Apply(bShouldRestartEditor);
 				TestTrue(TEXT("Rule is applied"), Rule->IsApplied());
-				TestFalse(TEXT("Restart is pending"), bShouldRestartEditor);
+				TestEqual(TEXT("Restart is pending"), RulesThatRequireRestart.Contains(Rule->GetId()), bShouldRestartEditor);
 			});
 		}
 	});
@@ -117,7 +129,7 @@ void FOculusXRProjectSetupToolSpec::Define()
 			It(TEXT("Test " + Rule->GetId().ToString()), [this, Rule] {
 				Rule->Apply(bShouldRestartEditor);
 				TestTrue(TEXT("Rule is applied"), Rule->IsApplied());
-				TestFalse(TEXT("Restart is pending"), bShouldRestartEditor);
+				TestEqual(TEXT("Restart is pending"), RulesThatRequireRestart.Contains(Rule->GetId()), bShouldRestartEditor);
 			});
 		}
 	});
@@ -128,7 +140,7 @@ void FOculusXRProjectSetupToolSpec::Define()
 			It(TEXT("Test " + Rule->GetId().ToString()), [this, Rule] {
 				Rule->Apply(bShouldRestartEditor);
 				TestTrue(TEXT("Rule is applied"), Rule->IsApplied());
-				TestFalse(TEXT("Restart is pending"), bShouldRestartEditor);
+				TestEqual(TEXT("Restart is pending"), RulesThatRequireRestart.Contains(Rule->GetId()), bShouldRestartEditor);
 			});
 		}
 	});
@@ -139,7 +151,7 @@ void FOculusXRProjectSetupToolSpec::Define()
 			It(TEXT("Test " + Rule->GetId().ToString()), [this, Rule] {
 				Rule->Apply(bShouldRestartEditor);
 				TestTrue(TEXT("Rule is applied"), Rule->IsApplied());
-				TestFalse(TEXT("Restart is pending"), bShouldRestartEditor);
+				TestEqual(TEXT("Restart is pending"), RulesThatRequireRestart.Contains(Rule->GetId()), bShouldRestartEditor);
 			});
 		}
 	});
@@ -150,7 +162,7 @@ void FOculusXRProjectSetupToolSpec::Define()
 			It(TEXT("Test " + Rule->GetId().ToString()), [this, Rule] {
 				Rule->Apply(bShouldRestartEditor);
 				TestTrue(TEXT("Rule is applied"), Rule->IsApplied());
-				TestFalse(TEXT("Restart is pending"), bShouldRestartEditor);
+				TestEqual(TEXT("Restart is pending"), RulesThatRequireRestart.Contains(Rule->GetId()), bShouldRestartEditor);
 			});
 		}
 	});

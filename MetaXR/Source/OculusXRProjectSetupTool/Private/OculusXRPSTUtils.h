@@ -2,7 +2,7 @@
 
 #pragma once
 #include "CoreMinimal.h"
-
+#include "OculusXRProjectSetupToolModule.h"
 #define OCULUSXR_UPDATE_SETTINGS(SettingsClass, PropertyName, PropertyValue) \
 	{                                                                        \
 		SettingsClass* Settings = GetMutableDefault<SettingsClass>();        \
@@ -128,12 +128,12 @@ namespace OculusXRPSTUtils
 	{
 		if (!UnAppliedRules.IsEmpty())
 		{
-			//UE_LOG(LogProjectSetupTool, Error, TEXT("Following critical rules are not applied:\n%s"),
-				//*FString::JoinBy(
-					//UnAppliedRules,
-					//TEXT("\n"),
-					//[](const SetupRulePtr Rule) { return Rule->GetDisplayName().ToString(); }));
-			//UE_LOG(LogProjectSetupTool, Error, TEXT("To fix them open `Tools > Meta XR Project Setup Tool`"));
+			UE_LOG(LogProjectSetupTool, Error, TEXT("Following critical rules are not applied:\n%s"),
+				*FString::JoinBy(
+					UnAppliedRules,
+					TEXT("\n"),
+					[](const SetupRulePtr Rule) { return Rule->GetDisplayName().ToString(); }));
+			UE_LOG(LogProjectSetupTool, Error, TEXT("To fix them open `Tools > Meta XR Project Setup Tool`"));
 		}
 	}
 } // namespace OculusXRPSTUtils

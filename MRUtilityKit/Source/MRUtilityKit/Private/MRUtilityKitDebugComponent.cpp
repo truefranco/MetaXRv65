@@ -124,8 +124,7 @@ void UMRUKDebugComponent::ShowAnchorSpaceAtRayHit(const FVector& Origin, const F
 	}
 
 	FMRUKHit Hit{};
-	FMRUKLabelFilter LabelFilter{};
-	auto Anchor = Subsystem->Raycast(Origin, Direction, 0.0, LabelFilter, Hit);
+	const auto Anchor = Subsystem->Raycast(Origin, Direction, 0.0, {}, Hit);
 	if (!Anchor)
 	{
 		return;
@@ -145,7 +144,7 @@ void UMRUKDebugComponent::ShowAnchorSpaceAtRayHit(const FVector& Origin, const F
 		ActiveAnchorSpaceActor->AttachToActor(Anchor, FAttachmentTransformRules::KeepRelativeTransform);
 		ActiveAnchorSpaceActor->GetRootComponent()->SetMobility(EComponentMobility::Movable);
 
-		auto ProceduralMesh = NewObject<UProceduralMeshComponent>(ActiveAnchorSpaceActor, TEXT("DebugVolumePlane"));
+		const auto ProceduralMesh = NewObject<UProceduralMeshComponent>(ActiveAnchorSpaceActor, TEXT("DebugVolumePlane"));
 		Anchor->GenerateProceduralAnchorMesh(*ProceduralMesh, {}, true, false, DebugSpaceOffset);
 		ActiveAnchorSpaceActor->AddInstanceComponent(ProceduralMesh);
 		ProceduralMesh->SetupAttachment(ActiveAnchorSpaceActor->GetRootComponent());
@@ -205,7 +204,7 @@ void UMRUKDebugComponent::EndPlay(const EEndPlayReason::Type EndPlayReason)
 	}
 }
 
-void UMRUKDebugComponent::OrientTextActorToPlayer()
+void UMRUKDebugComponent::OrientTextActorToPlayer() const
 {
 	if (ActiveTextActor)
 	{

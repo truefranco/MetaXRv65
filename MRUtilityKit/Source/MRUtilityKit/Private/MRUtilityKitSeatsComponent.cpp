@@ -13,7 +13,7 @@ LICENSE file in the root directory of this source tree.
 
 void UMRUKSeatsComponent::CalculateSeatPoses(double SeatWidth)
 {
-	const auto& Anchor = Cast<AMRUKAnchor>(GetOwner());
+	const auto Anchor = Cast<AMRUKAnchor>(GetOwner());
 	if (!Anchor)
 	{
 		return;
@@ -23,8 +23,8 @@ void UMRUKSeatsComponent::CalculateSeatPoses(double SeatWidth)
 
 	const auto SurfaceDimensions = Anchor->PlaneBounds.GetExtent();
 	const auto SurfaceRatio = SurfaceDimensions.X / SurfaceDimensions.Y;
-	auto SeatForward = Anchor->GetFacingDirection();
-	auto SeatUp = FVector::UpVector;
+	const auto SeatForward = Anchor->GetFacingDirection();
+	const auto SeatUp = FVector::UpVector;
 	const auto SeatRotation = UKismetMathLibrary::MakeRotFromXZ(SeatForward, SeatUp).Quaternion();
 
 	if (SurfaceRatio < 2.0 && SurfaceRatio > 0.5)

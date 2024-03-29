@@ -8,8 +8,6 @@ LICENSE file in the root directory of this source tree.
 
 #include "MRUtilityKitSubsystem.h"
 #include "MRUtilityKitAnchor.h"
-#include "MRUtilityKitTelemetry.h"
-#include "OculusXRAnchors.h"
 #include "OculusXRAnchorBPFunctionLibrary.h"
 #include "Kismet/GameplayStatics.h"
 #include "HeadMountedDisplayFunctionLibrary.h"
@@ -57,7 +55,7 @@ bool UMRUKSubsystem::RaycastAll(const FVector& Origin, const FVector& Direction,
 
 void UMRUKSubsystem::Initialize(FSubsystemCollectionBase& Collection)
 {
-	UMRUKSettings* Settings = GetMutableDefault<UMRUKSettings>();
+	const UMRUKSettings* Settings = GetMutableDefault<UMRUKSettings>();
 	EnableWorldLock = Settings->EnableWorldLock;
 }
 
@@ -91,9 +89,41 @@ void UMRUKSubsystem::UnregisterRoom(AMRUKRoom* Room)
 
 AMRUKRoom* UMRUKSubsystem::GetCurrentRoom() const
 {
-	// Return the first valid room
-	// TODO: Use some better heuristics to determine the current room
-	// e.g. the room where the camera is currently in or closest to
+	// This is a rather expensive operation, we should only do it at most once per frame.
+	if (CachedCurrentRoomFrame != GFrameCounter)
+	{
+		if (const APlayerController* PlayerController = UGameplayStatics::GetPlayerController(this, 0))
+		{
+			if (APawn* Pawn = PlayerController->GetPawn())
+			{
+				const auto& PawnTransform = Pawn->GetActorTransform();
+
+				FVector HeadPosition;
+				FRotator Unused;
+
+				// Get the position and rotation of the VR headset
+				UHeadMountedDisplayFunctionLibrary::GetOrientationAndPosition(Unused, HeadPosition);
+
+				HeadPosition = PawnTransform.TransformPosition(HeadPosition);
+
+				for (const auto& Room : Rooms)
+				{
+					if (Room->IsPositionInRoom(HeadPosition))
+					{
+						CachedCurrentRoom = Room;
+						CachedCurrentRoomFrame = GFrameCounter;
+						return Room;
+					}
+				}
+			}
+		}
+	}
+
+	if (CachedCurrentRoom != nullptr)
+	{
+		return CachedCurrentRoom;
+	}
+
 	for (const auto& Room : Rooms)
 	{
 		if (Room)
@@ -107,7 +137,7 @@ AMRUKRoom* UMRUKSubsystem::GetCurrentRoom() const
 FString UMRUKSubsystem::SaveSceneToJsonString()
 {
 	FString Json;
-	TSharedRef<TJsonWriter<>> JsonWriter = TJsonWriterFactory<>::Create(&Json, 0);
+	const TSharedRef<TJsonWriter<>> JsonWriter = TJsonWriterFactory<>::Create(&Json, 0);
 	FJsonSerializer::Serialize(JsonSerialize(), JsonWriter);
 	return Json;
 }
@@ -215,7 +245,7 @@ void UMRUKSubsystem::UpdatedSceneDataLoadedComplete(bool Success)
 		for (int i = 0; i < SceneData->RoomsData.Num(); ++i)
 		{
 			UMRUKRoomData* RoomData = SceneData->RoomsData[i];
-			TObjectPtr<AMRUKRoom>* RoomFound = RoomsToRemove.FindByPredicate([RoomData](TObjectPtr<AMRUKRoom> Room) {
+			const TObjectPtr<AMRUKRoom>* RoomFound = RoomsToRemove.FindByPredicate([RoomData](TObjectPtr<AMRUKRoom> Room) {
 				return Room->Corresponds(RoomData);
 			});
 			TObjectPtr<AMRUKRoom> Room = nullptr;
@@ -276,7 +306,6 @@ void UMRUKSubsystem::ClearScene()
 AMRUKAnchor* UMRUKSubsystem::TryGetClosestSurfacePosition(const FVector& WorldPosition, FVector& OutSurfacePosition, const FMRUKLabelFilter& LabelFilter, double MaxDistance)
 {
 	AMRUKAnchor* ClosestAnchor = nullptr;
-	double ClosestSurfaceDistance = DBL_MAX;
 
 	for (const auto& Room : Rooms)
 	{
@@ -284,16 +313,92 @@ AMRUKAnchor* UMRUKSubsystem::TryGetClosestSurfacePosition(const FVector& WorldPo
 		{
 			continue;
 		}
-		double SurfaceDistance = DBL_MAX;
-		const auto& Anchor = Room->TryGetClosestSurfacePosition(WorldPosition, OutSurfacePosition, SurfaceDistance, LabelFilter, MaxDistance);
-		if (Anchor && SurfaceDistance < ClosestSurfaceDistance)
+		double SurfaceDistance{};
+		FVector SurfacePos{};
+		if (const auto& Anchor = Room->TryGetClosestSurfacePosition(WorldPosition, SurfacePos, SurfaceDistance, LabelFilter, MaxDistance))
 		{
 			ClosestAnchor = Anchor;
-			ClosestSurfaceDistance = MaxDistance;
+			OutSurfacePosition = SurfacePos;
+			MaxDistance = SurfaceDistance;
 		}
 	}
 
 	return ClosestAnchor;
+}
+
+AMRUKAnchor* UMRUKSubsystem::TryGetClosestSeatPose(const FVector& RayOrigin, const FVector& RayDirection, FTransform& OutSeatTransform)
+{
+	AMRUKAnchor* ClosestAnchor = nullptr;
+	double ClosestSeatDistanceSq = DBL_MAX;
+
+	for (const auto& Room : Rooms)
+	{
+		if (!Room)
+		{
+			continue;
+		}
+
+		FTransform SeatTransform{};
+		if (AMRUKAnchor* Anchor = Room->TryGetClosestSeatPose(RayOrigin, RayDirection, SeatTransform))
+		{
+			const double SeatDistanceSq = (RayOrigin - Anchor->GetActorTransform().GetTranslation()).SquaredLength();
+			if (SeatDistanceSq < ClosestSeatDistanceSq)
+			{
+				ClosestAnchor = Anchor;
+				ClosestSeatDistanceSq = SeatDistanceSq;
+				OutSeatTransform = SeatTransform;
+			}
+		}
+	}
+
+	return ClosestAnchor;
+}
+
+AMRUKAnchor* UMRUKSubsystem::GetBestPoseFromRaycast(const FVector& RayOrigin, const FVector& RayDirection, double MaxDist, const FMRUKLabelFilter& LabelFilter, FTransform& OutPose, EMRUKPositioningMethod PositioningMethod)
+{
+	AMRUKAnchor* ClosestAnchor = nullptr;
+	double ClosestPoseDistanceSq = DBL_MAX;
+
+	for (const auto& Room : Rooms)
+	{
+		if (!Room)
+		{
+			continue;
+		}
+
+		FTransform Pose{};
+		AMRUKAnchor* Anchor = Room->GetBestPoseFromRaycast(RayOrigin, RayDirection, MaxDist, LabelFilter, Pose, PositioningMethod);
+		if (Anchor)
+		{
+			const double PoseDistanceSq = (RayOrigin - OutPose.GetTranslation()).SquaredLength();
+			if (PoseDistanceSq < ClosestPoseDistanceSq)
+			{
+				ClosestAnchor = Anchor;
+				ClosestPoseDistanceSq = PoseDistanceSq;
+				OutPose = Pose;
+			}
+		}
+	}
+
+	return ClosestAnchor;
+}
+
+AMRUKAnchor* UMRUKSubsystem::GetKeyWall(double Tolerance)
+{
+	if (AMRUKRoom* CurrentRoom = GetCurrentRoom())
+	{
+		return CurrentRoom->GetKeyWall(Tolerance);
+	}
+	return nullptr;
+}
+
+AMRUKAnchor* UMRUKSubsystem::GetLargestSurface(const FString& Label)
+{
+	if (AMRUKRoom* CurrentRoom = GetCurrentRoom())
+	{
+		return CurrentRoom->GetLargestSurface(Label);
+	}
+	return nullptr;
 }
 
 AMRUKAnchor* UMRUKSubsystem::IsPositionInSceneVolume(const FVector& WorldPosition, bool TestVerticalBounds, double Tolerance)
@@ -304,8 +409,7 @@ AMRUKAnchor* UMRUKSubsystem::IsPositionInSceneVolume(const FVector& WorldPositio
 		{
 			continue;
 		}
-		const auto& Anchor = Room->IsPositionInSceneVolume(WorldPosition, TestVerticalBounds, Tolerance);
-		if (Anchor)
+		if (const auto& Anchor = Room->IsPositionInSceneVolume(WorldPosition, TestVerticalBounds, Tolerance))
 		{
 			return Anchor;
 		}
@@ -337,7 +441,7 @@ TArray<AActor*> UMRUKSubsystem::SpawnInteriorFromStream(const TMap<FString, FMRU
 
 bool UMRUKSubsystem::LaunchSceneCapture()
 {
-	bool Success = GetRoomLayoutManager()->LaunchCaptureFlow();
+	const bool Success = GetRoomLayoutManager()->LaunchCaptureFlow();
 	if (Success)
 	{
 		UE_LOG(LogMRUK, Log, TEXT("Capture flow launched with success"));
@@ -409,13 +513,12 @@ void UMRUKSubsystem::FinishedLoading(bool Success)
 
 FBox UMRUKSubsystem::GetActorClassBounds(TSubclassOf<AActor> Actor)
 {
-	auto Entry = ActorClassBoundsCache.Find(Actor);
-	if (Entry)
+	if (const auto Entry = ActorClassBoundsCache.Find(Actor))
 	{
 		return *Entry;
 	}
 	const auto TempActor = GetWorld()->SpawnActor(Actor);
-	auto Bounds = TempActor->CalculateComponentsBoundingBoxInLocalSpace(true);
+	const auto Bounds = TempActor->CalculateComponentsBoundingBoxInLocalSpace(true);
 	TempActor->Destroy();
 	ActorClassBoundsCache.Add(Actor, Bounds);
 	return Bounds;
@@ -425,14 +528,11 @@ void UMRUKSubsystem::Tick(float DeltaTime)
 {
 	if (EnableWorldLock)
 	{
-		auto Room = GetCurrentRoom();
-		if (Room)
+		if (const auto Room = GetCurrentRoom())
 		{
-			APlayerController* PlayerController = UGameplayStatics::GetPlayerController(this, 0);
-			if (PlayerController)
+			if (const APlayerController* PlayerController = UGameplayStatics::GetPlayerController(this, 0))
 			{
-				APawn* Pawn = PlayerController->GetPawn();
-				if (Pawn)
+				if (APawn* Pawn = PlayerController->GetPawn())
 				{
 					const auto& PawnTransform = Pawn->GetActorTransform();
 

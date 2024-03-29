@@ -84,19 +84,19 @@ struct MRUTILITYKIT_API FMRUKHit
 	 * The position where the raycast hit.
 	 */
 	UPROPERTY(BlueprintReadOnly, Category = "MR Utility Kit")
-	FVector HitPosition;
+	FVector HitPosition = FVector::ZeroVector;
 
 	/**
 	 * The normal of the surface that was hit.
 	 */
 	UPROPERTY(BlueprintReadOnly, Category = "MR Utility Kit")
-	FVector HitNormal;
+	FVector HitNormal = FVector::ZeroVector;
 
 	/**
 	 * The distance between the origin of the ray to the hit position.
 	 */
 	UPROPERTY(BlueprintReadOnly, Category = "MR Utility Kit")
-	float HitDistance;
+	float HitDistance = 0.0f;
 };
 
 USTRUCT(BlueprintType)
@@ -180,7 +180,7 @@ struct MRUTILITYKIT_API FMRUKSpawnActor
 	 * objects with an aspect ratio close to 1:1. Only applies to volumes.
 	 */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "MR Utility Kit")
-	bool MatchAspectRatio;
+	bool MatchAspectRatio = false;
 
 	/**
 	 * When calculate facing direction is enabled the actor will be rotated to
@@ -189,7 +189,7 @@ struct MRUTILITYKIT_API FMRUKSpawnActor
 	 * between 2 directions only. Only applies to volumes.
 	 */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "MR Utility Kit")
-	bool CalculateFacingDirection;
+	bool CalculateFacingDirection = false;
 
 	/**
 	 * Set what scaling mode to apply to the actor. By default the actor will
@@ -197,7 +197,7 @@ struct MRUTILITYKIT_API FMRUKSpawnActor
 	 * this may not be desirable and can be customized here.
 	 */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "MR Utility Kit")
-	EMRUKSpawnerScalingMode ScalingMode;
+	EMRUKSpawnerScalingMode ScalingMode = EMRUKSpawnerScalingMode::Stretch;
 };
 
 UENUM(BlueprintType)
@@ -235,7 +235,7 @@ struct MRUTILITYKIT_API FMRUKSpawnGroup
 	 * fallback behaviour can be specified in the AMRUKAnchorActorSpawner.
 	 */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "MR Utility Kit")
-	EMRUKFallbackToProceduralOverwrite FallbackToProcedural;
+	EMRUKFallbackToProceduralOverwrite FallbackToProcedural = EMRUKFallbackToProceduralOverwrite::Default;
 };
 
 /**

@@ -36,7 +36,7 @@ namespace
 			FVector VertexC = Vertices[Triangles[TriIndex + 2]];
 
 			// Calculate the triangle's normal
-			FVector TriangleNormal = FVector::CrossProduct(VertexC - VertexA, VertexB - VertexA).GetSafeNormal();
+			const FVector TriangleNormal = FVector::CrossProduct(VertexC - VertexA, VertexB - VertexA).GetSafeNormal();
 
 			// Add the triangle's normal to each of its vertices' normals
 			Normals[Triangles[TriIndex]] += TriangleNormal;
@@ -141,14 +141,14 @@ bool UMRUKBPLibrary::LoadGlobalMeshFromDevice(FOculusXRSpaceQueryResult SpaceQue
 {
 	ensure(OutProceduralMesh);
 
-	UWorld* World = GEngine->GetWorldFromContextObject(WorldContext, EGetWorldErrorMode::ReturnNull);
+	const UWorld* World = GEngine->GetWorldFromContextObject(WorldContext, EGetWorldErrorMode::ReturnNull);
 	if (!ensureAlwaysMsgf(IsValid(WorldContext), TEXT("World Context was not valid.")))
 	{
 		return false;
 	}
 
-	auto RoomLayoutManager = World->GetGameInstance()->GetSubsystem<UMRUKSubsystem>()->GetRoomLayoutManager();
-	bool LoadResult = RoomLayoutManager->LoadTriangleMesh(SpaceQuery.Space.Value, OutProceduralMesh, LoadCollision);
+	const auto RoomLayoutManager = World->GetGameInstance()->GetSubsystem<UMRUKSubsystem>()->GetRoomLayoutManager();
+	const bool LoadResult = RoomLayoutManager->LoadTriangleMesh(SpaceQuery.Space.Value, OutProceduralMesh, LoadCollision);
 	if (!LoadResult)
 	{
 		UE_LOG(LogMRUK, Warning, TEXT("Could not load triangle mesh from layout manager"));
@@ -185,7 +185,6 @@ bool UMRUKBPLibrary::LoadGlobalMeshFromJsonString(const FString& JsonString, FOc
 			auto AnchorsJson = RoomObject->GetArrayField(TEXT("Anchors"));
 			for (const auto& AnchorJson : AnchorsJson)
 			{
-				FOculusXRUUID AnchorUUID;
 				auto AnchorObject = AnchorJson->AsObject();
 				if (AnchorObject->HasField(TEXT("GlobalMesh")))
 				{

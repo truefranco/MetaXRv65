@@ -78,6 +78,6 @@ public:
      * Check if the current Unreal Engine is the fork of Meta.
 	 * @return Whether its the fork or not.
 	 */
-	UFUNCTION(BlueprintCallable, Category = "MR Utility Kit")
+	UFUNCTION(BlueprintCallable, BlueprintPure, Category = "MR Utility Kit")
 	static bool IsUnrealEngineMetaFork();
 };

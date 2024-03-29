@@ -57,7 +57,7 @@ void FMRUKSpec::SetupMRUKSubsystem()
 	BeforeEach([this]() {
 		// Load map and start play in editor
 		const auto ContentDir = FPaths::ProjectContentDir();
-		FAutomationEditorCommonUtils::LoadMap(ContentDir + "/Maps/TestLevel.umap");
+		FAutomationEditorCommonUtils::LoadMap(ContentDir + "/Common/Maps/TestLevel.umap");
 		StartPIE(true);
 	});
 
@@ -1012,21 +1012,6 @@ void FMRUKSpec::Define()
 					TestTrue(TEXT("Wall art is on wall"), Room->WallAnchors.Contains(Anchor->ParentAnchor));
 				}
 			}
-		});
-
-		It(TEXT("Anchor mesh"), [this]() {
-			auto Room = ToolkitSubsystem->GetCurrentRoom();
-			const auto& AnchorMesh = Room->AnchorMesh;
-			AnchorMesh.Triangles.Num();
-			TestEqual(TEXT("Num Nodes"), AnchorMesh.Nodes.Num(), 8);
-			TestEqual(TEXT("Num Triangles"), AnchorMesh.Triangles.Num(), 9);
-			FVector OutBarycentric;
-			auto Triangle = AnchorMesh.FindClosestTriangle(FVector2D::ZeroVector, OutBarycentric);
-			TestEqual(TEXT("Triangle P1"), Triangle.P1, 3);
-			TestEqual(TEXT("Triangle P2"), Triangle.P2, 6);
-			TestEqual(TEXT("Triangle P3"), Triangle.P3, 7);
-			constexpr double Tolerance = 0.001;
-			TestEqual(TEXT("Barycentric"), OutBarycentric, FVector(0.178, 0.329, 0.492), Tolerance);
 		});
 
 		TeardownMRUKSubsystem();

@@ -232,6 +232,8 @@ private:
 		void Clear();
 	};
 
+	UPROPERTY()
 	AActor* Interior = nullptr;
+
 	TOptional<TriangulatedMeshCache> CachedMesh;
 };

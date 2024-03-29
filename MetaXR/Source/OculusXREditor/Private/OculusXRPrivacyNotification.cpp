@@ -71,7 +71,11 @@ void OculusXRTelemetry::SpawnNotification()
 
 	if (FOculusXRHMDModule::Get().IsOVRPluginAvailable() && FOculusXRHMDModule::GetPluginWrapper().IsInitialized())
 	{
-		NotEnd = Events::FEditorConsent().Start().AddAnnotation(Events::ConsentOriginKey, "Notification");
+		const UGeneralProjectSettings& ProjectSettings = *GetDefault<UGeneralProjectSettings>();
+		const FString ProjectIdString = ProjectSettings.ProjectID.ToString();
+		NotEnd = Events::FEditorConsent().Start()							  //
+					 .AddAnnotation(Events::ConsentOriginKey, "Notification") //
+					 .AddAnnotation("project_hash", StringCast<ANSICHAR>(*ProjectIdString).Get());
 	}
 }
 

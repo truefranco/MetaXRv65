@@ -833,6 +833,18 @@ namespace OculusXRHMD
 
 	bool FOculusXRHMD::OnStartGameFrame(FWorldContext& InWorldContext)
 	{
+#if WITH_EDITOR
+		// In the editor there can be multiple worlds.  An editor world, pie worlds, other viewport worlds for editor pages.
+		// XR hardware can only be running with one of them.
+		if (GIsEditor && GEditor && GEditor->GetPIEWorldContext() != nullptr)
+		{
+			if (!InWorldContext.bIsPrimaryPIEInstance)
+			{
+				return false;
+			}
+		}
+#endif // WITH_EDITOR
+
 		CheckInGameThread();
 
 		if (IsEngineExitRequested())
@@ -2350,7 +2362,7 @@ namespace OculusXRHMD
 		return -1;
 	}
 
-#ifdef WITH_OCULUS_LATE_LATCHING
+#ifdef WITH_OCULUS_BRANCH
 	bool FOculusXRHMD::LateLatchingEnabled() const
 	{
 #if OCULUS_HMD_SUPPORTED_PLATFORMS_VULKAN && PLATFORM_ANDROID
@@ -4166,7 +4178,7 @@ namespace OculusXRHMD
 		return true;
 	}
 
-#if !UE_VERSION_OLDER_THAN(5, 4, 0)
+#if !UE_VERSION_OLDER_THAN(5, 3, 0)
 	BEGIN_SHADER_PARAMETER_STRUCT(FDrawRectangleParameters, )
 	SHADER_PARAMETER(FVector4f, PosScaleBias)
 	SHADER_PARAMETER(FVector4f, UVScaleBias)
@@ -4260,7 +4272,7 @@ namespace OculusXRHMD
 		FIntPoint TextureSize = DepthTexture->GetDesc().Extent;
 		FIntRect ScreenRect = InView.UnscaledViewRect;
 
-#if UE_VERSION_OLDER_THAN(5, 4, 0)
+#if UE_VERSION_OLDER_THAN(5, 3, 0)
 		PixelShader->SetParameters(RHICmdList, PixelShader.GetPixelShader(), DepthSampler, DepthTexture, DepthFactors, ScreenToDepthMatrices, InView.StereoViewIndex);
 #else
 		FRHIBatchedShaderParameters& BatchedParameters = RHICmdList.GetScratchShaderParameters();
@@ -4735,7 +4747,9 @@ namespace OculusXRHMD
 #endif
 		Settings->Flags.bHQDistortion = HMDSettings->bHQDistortion;
 		Settings->Flags.bInsightPassthroughEnabled = HMDSettings->bInsightPassthroughEnabled;
+#ifdef WITH_OCULUS_BRANCH
 		Settings->Flags.bPixelDensityAdaptive = HMDSettings->bDynamicResolution;
+#endif
 		Settings->SuggestedCpuPerfLevel = HMDSettings->SuggestedCpuPerfLevel;
 		Settings->SuggestedGpuPerfLevel = HMDSettings->SuggestedGpuPerfLevel;
 		Settings->FoveatedRenderingMethod = HMDSettings->FoveatedRenderingMethod;

@@ -23,13 +23,17 @@
 #include "Framework/MultiBox/MultiBoxBuilder.h"
 #include "ISettingsModule.h"
 #include "OculusXRPassthroughColorLutAsset.h"
-#include "OculusXRSimulator.h"
-#include "OculusXRSyntheticEnvironmentServer.h"
+#include "OculusXRHMDModule.h"
 #include "OculusXRPrivacyNotification.h"
 #include "OculusXRSettingsToggle.h"
 #include "OculusXRTelemetryPrivacySettings.h"
 #include "OculusXRTelemetry.h"
 #include "OculusXRTelemetryEditorEvents.h"
+#include "SExternalImageReference.h"
+#include "AndroidRuntimeSettings.h"
+#include "SourceControlHelpers.h"
+#include "Framework/Notifications/NotificationManager.h"
+#include "Widgets/Notifications/SNotificationList.h"
 
 #define LOCTEXT_NAMESPACE "OculusXREditor"
 
@@ -80,7 +84,7 @@ void FOculusXREditorModule::StartupModule()
 			FExecuteAction::CreateRaw(this, &FOculusXREditorModule::ToggleOpenXRRuntime),
 			FCanExecuteAction(),
 			FIsActionChecked::CreateLambda([=]() {
-				return FMetaXRSimulator::IsSimulatorActivated();
+				return FOculusXRHMDModule::IsSimulatorActivated();
 			}));
 		PluginCommands->MapAction(
 			FOculusToolCommands::Get().LaunchGameRoom,
@@ -121,7 +125,11 @@ void FOculusXREditorModule::StartupModule()
 
 		// If needed, open a notification here.
 		OculusXRTelemetry::SpawnNotification();
-		OculusXRTelemetry::TScopedMarker<OculusXRTelemetry::Events::FEditorStart>();
+
+		const UGeneralProjectSettings& ProjectSettings = *GetDefault<UGeneralProjectSettings>();
+		const FString ProjectIdString = ProjectSettings.ProjectID.ToString();
+		const OculusXRTelemetry::TScopedMarker<OculusXRTelemetry::Events::FEditorStart> StartEvent;
+		const auto& Annotated = StartEvent.AddAnnotation("project_hash", StringCast<ANSICHAR>(*ProjectIdString).Get());
 	}
 }
 
@@ -206,27 +214,27 @@ void FOculusXREditorModule::PluginOpenPlatWindow()
 
 void FOculusXREditorModule::ToggleOpenXRRuntime()
 {
-	FMetaXRSimulator::ToggleOpenXRRuntime();
+	FOculusXRHMDModule::ToggleOpenXRRuntime();
 }
 
 void FOculusXREditorModule::LaunchSESGameRoom()
 {
-	FMetaXRSES::LaunchGameRoom();
+	FOculusXRHMDModule::LaunchEnvironment("GameRoom");
 }
 
 void FOculusXREditorModule::LaunchSESLivingRoom()
 {
-	FMetaXRSES::LaunchLivingRoom();
+	FOculusXRHMDModule::LaunchEnvironment("LivingRoom");
 }
 
 void FOculusXREditorModule::LaunchSESBedroom()
 {
-	FMetaXRSES::LaunchBedroom();
+	FOculusXRHMDModule::LaunchEnvironment("Bedroom");
 }
 
 void FOculusXREditorModule::StopSESServer()
 {
-	FMetaXRSES::StopServer();
+	FOculusXRHMDModule::StopServer();
 }
 
 void FOculusXREditorModule::AddMenuExtension(FMenuBuilder& Builder)
@@ -307,6 +315,15 @@ void FOculusXREditorModule::CreateSESSubMenus(FMenuBuilder& MenuBuilder)
 	MenuBuilder.EndSection();
 }
 
+FOculusXRHMDSettingsDetailsCustomization::FOculusXRHMDSettingsDetailsCustomization()
+	: EngineAndroidPath(FPaths::EngineDir() + TEXT("Build/Android/Java"))
+	, GameAndroidPath(FPaths::ProjectDir() + TEXT("Build/Android"))
+	, LaunchImageLandscape(FPlatformIconInfo(TEXT("res/drawable/splashscreen_landscape.png"), LOCTEXT("SystemSplashImage", "System Splash Image"), FText::GetEmpty(), 640, 360, FPlatformIconInfo::Required))
+	, VRSplashPath(FPaths::ProjectDir() + TEXT("Build/Android/assets/vr_splash.png"))
+
+{
+}
+
 TSharedRef<IDetailCustomization> FOculusXRHMDSettingsDetailsCustomization::MakeInstance()
 {
 	return MakeShareable(new FOculusXRHMDSettingsDetailsCustomization);
@@ -333,8 +350,25 @@ FReply FOculusXRHMDSettingsDetailsCustomization::DisableEngineSplash(bool text)
 	return FReply::Handled();
 }
 
+FReply FOculusXRHMDSettingsDetailsCustomization::AddSplashImage(bool text)
+{
+	const FString AutomaticImagePath = EngineAndroidPath / LaunchImageLandscape.IconPath;
+	FText FailReason;
+	if (!SourceControlHelpers::CopyFileUnderSourceControl(VRSplashPath, AutomaticImagePath, LOCTEXT("ImageDescription", "image"), FailReason))
+	{
+		FNotificationInfo Info(FailReason);
+		Info.ExpireDuration = 3.0f;
+		FSlateNotificationManager::Get().AddNotification(Info);
+		return FReply::Unhandled();
+	}
+
+	return FReply::Handled();
+}
+
 void FOculusXRHMDSettingsDetailsCustomization::CustomizeDetails(IDetailLayoutBuilder& DetailLayout)
 {
+	SavedLayoutBuilder = &DetailLayout;
+
 	// Labeled "General OculusXR" instead of "General" to enable searchability. The button "Launch Oculus Utilities Window" doesn't show up if you search for "Oculus"
 	IDetailCategoryBuilder& CategoryBuilder = DetailLayout.EditCategory("General Meta XR", FText::GetEmpty(), ECategoryPriority::Important);
 	/* clang-format off */
@@ -365,9 +399,9 @@ void FOculusXRHMDSettingsDetailsCustomization::CustomizeDetails(IDetailLayoutBui
 			+ SHorizontalBox::Slot().FillWidth(8)
 		]
 	];
-
+	
 	IDetailCategoryBuilder& CTXPTCategoryBuilder = DetailLayout.EditCategory("System SplashScreen", FText::GetEmpty(), ECategoryPriority::Important);
-
+	
 	static const FName WarningColorStyle("Colors.AccentYellow");
 
 	CTXPTCategoryBuilder.AddCustomRow(LOCTEXT("CTXPTWarning", "Contextual Passthrough Warning"))
@@ -395,6 +429,100 @@ void FOculusXRHMDSettingsDetailsCustomization::CustomizeDetails(IDetailLayoutBui
 			]
 		]
 	];
+
+
+	// Duplicate "Show Launch Image" and "Launch Landscape" properties from Android Settings
+
+	CTXPTCategoryBuilder.AddCustomRow(LOCTEXT("ShowSystemSplashImageRow", "Show System Splash Image Row"))
+		.NameContent()
+		[
+			SNew(SHorizontalBox)
+				+ SHorizontalBox::Slot()
+				.Padding(FMargin(0, 1, 0, 1))
+				.FillWidth(1.0f)
+				[
+					SNew(STextBlock)
+						.Text(LOCTEXT("ShowSystemSplashImage", "Show System Splash Image"))
+						.Font(DetailLayout.GetDetailFont())
+						.ToolTipText(LOCTEXT("ShowSystemSplashImageToolTip", "Same as \"Show Launch Image\" setting in the \"Platform > Android > Launch Images\" section. If set, the image will be presented by the Operating System at launch time"))
+				]
+		]
+		.ValueContent()
+		.MaxDesiredWidth(400.0f)
+		.MinDesiredWidth(100.0f)
+		[
+			SNew(SHorizontalBox)
+				+ SHorizontalBox::Slot()
+				.FillWidth(1.0f)
+				.VAlign(VAlign_Center)
+				[
+					SNew(SCheckBox)
+						.IsChecked(TAttribute<ECheckBoxState>(this, &FOculusXRHMDSettingsDetailsCustomization::GetShowLaunchImageCheckBoxState))
+						.OnCheckStateChanged(this, &FOculusXRHMDSettingsDetailsCustomization::OnShowLaunchImageCheckStateChanged)
+				]
+		];
+
+
+	const FString AutomaticImagePath = EngineAndroidPath / LaunchImageLandscape.IconPath;
+	const FString TargetImagePath = GameAndroidPath / LaunchImageLandscape.IconPath;
+	const FVector2D LaunchImageMaxSize(150.0f, 150.0f);
+	
+	CTXPTCategoryBuilder.AddCustomRow(LaunchImageLandscape.IconName)
+		.IsEnabled(TAttribute<bool>(this, &FOculusXRHMDSettingsDetailsCustomization::IsLaunchImageEnabled))
+		.NameContent()
+		[
+			SNew(SHorizontalBox)
+				+ SHorizontalBox::Slot()
+				.Padding(FMargin(0, 1, 0, 1))
+				.FillWidth(1.0f)
+				[
+					SNew(STextBlock)
+						.Text(LaunchImageLandscape.IconName)
+						.Font(DetailLayout.GetDetailFont())
+						.ToolTipText(LOCTEXT("SystemSplashImageToolTip", "Same as \"Launch Landscape\" setting in the \"Platform > Android > Launch Images\" section. This is the image that will be presented by the Operating System at launch time"))
+				]
+		]
+		.ValueContent()
+		.MaxDesiredWidth(400.0f)
+		.MinDesiredWidth(100.0f)
+		[
+			SNew(SHorizontalBox)
+				+ SHorizontalBox::Slot()
+				.FillWidth(1.0f)
+				.VAlign(VAlign_Center)
+				[
+					SNew(SExternalImageReference, AutomaticImagePath, TargetImagePath)
+						.FileDescription(LaunchImageLandscape.IconDescription)
+						.MaxDisplaySize(LaunchImageMaxSize)
+						.OnPostExternalImageCopy(FOnPostExternalImageCopy::CreateSP(this, &FOculusXRHMDSettingsDetailsCustomization::OnLaunchImageChanged))
+				]
+		];
+
+	CTXPTCategoryBuilder.AddCustomRow(LOCTEXT("SystemSplashImageWarning", "System Splash Image warning"))
+		.Visibility(TAttribute<EVisibility>(this, &FOculusXRHMDSettingsDetailsCustomization::GetSystemSplashImageWarningVisibility))
+		[
+			SNew(SVerticalBox)
+				+ SVerticalBox::Slot().FillHeight(1.f)
+				[
+					SNew(SHorizontalBox)
+						+ SHorizontalBox::Slot().FillWidth(1.f).VAlign(EVerticalAlignment::VAlign_Center)
+						[
+							SNew(STextBlock)
+								.Font(IDetailLayoutBuilder::GetDetailFont())
+								.AutoWrapText(true)
+								.Justification(ETextJustify::Center)
+								.Text(LOCTEXT("SystemSplashWarningText", "Splash Image is currently missing from project. Click button to add it."))
+								.ColorAndOpacity(FAppStyle::Get().GetSlateColor(WarningColorStyle))
+						]
+						+ SHorizontalBox::Slot().FillWidth(1.f).HAlign(EHorizontalAlignment::HAlign_Left)
+						[
+							SNew(SButton)
+								.VAlign(EVerticalAlignment::VAlign_Center)
+								.Text(LOCTEXT("DisableEngineSplashScreen", "Add Splash Image file to project"))
+								.OnClicked(this, &FOculusXRHMDSettingsDetailsCustomization::AddSplashImage, true)
+						]
+				]
+		];
 	/* clang-format on */
 }
 
@@ -402,6 +530,49 @@ EVisibility FOculusXRHMDSettingsDetailsCustomization::GetContextualPassthroughWa
 {
 	UOculusXRHMDRuntimeSettings* OculusSettings = GetMutableDefault<UOculusXRHMDRuntimeSettings>();
 	return OculusSettings->SystemSplashBackground == ESystemSplashBackgroundType::Contextual && (OculusSettings->bAutoEnabled || !OculusSettings->SplashDescs.IsEmpty()) ? EVisibility::Visible : EVisibility::Collapsed;
+}
+
+ECheckBoxState FOculusXRHMDSettingsDetailsCustomization::GetShowLaunchImageCheckBoxState() const
+{
+	UAndroidRuntimeSettings* AndroidSettings = GetMutableDefault<UAndroidRuntimeSettings>();
+	return AndroidSettings->bShowLaunchImage ? ECheckBoxState::Checked : ECheckBoxState::Unchecked;
+}
+
+bool FOculusXRHMDSettingsDetailsCustomization::IsLaunchImageEnabled() const
+{
+	UAndroidRuntimeSettings* AndroidSettings = GetMutableDefault<UAndroidRuntimeSettings>();
+	return AndroidSettings->bShowLaunchImage;
+}
+
+void FOculusXRHMDSettingsDetailsCustomization::OnShowLaunchImageCheckStateChanged(const ECheckBoxState NewState)
+{
+	UAndroidRuntimeSettings* AndroidSettings = GetMutableDefault<UAndroidRuntimeSettings>();
+	AndroidSettings->bShowLaunchImage = NewState == ECheckBoxState::Checked;
+	AndroidSettings->TryUpdateDefaultConfigFile();
+}
+
+bool FOculusXRHMDSettingsDetailsCustomization::OnLaunchImageChanged(const FString& InChosenImage)
+{
+	// This will refresh the launch image located in android settings as well
+	SavedLayoutBuilder->ForceRefreshDetails();
+
+	FText FailReason;
+	if (!SourceControlHelpers::CopyFileUnderSourceControl(VRSplashPath, InChosenImage, LOCTEXT("ImageDescription", "image"), FailReason))
+	{
+		FNotificationInfo Info(FailReason);
+		Info.ExpireDuration = 3.0f;
+		FSlateNotificationManager::Get().AddNotification(Info);
+		return false;
+	}
+
+	return true;
+}
+
+EVisibility FOculusXRHMDSettingsDetailsCustomization::GetSystemSplashImageWarningVisibility() const
+{
+	IFileManager& FileManager = IFileManager::Get();
+
+	return !FileManager.FileExists(*VRSplashPath) ? EVisibility::Visible : EVisibility::Collapsed;
 }
 
 //////////////////////////////////////////////////////////////////////////

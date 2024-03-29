@@ -9,6 +9,8 @@ LICENSE file in the root directory of this source tree.
 #include "MRUtilityKitTelemetry.h"
 #include "MRUtilityKitSubsystem.h"
 
+#include "Engine/GameInstance.h"
+
 void AMRUKAnchorActorSpawner::BeginPlay()
 {
 	Super::BeginPlay();

@@ -16,14 +16,7 @@ namespace OculusXRTelemetry
 		}
 		if (FOculusXRHMDModule::Get().IsOVRPluginAvailable() && FOculusXRHMDModule::GetPluginWrapper().IsInitialized())
 		{
-#if WITH_EDITOR
-			if (const auto EditorPrivacySettings = GetDefault<UOculusXRTelemetryPrivacySettings>())
-			{
-				return EditorPrivacySettings->bIsEnabled;
-			}
-#else  // WITH_EDITOR
 			return true;
-#endif // WITH_EDITOR
 		}
 #endif // OCULUS_HMD_SUPPORTED_PLATFORMS
 		return false;

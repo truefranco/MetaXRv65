@@ -27,7 +27,7 @@ void AMRUKLocalizer::Tick(float DeltaTime)
 {
 	for (int i = 0; i < AnchorsData.Num(); ++i)
 	{
-		auto Query = AnchorsData[i];
+		const auto Query = AnchorsData[i];
 		if (UOculusXRAnchorBPFunctionLibrary::GetAnchorTransformByHandle(Query->SpaceQuery.Space, Query->Transform))
 		{
 			Query->NeedAnchorLocalization = false;
@@ -44,7 +44,7 @@ void AMRUKLocalizer::Tick(float DeltaTime)
 	}
 }
 
-void UMRUKAnchorData::LoadFromDevice(FOculusXRSpaceQueryResult SpaceQueryResult, int32 MaxQueries)
+void UMRUKAnchorData::LoadFromDevice(const FOculusXRSpaceQueryResult& SpaceQueryResult, int32 MaxQueries)
 {
 	SpaceQuery = SpaceQueryResult;
 
@@ -69,8 +69,8 @@ void UMRUKAnchorData::LoadFromDevice(FOculusXRSpaceQueryResult SpaceQueryResult,
 	FVector ScenePlaneSize;
 	if (OculusXRAnchors::FOculusXRAnchors::GetSpaceScenePlane(SpaceQuery.Space, ScenePlanePos, ScenePlaneSize, Result))
 	{
-		FVector2D PlanePos = FVector2D(ScenePlanePos.Y, ScenePlanePos.Z) * WorldToMeters;
-		FVector2D PlaneSize = FVector2D(ScenePlaneSize.Y, ScenePlaneSize.Z) * WorldToMeters;
+		const FVector2D PlanePos = FVector2D(ScenePlanePos.Y, ScenePlanePos.Z) * WorldToMeters;
+		const FVector2D PlaneSize = FVector2D(ScenePlaneSize.Y, ScenePlaneSize.Z) * WorldToMeters;
 		PlaneBounds = FBox2D(PlanePos, PlanePos + PlaneSize);
 		TArray<FVector2f> SpaceBoundary2D;
 		if (OculusXRAnchors::FOculusXRAnchors::GetSpaceBoundary2D(SpaceQuery.Space, SpaceBoundary2D, Result))
@@ -87,27 +87,27 @@ void UMRUKAnchorData::LoadFromDevice(FOculusXRSpaceQueryResult SpaceQueryResult,
 	FVector SceneVolumeSize;
 	if (OculusXRAnchors::FOculusXRAnchors::GetSpaceSceneVolume(SpaceQuery.Space, SceneVolumePos, SceneVolumeSize, Result))
 	{
-		FVector VolumePos = SceneVolumePos * WorldToMeters;
-		FVector VolumeSize = SceneVolumeSize * WorldToMeters;
+		const FVector VolumePos = SceneVolumePos * WorldToMeters;
+		const FVector VolumeSize = SceneVolumeSize * WorldToMeters;
 		VolumeBounds = FBox(VolumePos, VolumePos + VolumeSize);
 	}
 }
 
 void UMRUKAnchorData::LoadFromJson(const FJsonValue& Value)
 {
-	auto Object = Value.AsObject();
+	const auto Object = Value.AsObject();
 	MRUKDeserialize(*Object->GetField<EJson::None>(TEXT("UUID")), SpaceQuery.UUID);
 	MRUKDeserialize(*Object->GetField<EJson::None>(TEXT("SemanticClassifications")), SemanticClassifications);
 	MRUKDeserialize(*Object->GetField<EJson::None>(TEXT("Transform")), Transform);
-	if (auto JsonValue = Object->TryGetField(TEXT("PlaneBounds")))
+	if (const auto JsonValue = Object->TryGetField(TEXT("PlaneBounds")))
 	{
 		MRUKDeserialize(*JsonValue, PlaneBounds);
 	}
-	if (auto JsonValue = Object->TryGetField(TEXT("PlaneBoundary2D")))
+	if (const auto JsonValue = Object->TryGetField(TEXT("PlaneBoundary2D")))
 	{
 		MRUKDeserialize(*JsonValue, PlaneBoundary2D);
 	}
-	if (auto JsonValue = Object->TryGetField(TEXT("VolumeBounds")))
+	if (const auto JsonValue = Object->TryGetField(TEXT("VolumeBounds")))
 	{
 		MRUKDeserialize(*JsonValue, VolumeBounds);
 	}
@@ -118,7 +118,7 @@ void UMRUKRoomData::LoadFromDevice(FOculusXRSpaceQueryResult SpaceQueryResult, i
 {
 	SpaceQuery = SpaceQueryResult;
 
-	auto Subsystem = GetWorld()->GetGameInstance()->GetSubsystem<UMRUKSubsystem>();
+	const auto Subsystem = GetWorld()->GetGameInstance()->GetSubsystem<UMRUKSubsystem>();
 
 	if (!Subsystem->GetRoomLayoutManager()->GetRoomLayout(SpaceQuery.Space.Value, RoomLayout))
 	{
@@ -142,7 +142,7 @@ void UMRUKRoomData::LoadFromDevice(FOculusXRSpaceQueryResult SpaceQueryResult, i
 
 void UMRUKRoomData::LoadFromJson(const FJsonValue& Value)
 {
-	auto Object = Value.AsObject();
+	const auto Object = Value.AsObject();
 	MRUKDeserialize(*Object->GetField<EJson::None>(TEXT("UUID")), SpaceQuery.UUID);
 	MRUKDeserialize(*Object->GetField<EJson::None>(TEXT("RoomLayout")), RoomLayout);
 	auto AnchorsJson = Object->GetArrayField(TEXT("Anchors"));
@@ -231,7 +231,7 @@ void UMRUKSceneData::LoadFromDevice(int32 MaxQueries)
 void UMRUKSceneData::LoadFromJson(const FString& Json)
 {
 	TSharedPtr<FJsonValue> Value;
-	TSharedRef<TJsonReader<>> JsonReader = TJsonReaderFactory<>::Create(Json);
+	const TSharedRef<TJsonReader<>> JsonReader = TJsonReaderFactory<>::Create(Json);
 	if (!FJsonSerializer::Deserialize(JsonReader, Value))
 	{
 		UE_LOG(LogMRUK, Warning, TEXT("Could not deserialize JSON scene data: %s"), *JsonReader->GetErrorMessage());
@@ -239,7 +239,7 @@ void UMRUKSceneData::LoadFromJson(const FString& Json)
 		return;
 	}
 
-	auto Object = Value->AsObject();
+	const auto Object = Value->AsObject();
 	auto RoomsJson = Object->GetArrayField(TEXT("Rooms"));
 
 #if WITH_EDITOR

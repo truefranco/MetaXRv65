@@ -12,7 +12,6 @@ LICENSE file in the root directory of this source tree.
 #include "OculusXRRoomLayoutManagerComponent.h"
 #include "MRUtilityKit.h"
 #include "MRUtilityKitAnchorActorSpawner.h"
-#include "MRUtilityKitAnchorMesh.h"
 #include "MRUtilityKitRoom.generated.h"
 
 class UMRUKRoomData;
@@ -285,7 +284,7 @@ public:
 	 * @return      The anchor that has the largest surface if any. Otherwise, a null pointer.
 	 */
 	UFUNCTION(BlueprintCallable, Category = "MR Utility Kit")
-	AMRUKAnchor* GetLargestSurface(const FString& Label) const;
+	AMRUKAnchor* GetLargestSurface(const FString& Label);
 
 	/**
 	 * Attach a procedural mesh to the walls. This is done at the room level to ensure the UV coordinates
@@ -363,7 +362,7 @@ public:
 	void LoadFromData(UMRUKRoomData* RoomData);
 
 	void AttachProceduralMeshToWalls(UMaterialInterface* ProceduralMaterial = nullptr);
-	void UpdateWorldLock(APawn* Pawn, const FVector& HeadWorldPosition);
+	void UpdateWorldLock(APawn* Pawn, const FVector& HeadWorldPosition) const;
 
 	TSharedRef<FJsonObject> JsonSerialize();
 
@@ -383,8 +382,8 @@ private:
 	UFUNCTION(CallInEditor)
 	void AddAnchorToRoom(AMRUKAnchor* Anchor);
 
-	UProceduralMeshComponent* GetOrCreateGlobalMeshProceduralMeshComponent(bool& OutExistedAlready);
-	void SetupGlobalMeshProceduralMeshComponent(UProceduralMeshComponent& ProcMeshComponent, bool ExistedAlready, UMaterialInterface* Material);
+	UProceduralMeshComponent* GetOrCreateGlobalMeshProceduralMeshComponent(bool& OutExistedAlready) const;
+	void SetupGlobalMeshProceduralMeshComponent(UProceduralMeshComponent& ProcMeshComponent, bool ExistedAlready, UMaterialInterface* Material) const;
 
 	/**
 	 * Get the list of walls in an order such that each one wall shares an edge with the next
@@ -393,6 +392,6 @@ private:
 	TArray<TObjectPtr<AMRUKAnchor>> ComputeConnectedWalls() const;
 
 	FOculusXRRoomLayout RoomLayout;
+	UPROPERTY()
 	AMRUKAnchor* KeyWallAnchor = nullptr;
-	FMRUKAnchorMesh AnchorMesh;
 };

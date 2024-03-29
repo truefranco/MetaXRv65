@@ -118,6 +118,7 @@ namespace OculusXRRenderingRules
 		virtual void ApplyImpl(bool& OutShouldRestartEditor) override;
 	};
 
+#ifdef WITH_OCULUS_BRANCH
 	class FEnableDynamicResolutionRule final : public ISetupRule
 	{
 	public:
@@ -133,6 +134,7 @@ namespace OculusXRRenderingRules
 	protected:
 		virtual void ApplyImpl(bool& OutShouldRestartEditor) override;
 	};
+#endif
 
 	class FDisableLensFlareRule final : public ISetupRule
 	{
@@ -276,7 +278,9 @@ namespace OculusXRRenderingRules
 		MakeShared<FEnableMSAARule>(),
 		MakeShared<FEnableOcclusionCullingRule>(),
 		MakeShared<FEnableDynamicFoveationRule>(),
+#ifdef WITH_OCULUS_BRANCH
 		MakeShared<FEnableDynamicResolutionRule>(),
+#endif
 		MakeShared<FDisableLensFlareRule>(),
 		MakeShared<FDisablePostProcessingRule>(),
 		MakeShared<FDisableAmbientOcclusionRule>(),

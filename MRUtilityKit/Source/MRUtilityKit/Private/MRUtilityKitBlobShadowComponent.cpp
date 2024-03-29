@@ -83,7 +83,7 @@ void UMRUKBlobShadowComponent::UpdatePlaneSizeAndPosition()
 {
 	FVector Origin;
 	FVector2D Extent;
-	float Yaw;
+	double Yaw;
 	ComputeOwner2DBounds(Origin, Extent, Yaw);
 
 	Extent += FVector2D::UnitVector * ExtraExtent; // Additional extent
@@ -126,7 +126,7 @@ void UMRUKBlobShadowComponent::UpdatePlaneSizeAndPosition()
 	}
 }
 
-void UMRUKBlobShadowComponent::ComputeOwner2DBounds(FVector& Origin, FVector2D& Extent, float& Yaw) const
+void UMRUKBlobShadowComponent::ComputeOwner2DBounds(FVector& Origin, FVector2D& Extent, double& Yaw) const
 {
 	const AActor* Actor = GetOwner();
 
@@ -147,9 +147,9 @@ void UMRUKBlobShadowComponent::ComputeOwner2DBounds(FVector& Origin, FVector2D& 
 
 	const FTransform Transform = Actor->GetTransform();
 	// Project 3D extent to 2D
-	const FVector projectedExtent = FVector::VectorPlaneProject(Box.GetExtent(), FVector::UpVector);
+	const FVector ProjectedExtent = FVector::VectorPlaneProject(Box.GetExtent(), FVector::UpVector);
 
 	Origin = ActorToWorld.TransformPosition(Box.GetCenter());
-	Extent = FVector2D(projectedExtent);
+	Extent = FVector2D(ProjectedExtent);
 	Yaw = Transform.GetRotation().Rotator().Yaw;
 }

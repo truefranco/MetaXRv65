@@ -14,17 +14,18 @@ LICENSE file in the root directory of this source tree.
 #include "MRUtilityKitBPLibrary.h"
 #include "OculusXRAnchorBPFunctionLibrary.h"
 #include "Kismet/KismetMathLibrary.h"
+#include "GameFramework/Pawn.h"
 
 #define LOCTEXT_NAMESPACE "MRUtilityKitRoom"
 
 namespace
 {
-	float GetSeamlessFactor(float Perimeter, float StepSize)
+	double GetSeamlessFactor(double Perimeter, double StepSize)
 	{
-		float RoundedPerimeter = FMath::RoundHalfFromZero(Perimeter / StepSize);
-		if (RoundedPerimeter <= 0.0f)
+		double RoundedPerimeter = FMath::RoundHalfFromZero(Perimeter / StepSize);
+		if (RoundedPerimeter <= 0.0)
 		{
-			RoundedPerimeter = 1.0f;
+			RoundedPerimeter = 1.0;
 		}
 		return Perimeter / RoundedPerimeter;
 	}
@@ -76,7 +77,7 @@ void AMRUKRoom::LoadFromData(UMRUKRoomData* RoomData)
 
 	for (const auto& AnchorData : RoomData->AnchorsData)
 	{
-		auto AnchorFound = AnchorsToRemove.FindByPredicate([AnchorData](TObjectPtr<AMRUKAnchor> Anchor) {
+		const auto AnchorFound = AnchorsToRemove.FindByPredicate([AnchorData](TObjectPtr<AMRUKAnchor> Anchor) {
 			return Anchor && Anchor->SpaceQueryResult.UUID == AnchorData->SpaceQuery.UUID;
 		});
 		AMRUKAnchor* Anchor = nullptr;
@@ -150,10 +151,10 @@ bool AMRUKRoom::Corresponds(UMRUKRoomData* RoomData) const
 		return true;
 	}
 
-	for (auto Anchor : AllAnchors)
+	for (const auto& Anchor : AllAnchors)
 	{
 		auto UUID = Anchor->SpaceQueryResult.UUID;
-		auto Found = RoomData->AnchorsData.FindByPredicate([UUID](TObjectPtr<UMRUKAnchorData> AnchorData) {
+		const auto Found = RoomData->AnchorsData.FindByPredicate([UUID](TObjectPtr<UMRUKAnchorData> AnchorData) {
 			return UUID == AnchorData->SpaceQuery.UUID;
 		});
 		if (Found)
@@ -184,7 +185,7 @@ void AMRUKRoom::AddAnchorToRoom(AMRUKAnchor* Anchor)
 #if WITH_EDITOR
 	if (Anchor->SemanticClassifications.Num() > 0)
 	{
-		FString Semantics = FString::Join(Anchor->SemanticClassifications, TEXT("-"));
+		const FString Semantics = FString::Join(Anchor->SemanticClassifications, TEXT("-"));
 		Anchor->SetActorLabel(Semantics);
 	}
 #endif
@@ -220,7 +221,6 @@ void AMRUKRoom::InitializeRoom()
 	ComputeSeats();
 	ComputeRoomEdges();
 	KeyWallAnchor = nullptr;
-	AnchorMesh.CreateMesh(WallAnchors);
 }
 
 void AMRUKRoom::ComputeRoomBounds()
@@ -232,9 +232,9 @@ void AMRUKRoom::ComputeRoomBounds()
 		if (Anchor)
 		{
 			auto Transform = Anchor->GetTransform();
-			for (auto& Vertex : Anchor->PlaneBoundary2D)
+			for (const auto& Vertex : Anchor->PlaneBoundary2D)
 			{
-				auto Pos = Transform.TransformPosition(FVector(0.0f, Vertex.X, Vertex.Y));
+				const auto Pos = Transform.TransformPosition(FVector(0.0f, Vertex.X, Vertex.Y));
 				RoomBounds += Pos;
 			}
 		}
@@ -451,8 +451,8 @@ bool AMRUKRoom::IsPositionInRoom(const FVector& Position, bool TestVerticalBound
 		return false;
 	}
 
-	auto Transform = FloorAnchor->GetTransform();
-	FVector LocalPos = Transform.InverseTransformPositionNoScale(Position);
+	const auto Transform = FloorAnchor->GetTransform();
+	const FVector LocalPos = Transform.InverseTransformPositionNoScale(Position);
 	return FloorAnchor->IsPositionInBoundary(FVector2D(LocalPos.Y, LocalPos.Z));
 }
 
@@ -482,7 +482,7 @@ bool AMRUKRoom::GenerateRandomPositionInRoomFromStream(FVector& OutPosition, con
 		if (MinDistanceToSurface > 0.0f)
 		{
 			// If MinDistanceToSurface is large then it can be more efficient to randomly generate points within
-			// the shrunking bounds of the room
+			// the shrunken bounds of the room
 			Position.X = RandomStream.FRandRange(RoomBounds.Min.X + MinDistanceToSurface, RoomBounds.Max.X - MinDistanceToSurface);
 			Position.Y = RandomStream.FRandRange(RoomBounds.Min.Y + MinDistanceToSurface, RoomBounds.Max.Y - MinDistanceToSurface);
 			Position.Z = RandomStream.FRandRange(RoomBounds.Min.Z + MinDistanceToSurface, RoomBounds.Max.Z - MinDistanceToSurface);
@@ -885,7 +885,7 @@ AMRUKAnchor* AMRUKRoom::GetKeyWall(double Tolerance)
 	return nullptr;
 }
 
-AMRUKAnchor* AMRUKRoom::GetLargestSurface(const FString& Label) const
+AMRUKAnchor* AMRUKRoom::GetLargestSurface(const FString& Label)
 {
 	AMRUKAnchor* LargestSurfaceAnchor = nullptr;
 	double LargestSurfaceArea = 0.0;
@@ -927,21 +927,21 @@ void AMRUKRoom::AttachProceduralMeshToWalls(UMaterialInterface* ProceduralMateri
 void AMRUKRoom::ComputeWallMeshUVAdjustments(const TArray<FMRUKTexCoordModes>& WallTextureCoordinateModes, TArray<FMRUKAnchorWithPlaneUVs>& OutAnchorsWithPlaneUVs)
 {
 	TArray<TObjectPtr<AMRUKAnchor>> ConnectedWalls = ComputeConnectedWalls();
-	float Perimeter = 0.0f;
+	double Perimeter = 0.0;
 	for (const auto& WallAnchor : ConnectedWalls)
 	{
 		Perimeter += WallAnchor->PlaneBounds.GetSize().X;
 	}
-	float WorldToMeters = GetWorldSettings()->WorldToMeters;
-	float WallHeight = RoomBounds.GetSize().Z;
-	float SeamlessWorldToMeters = GetSeamlessFactor(Perimeter, WorldToMeters);
-	float UOffset = 0.0f;
+	const float WorldToMeters = GetWorldSettings()->WorldToMeters;
+	const double WallHeight = RoomBounds.GetSize().Z;
+	const double SeamlessWorldToMeters = GetSeamlessFactor(Perimeter, WorldToMeters);
+	double UOffset = 0.0;
 	const TArray<FMRUKTexCoordModes>& TexCoordModes = WallTextureCoordinateModes.IsEmpty() ? TArray<FMRUKTexCoordModes>{ FMRUKTexCoordModes{} } : WallTextureCoordinateModes;
-	for (auto& WallAnchor : ConnectedWalls)
+	for (const auto& WallAnchor : ConnectedWalls)
 	{
-		auto WallWidth = WallAnchor->PlaneBounds.GetSize().X;
+		const double WallWidth = WallAnchor->PlaneBounds.GetSize().X;
 		TArray<FMRUKPlaneUV> PlaneUVAdjustments;
-		for (auto TexCoordMode : TexCoordModes)
+		for (const auto TexCoordMode : TexCoordModes)
 		{
 			float DenominatorX;
 			float DenominatorY;
@@ -983,8 +983,8 @@ void AMRUKRoom::ComputeWallMeshUVAdjustments(const TArray<FMRUKTexCoordModes>& W
 				DenominatorY = DenominatorX;
 			}
 
-			FVector2D Offset(UOffset / DenominatorX, 0);
-			FVector2D Scale(WallWidth / DenominatorX, WallHeight / DenominatorY);
+			const FVector2D Offset(UOffset / DenominatorX, 0);
+			const FVector2D Scale(WallWidth / DenominatorX, WallHeight / DenominatorY);
 			PlaneUVAdjustments.Push({ Offset, Scale });
 		}
 		OutAnchorsWithPlaneUVs.Push({ WallAnchor, PlaneUVAdjustments });
@@ -992,7 +992,7 @@ void AMRUKRoom::ComputeWallMeshUVAdjustments(const TArray<FMRUKTexCoordModes>& W
 	}
 }
 
-UProceduralMeshComponent* AMRUKRoom::GetOrCreateGlobalMeshProceduralMeshComponent(bool& OutExistedAlready)
+UProceduralMeshComponent* AMRUKRoom::GetOrCreateGlobalMeshProceduralMeshComponent(bool& OutExistedAlready) const
 {
 	// Try to find the global mesh procedural mesh component if it already exists
 	TArray<UProceduralMeshComponent*> ProcMeshComponents;
@@ -1007,14 +1007,14 @@ UProceduralMeshComponent* AMRUKRoom::GetOrCreateGlobalMeshProceduralMeshComponen
 	}
 
 	// Create the procedural mesh component if it doesn't exist already
-	auto ProceduralMesh = NewObject<UProceduralMeshComponent>(GlobalMeshAnchor, TEXT("GlobalMesh"));
+	const auto ProceduralMesh = NewObject<UProceduralMeshComponent>(GlobalMeshAnchor, TEXT("GlobalMesh"));
 	ProceduralMesh->ComponentTags.Add("GlobalMesh");
 	ProceduralMesh->RegisterComponent();
 	OutExistedAlready = false;
 	return ProceduralMesh;
 }
 
-void AMRUKRoom::SetupGlobalMeshProceduralMeshComponent(UProceduralMeshComponent& ProcMeshComponent, bool ExistedAlready, UMaterialInterface* Material)
+void AMRUKRoom::SetupGlobalMeshProceduralMeshComponent(UProceduralMeshComponent& ProcMeshComponent, bool ExistedAlready, UMaterialInterface* Material) const
 {
 	ProcMeshComponent.SetMaterial(0, Material);
 	if (!ExistedAlready)
@@ -1106,7 +1106,7 @@ TArray<TObjectPtr<AMRUKAnchor>> AMRUKRoom::ComputeConnectedWalls() const
 
 	while (!RemainingWalls.IsEmpty())
 	{
-		auto PrevWall = ConnectedWalls.Last();
+		const auto PrevWall = ConnectedWalls.Last();
 		FVector LocalMaxEdge(0, PrevWall->PlaneBounds.Max.X, 0);
 		auto MaxEdge = PrevWall->GetTransform().TransformPosition(LocalMaxEdge);
 		int ClosestIndex = 0;
@@ -1116,7 +1116,7 @@ TArray<TObjectPtr<AMRUKAnchor>> AMRUKRoom::ComputeConnectedWalls() const
 			const auto& WallAnchor = RemainingWalls[i];
 			FVector LocalMinEdge(0, WallAnchor->PlaneBounds.Min.X, 0);
 			auto MinEdge = WallAnchor->GetTransform().TransformPosition(LocalMinEdge);
-			float Dist = FVector::Dist2D(MaxEdge, MinEdge);
+			const double Dist = FVector::Dist2D(MaxEdge, MinEdge);
 			if (Dist < ClosestDist)
 			{
 				ClosestDist = Dist;
@@ -1153,25 +1153,25 @@ TArray<AActor*> AMRUKRoom::SpawnInteriorFromStream(const TMap<FString, FMRUKSpaw
 		return false;
 	};
 
-	float WorldToMeters = GetWorldSettings()->WorldToMeters;
-	auto WallFace = SpawnGroups.Find(FMRUKLabels::WallFace);
+	const float WorldToMeters = GetWorldSettings()->WorldToMeters;
+	const auto WallFace = SpawnGroups.Find(FMRUKLabels::WallFace);
 	if (!WallFace || (WallFace->Actors.IsEmpty() && ShouldFallbackToProcedural(WallFace)))
 	{
-		// If no wall mesh is given we want to spawn the walls procedural to make seemles UVs
+		// If no wall mesh is given we want to spawn the walls procedural to make seamless UVs
 		AttachProceduralMeshToWalls(ProceduralMaterial);
 	}
-	auto Floor = SpawnGroups.Find(FMRUKLabels::Floor);
+	const auto Floor = SpawnGroups.Find(FMRUKLabels::Floor);
 	if (FloorAnchor && (!Floor || (Floor->Actors.IsEmpty() && ShouldFallbackToProcedural(Floor))))
 	{
 		// Use metric scaling to match walls
-		FVector2D Scale = FloorAnchor->PlaneBounds.GetSize() / WorldToMeters;
+		const FVector2D Scale = FloorAnchor->PlaneBounds.GetSize() / WorldToMeters;
 		FloorAnchor->AttachProceduralMesh({ { FVector2D::ZeroVector, Scale } }, true, ProceduralMaterial);
 	}
-	auto Ceiling = SpawnGroups.Find(FMRUKLabels::Ceiling);
+	const auto Ceiling = SpawnGroups.Find(FMRUKLabels::Ceiling);
 	if (CeilingAnchor && (!Ceiling || (Ceiling->Actors.IsEmpty() && ShouldFallbackToProcedural(Ceiling))))
 	{
 		// Use metric scaling to match walls
-		FVector2D Scale = CeilingAnchor->PlaneBounds.GetSize() / WorldToMeters;
+		const FVector2D Scale = CeilingAnchor->PlaneBounds.GetSize() / WorldToMeters;
 		CeilingAnchor->AttachProceduralMesh({ { FVector2D::ZeroVector, Scale } }, true, ProceduralMaterial);
 	}
 	const auto Subsystem = GetGameInstance()->GetSubsystem<UMRUKSubsystem>();
@@ -1218,16 +1218,16 @@ TArray<AActor*> AMRUKRoom::SpawnInteriorFromStream(const TMap<FString, FMRUKSpaw
 				{
 					if (Anchor->VolumeBounds.IsValid)
 					{
-						float AnchorSize = FMath::Pow(Anchor->VolumeBounds.GetVolume(), 1.0 / 3.0);
-						float ClosestSizeDifference = UE_BIG_NUMBER;
+						const double AnchorSize = FMath::Pow(Anchor->VolumeBounds.GetVolume(), 1.0 / 3.0);
+						double ClosestSizeDifference = UE_BIG_NUMBER;
 						for (int i = 0; i < SpawnGroup->Actors.Num(); ++i)
 						{
 							const auto& SpawnActor = SpawnGroup->Actors[i];
 							auto Bounds = Subsystem->GetActorClassBounds(SpawnActor.Actor);
 							if (Bounds.IsValid)
 							{
-								float SpawnActorSize = FMath::Pow(Bounds.GetVolume(), 1.0 / 3.0);
-								float SizeDifference = FMath::Abs(AnchorSize - SpawnActorSize);
+								const double SpawnActorSize = FMath::Pow(Bounds.GetVolume(), 1.0 / 3.0);
+								const double SizeDifference = FMath::Abs(AnchorSize - SpawnActorSize);
 								if (SizeDifference < ClosestSizeDifference)
 								{
 									ClosestSizeDifference = SizeDifference;
@@ -1266,9 +1266,30 @@ bool AMRUKRoom::IsWallAnchor(AMRUKAnchor* Anchor) const
 	return WallAnchors.Contains(Anchor);
 }
 
-void AMRUKRoom::UpdateWorldLock(APawn* Pawn, const FVector& HeadWorldPosition)
+void AMRUKRoom::UpdateWorldLock(APawn* Pawn, const FVector& HeadWorldPosition) const
 {
-	AnchorMesh.UpdateWorldLock(Pawn, HeadWorldPosition);
+	const auto& PawnTransform = Pawn->GetActorTransform();
+	const auto PawnInverseTransform = PawnTransform.Inverse();
+
+	const auto& Anchor = FloorAnchor;
+
+	FTransform AnchorTransform;
+	if (Anchor->SpaceQueryResult.Space && UOculusXRAnchorBPFunctionLibrary::GetAnchorTransformByHandle(Anchor->SpaceQueryResult.Space, AnchorTransform))
+	{
+		// Convert the Anchor Transform back into tracking space. Ideally we would have a version of
+		// UOculusXRAnchorBPFunctionLibrary::GetAnchorTransformByHandle
+		// which does not transform from Tracking To World space so we don't need to undo it here.
+		AnchorTransform *= PawnInverseTransform;
+
+		const FTransform& Transform = Anchor->GetActorTransform();
+		const FTransform Adjustment = AnchorTransform.Inverse() * Transform;
+
+		// Only use the Yaw component of the rotation, we don't want to introduce any errors with
+		// pitch or roll.
+		const double Yaw = Adjustment.Rotator().Yaw;
+
+		Pawn->SetActorLocationAndRotation(Adjustment.GetLocation(), FRotator(0.0, Yaw, 0.0));
+	}
 }
 
 #undef LOCTEXT_NAMESPACE
