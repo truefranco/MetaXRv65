@@ -46,7 +46,7 @@ void OculusXRTelemetry::SpawnNotification()
 		if (FOculusXRHMDModule::Get().IsOVRPluginAvailable() && FOculusXRHMDModule::GetPluginWrapper().IsInitialized())
 		{
 			Events::FEditorConsent().End(bConsent ? EAction::Success : EAction::Fail);
-			OculusXRTelemetry::SetTelemetryConsent(bConsent);
+			OculusXRTelemetry::PropagateTelemetryConsent();
 		}
 	};
 	Info.ButtonDetails.Add(

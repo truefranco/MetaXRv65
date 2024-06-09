@@ -2,9 +2,10 @@
 
 #pragma once
 
+#include "Misc/EngineVersionComparison.h"
+
 #include "StereoLayerShapes.h"
 #include "OculusXRPassthroughMesh.h"
-#include "Misc/EngineVersionComparison.h"
 #include "OculusXRPassthroughLayerShapes.generated.h"
 
 UENUM()

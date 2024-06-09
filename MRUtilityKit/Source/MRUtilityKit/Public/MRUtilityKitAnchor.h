@@ -25,11 +25,16 @@ class MRUTILITYKIT_API AMRUKAnchor : public AActor
 
 public:
 	/**
-	 * This contains the UUID of the anchor along with other meta data that can be used to
-	 * identify it.
+	 * The space handle of this anchor
 	 */
 	UPROPERTY(VisibleInstanceOnly, Transient, BlueprintReadOnly, Category = "MR Utility Kit")
-	FOculusXRSpaceQueryResult SpaceQueryResult;
+	FOculusXRUInt64 SpaceHandle;
+
+	/**
+	 * The anchors UUID
+	 */
+	UPROPERTY(VisibleInstanceOnly, Transient, BlueprintReadOnly, Category = "MR Utility Kit")
+	FOculusXRUUID AnchorUUID;
 
 	/**
 	 * The semantic classification of the anchor, also sometimes refered to as labels for short.
@@ -137,11 +142,12 @@ public:
 	 *							 then multiple UV texture coordinates are created (up to 4) and adjustments applied to
 	 *							 each. This can be left empty in which case a single set of UV texture coordinates are
 	 *							 created in the range 0 to 1 for the plane.
-	 * @param GenerateCollision  Whethere to generate collision geometry or not
+	 * @param CutHoleLabels		 Labels for which the generated mesh should have holes. Only works with planes.
+	 * @param GenerateCollision  Whether to generate collision geometry or not
 	 * @param ProceduralMaterial Material to use on the procedural generated mesh.
 	 */
 	UFUNCTION(BlueprintCallable, Category = "MR Utility Kit", meta = (AutoCreateRefTerm = "PlaneUVAdjustments"))
-	void AttachProceduralMesh(TArray<FMRUKPlaneUV> PlaneUVAdjustments, bool GenerateCollision = true, UMaterialInterface* ProceduralMaterial = nullptr);
+	void AttachProceduralMesh(TArray<FMRUKPlaneUV> PlaneUVAdjustments, const TArray<FString>& CutHoleLabels, bool GenerateCollision = true, UMaterialInterface* ProceduralMaterial = nullptr);
 
 	/**
 	 * Check if the anchor has the given label.
@@ -212,10 +218,13 @@ public:
 
 	bool LoadFromData(UMRUKAnchorData* AnchorData);
 
-	void AttachProceduralMesh(bool GenerateCollision = true, UMaterialInterface* ProceduralMaterial = nullptr);
-	void GenerateProceduralAnchorMesh(UProceduralMeshComponent& ProceduralMesh, const TArray<FMRUKPlaneUV>& PlaneUVAdjustments, bool PreferVolume = false, bool GenerateCollision = true, double Offset = 0.0);
+	void AttachProceduralMesh(const TArray<FString>& CutHoleLabels = {}, bool GenerateCollision = true, UMaterialInterface* ProceduralMaterial = nullptr);
+	void GenerateProceduralAnchorMesh(UProceduralMeshComponent& ProceduralMesh, const TArray<FMRUKPlaneUV>& PlaneUVAdjustments, const TArray<FString>& CutHoleLabels, bool PreferVolume = false, bool GenerateCollision = true, double Offset = 0.0);
 
 	TSharedRef<FJsonObject> JsonSerialize();
+
+protected:
+	void EndPlay(EEndPlayReason::Type Reason) override;
 
 private:
 	bool RayCastPlane(const FRay& LocalRay, float MaxDist, FMRUKHit& OutHit);
@@ -224,7 +233,7 @@ private:
 
 	struct TriangulatedMeshCache
 	{
-		TArray<FVector> Vertices;
+		TArray<FVector2D> Vertices;
 		TArray<int32> Triangles;
 		TArray<float> Areas;
 		float TotalArea;

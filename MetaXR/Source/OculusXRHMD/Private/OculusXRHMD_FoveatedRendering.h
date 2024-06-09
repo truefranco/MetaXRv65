@@ -18,7 +18,6 @@ public:
 	// IVariableRateShadingImageGenerator interface
 	virtual FRDGTextureRef GetImage(FRDGBuilder& GraphBuilder, const FViewInfo& ViewInfo, FVariableRateShadingImageManager::EVRSImageType ImageType, bool bGetSoftwareImage = false) override;
 	virtual void PrepareImages(FRDGBuilder& GraphBuilder, const FSceneViewFamily& ViewFamily, const FMinimalSceneTextures& SceneTextures, bool bPrepareHardwareImages, bool bPrepareSoftwareImages) override;
-	// Returns whether or not the given view supports this generator
 	virtual bool IsSupportedByView(const FSceneView& View) const override;
 	virtual FRDGTextureRef GetDebugImage(FRDGBuilder& GraphBuilder, const FViewInfo& ViewInfo, FVariableRateShadingImageManager::EVRSImageType ImageType, bool bGetSoftwareImage = false) override;
 	virtual FVariableRateShadingImageManager::EVRSSourceType GetType() const override

@@ -31,7 +31,7 @@ enum EOculusXRLaunchCaptureFlowWhenMissingScene
 * Properties/Components that a spawned scene anchor will use.
 */
 USTRUCT(BlueprintType)
-struct FOculusXRSpawnedSceneAnchorProperties
+struct OCULUSXRSCENE_API FOculusXRSpawnedSceneAnchorProperties
 {
 	GENERATED_BODY()
 
@@ -50,6 +50,10 @@ struct FOculusXRSpawnedSceneAnchorProperties
 
 /**
 * AOculusXRSceneActor
+*
+* DEPRECATED: AOculusXRSceneActor and associated classes are deprecated (v65), please use MR Utility Kit instead
+* (https://developer.oculus.com/documentation/unreal/unreal-mr-utility-kit-overview)
+*
 * The purpose of this actor is to be able to spawn "scene anchor" actors.
 *
 * Each actor type (based on their semantic label) can be configured to be spawned with a specific mesh and actor component.
@@ -128,14 +132,19 @@ public:
 
 private:
 	EOculusXRAnchorResult::Type QueryAllRooms();
-	void RoomLayoutQueryComplete(EOculusXRAnchorResult::Type AnchorResult, const TArray<FOculusXRSpaceQueryResult>& QueryResults);
+	void RoomLayoutDiscoveryResultsAvailable(const TArray<FOculusXRAnchorsDiscoverResult>& QueryResults);
+	void ProcessRoomQueryResult(FOculusXRUInt64 AnchorHandle, FOculusXRUUID UUID);
 
 	EOculusXRAnchorResult::Type QueryRoomUUIDs(const FOculusXRUInt64 RoomSpaceID, const TArray<FOculusXRUUID>& RoomUUIDs);
-	void SceneRoomQueryComplete(EOculusXRAnchorResult::Type AnchorResult, const TArray<FOculusXRSpaceQueryResult>& QueryResults, const FOculusXRUInt64 RoomSpaceID);
+	void SceneRoomDiscoveryResultsAvailable(const TArray<FOculusXRAnchorsDiscoverResult>& QueryResults, const FOculusXRUInt64 RoomSpaceID);
+	void ProcessRoomElementsResult(FOculusXRUInt64 AnchorHandle, const FOculusXRUInt64 RoomSpaceID);
 
 	void StartSingleRoomQuery(FOculusXRUInt64 RoomSpaceID, FOculusXRRoomLayout RoomLayout);
 	EOculusXRAnchorResult::Type QueryFloorForActiveRoom(FOculusXRUInt64 RoomSpaceID, FOculusXRRoomLayout RoomLayout);
-	void ActiveRoomFloorQueryComplete(EOculusXRAnchorResult::Type AnchorResult, const TArray<FOculusXRSpaceQueryResult>& QueryResults, FOculusXRUInt64 RoomSpaceID, FOculusXRRoomLayout RoomLayout);
+	void ActiveRoomFloorDiscoveryResultsAvailable(const TArray<FOculusXRAnchorsDiscoverResult>& QueryResults, FOculusXRUInt64 RoomSpaceID, FOculusXRRoomLayout RoomLayout);
+
+	bool CheckFloorBounds(FOculusXRUInt64 AnchorHandle, FOculusXRUUID UUID, FOculusXRUInt64 RoomAnchorHandle);
+
 	bool PointInPolygon2D(FVector2f PointToTest, const TArray<FVector2f>& PolyVerts) const;
 
 	void GetSemanticClassifications(uint64 Space, TArray<FString>& OutSemanticLabels) const;

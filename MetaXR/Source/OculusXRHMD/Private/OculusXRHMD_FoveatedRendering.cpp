@@ -3,7 +3,7 @@
 
 #include "OculusXRHMD_FoveatedRendering.h"
 
-#if !UE_VERSION_OLDER_THAN(5, 4, 0)
+#if !UE_VERSION_OLDER_THAN(5, 3, 0)
 #include "RenderGraphBuilder.h"
 #include "HeadMountedDisplayTypes.h" // For the LogHMD log category
 

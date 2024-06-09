@@ -12,10 +12,10 @@ LICENSE file in the root directory of this source tree.
 #include "Subsystems/GameInstanceSubsystem.h"
 #include "Tickable.h"
 #include "Dom/JsonObject.h"
-#include "OculusXRRoomLayoutManagerComponent.h"
 #include "MRUtilityKitRoom.h"
 #include "MRUtilityKit.h"
 #include "MRUtilityKitData.h"
+#include "OculusXRSceneTypes.h"
 #include "MRUtilityKitSubsystem.generated.h"
 
 /**
@@ -49,6 +49,8 @@ public:
 	DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnRoomCreated, AMRUKRoom*, Room);
 	DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnRoomUpdated, AMRUKRoom*, Room);
 	DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnRoomRemoved, AMRUKRoom*, Room);
+	DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnRoomEntered, AMRUKRoom*, Room);
+	DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnRoomExited, AMRUKRoom*, Room);
 
 	/**
 	 * The status of the scene loading. When loading from device this is an asynchronous process
@@ -83,6 +85,24 @@ public:
 	FOnRoomRemoved OnRoomRemoved;
 
 	/**
+	 * Event that gets fired if the user enters this room.
+	 * This is a system level event that gets only fired when working with room data that was loaded
+	 * from the device. E.g. it will not fire on rooms that were loaded from JSON.
+	 * This means that it may not be in sync with UMRUKSubsystem::GetCurrentRoom().
+	 */
+	UPROPERTY(BlueprintAssignable, Category = "MR Utility Kit")
+	FOnRoomEntered OnRoomEntered;
+
+	/**
+	 * Event that gets fired if the user exit this room.
+	 * This is a system level event that gets only fired when working with room data that was loaded
+	 * from the device. E.g. it will not fire on rooms that were loaded from JSON.
+	 * This means that it may not be in sync with UMRUKSubsystem::GetCurrentRoom().
+	 */
+	UPROPERTY(BlueprintAssignable, Category = "MR Utility Kit")
+	FOnRoomExited OnRoomExited;
+
+	/**
 	 * An event that will trigger when the capture flow completed.
 	 * The Success parameter indicates whether the scene was captured successfully or not.
 	 */
@@ -90,7 +110,7 @@ public:
 	FOnCaptureComplete OnCaptureComplete;
 
 	/**
-	 * Contains a list of rooms that are tracked by the scene toolkit subsystem.
+	 * Contains a list of rooms that are tracked by the mixed reality utility kit subsystem.
 	 */
 	UPROPERTY(VisibleInstanceOnly, Transient, BlueprintReadOnly, Category = "MR Utility Kit")
 	TArray<TObjectPtr<AMRUKRoom>> Rooms;
@@ -236,11 +256,12 @@ public:
 	 * The pivot point should be in the bottom center.
 	 * @param SpawnGroups                A map which tells to spawn which actor to a given label.
 	 * @param ProceduralMaterial         Material to apply on top of the procedural mesh if any.
+	 * @param CutHoleLabels		         Labels for which the generated mesh should have holes. Only works with planes.
 	 * @param ShouldFallbackToProcedural Whether or not it should by default fallback to generating a procedural mesh if no actor class has been specified for a label.
 	 * @return                           The spawned actors.
 	 */
 	UFUNCTION(BlueprintCallable, Category = "MR Utility Kit")
-	TArray<AActor*> SpawnInterior(const TMap<FString, FMRUKSpawnGroup>& SpawnGroups, UMaterialInterface* ProceduralMaterial = nullptr, bool ShouldFallbackToProcedural = true);
+	TArray<AActor*> SpawnInterior(const TMap<FString, FMRUKSpawnGroup>& SpawnGroups, const TArray<FString>& CutHoleLabels, UMaterialInterface* ProceduralMaterial = nullptr, bool ShouldFallbackToProcedural = true);
 
 	/**
 	 * Spawn meshes on the position of the anchors of each room from a random stream.
@@ -248,12 +269,13 @@ public:
 	 * The pivot point should be in the bottom center.
 	 * @param SpawnGroups                A map which tells to spawn which actor to a given label.
 	 * @param RandomStream               A random generator to choose randomly between actor classes if there a multiple for one label.
+	 * @param CutHoleLabels		         Labels for which the generated mesh should have holes. Only works with planes.
 	 * @param ProceduralMaterial         Material to apply on top of the procedural mesh if any.
 	 * @param ShouldFallbackToProcedural Whether or not it should by default fallback to generating a procedural mesh if no actor class has been specified for a label.
 	 * @return                           The spawned actors.
 	 */
 	UFUNCTION(BlueprintCallable, Category = "MR Utility Kit")
-	TArray<AActor*> SpawnInteriorFromStream(const TMap<FString, FMRUKSpawnGroup>& SpawnGroups, const FRandomStream& RandomStream, UMaterialInterface* ProceduralMaterial = nullptr, bool ShouldFallbackToProcedural = true);
+	TArray<AActor*> SpawnInteriorFromStream(const TMap<FString, FMRUKSpawnGroup>& SpawnGroups, const FRandomStream& RandomStream, const TArray<FString>& CutHoleLabels, UMaterialInterface* ProceduralMaterial = nullptr, bool ShouldFallbackToProcedural = true);
 
 	/**
 	 * Launch the scene capture. After a successful capture the scene should be updated.
@@ -263,8 +285,8 @@ public:
 	bool LaunchSceneCapture();
 
 public:
+
 	void Initialize(FSubsystemCollectionBase& Collection) override;
-	void Deinitialize() override;
 	TSharedRef<FJsonObject> JsonSerialize();
 	void UnregisterRoom(AMRUKRoom* Room);
 	// Calculate the bounds of an Actor class and return it, the result is saved in a cache for faster lookup.
@@ -294,8 +316,6 @@ private:
 	UPROPERTY()
 	TObjectPtr<UMRUKSceneData> SceneData = nullptr;
 
-	TMap<TSubclassOf<AActor>, FBox> ActorClassBoundsCache;
-
 	UPROPERTY()
 	AActor* RoomLayoutManagerActor = nullptr;
 	UPROPERTY()
@@ -303,4 +323,8 @@ private:
 	UPROPERTY()
 	mutable AMRUKRoom* CachedCurrentRoom = nullptr;
 	mutable int64 CachedCurrentRoomFrame = 0;
+	UPROPERTY()
+	AActor* PositionGenerator = nullptr;
+
+	TMap<TSubclassOf<AActor>, FBox> ActorClassBoundsCache;
 };

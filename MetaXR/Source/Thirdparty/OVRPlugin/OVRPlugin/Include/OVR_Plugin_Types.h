@@ -29,7 +29,7 @@
 // Note: OVRP_MINOR_VERSION == OCULUS_SDK_VERSION + 32
 
 #define OVRP_MAJOR_VERSION 1
-#define OVRP_MINOR_VERSION 95
+#define OVRP_MINOR_VERSION 97
 #define OVRP_PATCH_VERSION 0
 
 #define OVRP_VERSION OVRP_MAJOR_VERSION, OVRP_MINOR_VERSION, OVRP_PATCH_VERSION
@@ -165,28 +165,14 @@ typedef enum {
 
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+  /// XR_META_spatial_entity_persistence
+  ovrpFailure_SpaceInsufficientResources = -9000,
+  ovrpFailure_SpaceStorageAtCapacity = -9001,
+  ovrpFailure_SpaceInsufficientView = -9002,
+  ovrpFailure_SpacePermissionInsufficient = -9003,
+  ovrpFailure_SpaceRateLimited = -9004,
+  ovrpFailure_SpaceTooDark = -9005,
+  ovrpFailure_SpaceTooBright = -9006,
 
 
 
@@ -431,6 +417,7 @@ typedef enum {
   ovrpRenderAPI_D3D11,
   ovrpRenderAPI_D3D12,
   ovrpRenderAPI_Vulkan,
+  ovrpRenderAPI_Metal,
   ovrpRenderAPI_Count,
   ovrpRenderAPI_EnumSize = 0x7fffffff
 } ovrpRenderAPIType;
@@ -1489,6 +1476,36 @@ typedef enum ovrpBoneId_ {
   ovrpBoneId_Hand_PinkyTip           = ovrpBoneId_Hand_MaxSkinnable + 4, // tip of the pinky
   ovrpBoneId_Hand_End                = ovrpBoneId_Hand_MaxSkinnable + 5,
 
+  // Hand Skeleton V2 format
+  ovrpBoneId_HandV2_Start               = 0,
+  ovrpBoneId_HandV2_Palm                = ovrpBoneId_HandV2_Start + 0, // PALM = 0,
+  ovrpBoneId_HandV2_Wrist               = ovrpBoneId_HandV2_Start + 1, // WRIST = 1,
+  ovrpBoneId_HandV2_ThumbMetacarpal     = ovrpBoneId_HandV2_Start + 2, // THUMB_METACARPAL = 2,
+  ovrpBoneId_HandV2_ThumbProximal       = ovrpBoneId_HandV2_Start + 3, // THUMB_PROXIMAL = 3,
+  ovrpBoneId_HandV2_ThumbDistal         = ovrpBoneId_HandV2_Start + 4, // THUMB_DISTAL = 4,
+  ovrpBoneId_HandV2_ThumbTip            = ovrpBoneId_HandV2_Start + 5, // THUMB_TIP = 5,
+  ovrpBoneId_HandV2_IndexMetacarpal     = ovrpBoneId_HandV2_Start + 6, // INDEX_METACARPAL = 6,
+  ovrpBoneId_HandV2_IndexProximal       = ovrpBoneId_HandV2_Start + 7, // INDEX_PROXIMAL = 7,
+  ovrpBoneId_HandV2_IndexIntermediate   = ovrpBoneId_HandV2_Start + 8, // INDEX_INTERMEDIATE = 8,
+  ovrpBoneId_HandV2_IndexDistal         = ovrpBoneId_HandV2_Start + 9, // INDEX_DISTAL = 9,
+  ovrpBoneId_HandV2_IndexTip            = ovrpBoneId_HandV2_Start + 10,// INDEX_TIP = 10,
+  ovrpBoneId_HandV2_MiddleMetacarpal    = ovrpBoneId_HandV2_Start + 11,// MIDDLE_METACARPAL = 11,
+  ovrpBoneId_HandV2_MiddleProximal      = ovrpBoneId_HandV2_Start + 12,// MIDDLE_PROXIMAL = 12,
+  ovrpBoneId_HandV2_MiddleIntermediate  = ovrpBoneId_HandV2_Start + 13,// MIDDLE_INTERMEDIATE = 13,
+  ovrpBoneId_HandV2_MiddleDistal        = ovrpBoneId_HandV2_Start + 14,// MIDDLE_DISTAL = 14,
+  ovrpBoneId_HandV2_MiddleTip           = ovrpBoneId_HandV2_Start + 15,// MIDDLE_TIP = 15,
+  ovrpBoneId_HandV2_RingMetacarpal      = ovrpBoneId_HandV2_Start + 16,// RING_METACARPAL = 16,
+  ovrpBoneId_HandV2_RingProximal        = ovrpBoneId_HandV2_Start + 17,// RING_PROXIMAL = 17,
+  ovrpBoneId_HandV2_RingIntermediate    = ovrpBoneId_HandV2_Start + 18,// RING_INTERMEDIATE = 18,
+  ovrpBoneId_HandV2_RingDistal          = ovrpBoneId_HandV2_Start + 19,// RING_DISTAL = 19,
+  ovrpBoneId_HandV2_RingTip             = ovrpBoneId_HandV2_Start + 20,// RING_TIP = 20,
+  ovrpBoneId_HandV2_LittleMetacarpal    = ovrpBoneId_HandV2_Start + 21,// LITTLE_METACARPAL = 21,
+  ovrpBoneId_HandV2_LittleProximal      = ovrpBoneId_HandV2_Start + 22,// LITTLE_PROXIMAL = 22,
+  ovrpBoneId_HandV2_LittleIntermediate  = ovrpBoneId_HandV2_Start + 23,// LITTLE_INTERMEDIATE = 23,
+  ovrpBoneId_HandV2_LittleDistal        = ovrpBoneId_HandV2_Start + 24,// LITTLE_DISTAL = 24,
+  ovrpBoneId_HandV2_LittleTip           = ovrpBoneId_HandV2_Start + 25,// LITTLE_TIP = 25,
+  ovrpBoneId_HandV2_End                 = ovrpBoneId_HandV2_Start + 26,
+
   // body bones (upper body)
   ovrpBoneId_Body_Start                       = 0,
   ovrpBoneId_Body_Root                        = ovrpBoneId_Body_Start + 0,
@@ -1718,6 +1735,7 @@ typedef struct ovrpBodyTrackingCalibrationInfo_ {
 
 typedef enum ovrpSkeletonConstants_ {
   ovrpSkeletonConstants_MaxHandBones = ovrpBoneId_Hand_End,
+  ovrpSkeletonConstants_MaxHandBones_V2 = ovrpBoneId_HandV2_End,
   ovrpSkeletonConstants_MaxBodyBones = ovrpBoneId_Body_End,
   ovrpSkeletonConstants_MaxFullBodyBones = ovrpBoneId_FullBody_End,
   ovrpSkeletonConstants_MaxUpperBodyBones = ovrpBoneId_Body_End,
@@ -1733,6 +1751,8 @@ typedef enum ovrpSkeletonType_ {
   ovrpSkeletonType_HandRight = 1,
   ovrpSkeletonType_Body = 2,
   ovrpSkeletonType_FullBody = 3,
+  ovrpSkeletonType_XRHandLeft = 4,
+  ovrpSkeletonType_XRHandRight = 5,
   ovrpSkeletonType_Count,
   ovrpSkeletonType_EnumSize = 0x7fffffff
 } ovrpSkeletonType;
@@ -1744,6 +1764,7 @@ typedef struct ovrpSkeleton3_ {
   ovrpBone Bones[ovrpSkeletonConstants_MaxBones];
   ovrpBoneCapsule BoneCapsules[ovrpSkeletonConstants_MaxBoneCapsules];
 } ovrpSkeleton3;
+
 typedef struct ovrpSkeleton2_ {
   ovrpSkeletonType SkeletonType;
   unsigned int NumBones;
@@ -1766,6 +1787,8 @@ typedef enum ovrpMeshType_ {
   ovrpMeshType_None = -1,
   ovrpMeshType_HandLeft = 0,
   ovrpMeshType_HandRight = 1,
+  ovrpMeshType_XRHandLeft = 4,
+  ovrpMeshType_XRHandRight = 5,
   ovrpMeshType_Count,
   ovrpMeshType_EnumSize = 0x7fffffff
 } ovrpMeshType;
@@ -1841,6 +1864,46 @@ typedef struct ovrpHandState_ {
   // Time stamp of the captured sample that the pose was extrapolated from.
   double SampleTimeStamp;
 } ovrpHandState;
+
+typedef struct ovrpHandState3_ {
+  // Hand Status bitfield described by ovrpHandStatus flags.
+  unsigned int Status;
+
+  // Root pose of the hand in world space. Not to be confused with the root bone's transform.
+  // The root bone can still be offset from this by the skeleton's rest pose.
+  ovrpPosef RootPose;
+
+  // Current rotation of each bone.
+  ovrpPosef BonePoses[ovrpSkeletonConstants_MaxHandBones_V2];
+
+  // Provides a bitmask indicating if each finger is "pinched" or not. Indexable via bitshifting with the ovrpHandFinger
+  // enum i.e. (1 << ovrpHandFinger_Index)
+  unsigned int Pinches;
+
+  // Provides a 0.0f to 1.0f value of how "pinched" each finger is. Indexable via the ovrpHandFinger enum.
+  float PinchStrength[ovrpHandFinger_Max];
+
+  // World space position and translation of the pointer attached to the hand.
+  ovrpPosef PointerPose;
+
+  float HandScale;
+
+  // Tracking confidence. Range [0,1], 0.0 = lowest confidence, 1.0 = highest confidence.
+  // This is useful for smoothly de-emphasizing hands as confidence decreases.
+  // This is the amount of confidence that the system has that the entire hand pose is correct.
+  ovrpTrackingConfidence HandConfidence;
+
+  // Per-finger tracking confidence. Range [0,1], 0.0 = lowest confidence, 1.0 = highest confidence.
+  // This is the amount of confidence the system has that the individual finger poses are correct.
+  ovrpTrackingConfidence FingerConfidences[ovrpHandFinger_Max];
+
+  // Time stamp for the pose that was requested in global system time.
+  double RequestedTimeStamp;
+
+  // Time stamp of the captured sample that the pose was extrapolated from.
+  double SampleTimeStamp;
+} ovrpHandState3;
+
 
 typedef struct ovrpBodyJointLocation_ {
   ovrpUInt64 LocationFlags;
@@ -2060,6 +2123,28 @@ typedef enum ovrpFaceExpression2_ {
   ovrpFaceExpression2_EnumSize = 0x7FFFFFFF
 } ovrpFaceExpression2;
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 typedef enum ovrpFaceTrackingDataSource2_ {
   ovrpFaceTrackingDataSource2_Visual = 0,
   ovrpFaceTrackingDataSource2_Audio = 1,
@@ -2104,6 +2189,14 @@ typedef struct ovrpFaceState2_ {
   ovrpFaceTrackingDataSource2 DataSource;
   double Time;
 } ovrpFaceState2;
+
+
+
+
+
+
+
+
 
 typedef struct ovrpEyeGazeState_ {
   ovrpPosef Pose;
@@ -2298,13 +2391,13 @@ typedef enum ovrpEventType_ {
   ovrpEventType_VirtualKeyboardShown = 204,
   ovrpEventType_VirtualKeyboardHidden = 205,
 
+  // XR_META_spatial_entity_discovery
+  ovrpEventType_SpaceDiscoveryResultsAvailable = 300,
+  ovrpEventType_SpaceDiscoveryComplete = 301,
 
-
-
-
-
-
-
+  // XR_META_spatial_entity_persistence
+  ovrpEventType_SpacesSaveResult = 302,
+  ovrpEventType_SpacesEraseResult = 303,
 
   ovrpEventType_PerfSettings = 304,
 
@@ -2330,6 +2423,14 @@ typedef enum ovrpEventType_ {
 
 
   ovrpEventType_PassthroughLayerResumed = 500,
+
+
+
+
+
+
+
+
 
 
 
@@ -2722,6 +2823,20 @@ typedef struct {
   /// An intensity value can be in the range [0.0, 1.0] where 0.0 is the lowest intensity.
   float RightHandIntensity;
 } ovrpInsightPassthroughKeyboardHandsIntensity;
+
+//-----------------------------------------------------------------
+// Insight Passthrough Space Transformation
+//-----------------------------------------------------------------
+
+
+
+
+
+
+
+
+
+
 
 //-----------------------------------------------------------------
 // Spatial Anchors
@@ -3385,68 +3500,66 @@ typedef struct ovrpPassthroughPreferences_ {
 
 
 
+typedef enum {
+  ovrpSpaceDiscoveryFilterType_None = 0,
+  ovrpSpaceDiscoveryFilterType_Ids = 2,
+  ovrpSpaceDiscoveryFilterType_Components = 3,
+  ovrpSpaceDiscoveryFilterType_Max = 0x7ffffff,
+} ovrpSpaceDiscoveryFilterType;
 
+typedef struct ovrpSpaceDiscoveryFilterHeader_ {
+  ovrpSpaceDiscoveryFilterType Type;
+} ovrpSpaceDiscoveryFilterHeader;
 
+typedef struct ovrpSpaceDiscoveryFilterIds_ {
+  ovrpSpaceDiscoveryFilterType Type;
+  ovrpUInt32 Count;
+  ovrpUuid* Uuids;
+} ovrpSpaceDiscoveryFilterIds;
 
+typedef struct ovrpSpaceDiscoveryFilterComponents_ {
+  ovrpSpaceDiscoveryFilterType Type;
+  ovrpSpaceComponentType ComponentType;
+} ovrpSpaceDiscoveryFilterComponents;
 
+typedef struct ovrpSpaceDiscoveryInfo_ {
+  ovrpUInt32 FilterCount;
+  const ovrpSpaceDiscoveryFilterHeader* const* Filters;
+} ovrpSpaceDiscoveryInfo;
 
+typedef struct ovrpSpaceDiscoveryResult_ {
+  ovrpSpace Space;
+  ovrpUuid Uuid;
+} ovrpSpaceDiscoveryResult;
 
+typedef struct ovrpSpaceDiscoveryResults_ {
+  ovrpUInt32 ResultCapacityInput;
+  ovrpUInt32 ResultCountOutput;
+  ovrpSpaceDiscoveryResult* Results;
+} ovrpSpaceDiscoveryResults;
 
+typedef struct ovrpEventSpaceDiscoveryResults_ {
+  ovrpEventType EventType;
+  ovrpUInt64 requestId;
+} ovrpEventSpaceDiscoveryResults;
 
+typedef struct ovrpEventDataSpaceDiscoveryComplete_ {
+  ovrpEventType EventType;
+  ovrpUInt64 requestId;
+  ovrpResult result;
+} ovrpEventDataSpaceDiscoveryComplete;
 
+typedef struct ovrpEventSpacesSaveResult_ {
+  ovrpEventType EventType;
+  ovrpUInt64 requestId;
+  ovrpResult result;
+} ovrpEventSpacesSaveResult;
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+typedef struct ovrpEventSpacesEraseResult_ {
+  ovrpEventType EventType;
+  ovrpUInt64 requestId;
+  ovrpResult result;
+} ovrpEventSpacesEraseResult;
 
 typedef struct ovrpEventDataPassthroughLayerResumed_ {
   ovrpEventType EventType;
@@ -3559,6 +3672,77 @@ typedef enum {
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+typedef enum {
+  ovrpQplVariantType_None = 0,
+  ovrpQplVariantType_String = 1,
+  ovrpQplVariantType_Int = 2,
+  ovrpQplVariantType_Double = 3,
+  ovrpQplVariantType_Bool = 4,
+  ovrpQplVariantType_StringArray = 5,
+  ovrpQplVariantType_IntArray = 6,
+  ovrpQplVariantType_DoubleArray = 7,
+  ovrpQplVariantType_BoolArray = 8,
+  ovrpQplVariantType_Max = 0x7fffffff,
+} ovrpQplVariantType;
+
+typedef struct ovrpQplVariant_ {
+  ovrpQplVariantType Type;
+  int ValueCount;
+  union {
+    const char* StringValue;
+    ovrpInt64 IntValue;
+    double DoubleValue;
+    ovrpBool BoolValue;
+    const char** StringValues;
+    ovrpInt64* IntValues;
+    double* DoubleValues;
+    ovrpBool* BoolValues;
+  };
+} ovrpQplVariant;
+
+typedef struct ovrpQplAnnotation_ {
+  const char* Key;
+  ovrpQplVariant Value;
+} ovrpQplAnnotation;
 
 #ifdef __clang__
 #pragma clang diagnostic pop

@@ -266,6 +266,79 @@ namespace OculusXRAnchors
 
 				break;
 			}
+			case ovrpEventType_SpaceDiscoveryComplete:
+			{
+				ovrpEventDataSpaceDiscoveryComplete SpaceDiscoveryCompleteEvent;
+				GetEventData(buf, SpaceDiscoveryCompleteEvent);
+
+				FOculusXRUInt64 RequestId(SpaceDiscoveryCompleteEvent.requestId);
+				FOculusXRUInt64 Result(SpaceDiscoveryCompleteEvent.result);
+
+				UE_LOG(LogOculusXRAnchors, Verbose, TEXT("ovrpEventType_SpaceDiscoveryComplete  Request ID: %llu  --  Result: %d"), RequestId.GetValue(), Result.GetValue());
+				FOculusXRAnchorEventDelegates::OculusAnchorsDiscoverComplete.Broadcast(RequestId, Result);
+
+				break;
+			}
+			case ovrpEventType_SpaceDiscoveryResultsAvailable:
+			{
+				ovrpEventSpaceDiscoveryResults SpaceDiscoveryResultsEvent;
+				GetEventData(buf, SpaceDiscoveryResultsEvent);
+
+				FOculusXRUInt64 RequestId(SpaceDiscoveryResultsEvent.requestId);
+
+				ovrpSpaceDiscoveryResults OVRPResults = { 0, 0, nullptr };
+
+				// get capacity
+				bool GetCapacityResult = FOculusXRHMDModule::GetPluginWrapper().GetInitialized() && OVRP_SUCCESS(FOculusXRHMDModule::GetPluginWrapper().RetrieveSpaceDiscoveryResults(RequestId, &OVRPResults));
+
+				UE_LOG(LogOculusXRAnchors, Log, TEXT("ovrpEventType_SpaceDiscoveryResultsAvailable Request ID: %llu  --  Capacity: %d  --  Result: %d"),
+					RequestId.GetValue(), OVRPResults.ResultCountOutput, GetCapacityResult);
+
+				// get data
+				OVRPResults.ResultCapacityInput = OVRPResults.ResultCountOutput;
+				std::vector<ovrpSpaceDiscoveryResult> ResultsData(OVRPResults.ResultCountOutput);
+				OVRPResults.Results = ResultsData.data();
+				bool GetDiscoveryResult = FOculusXRHMDModule::GetPluginWrapper().GetInitialized() && OVRP_SUCCESS(FOculusXRHMDModule::GetPluginWrapper().RetrieveSpaceDiscoveryResults(RequestId, &OVRPResults));
+				TArray<FOculusXRAnchorsDiscoverResult> SpaceDiscoveryResults;
+
+				for (auto& Element : ResultsData)
+				{
+					UE_LOG(LogOculusXRAnchors, Verbose, TEXT("ovrpEventType_SpaceDiscoveryResultsAvailable Space: %llu  --  Result: %d"),
+						Element.Space, GetDiscoveryResult);
+
+					SpaceDiscoveryResults.Add(FOculusXRAnchorsDiscoverResult(Element.Space, Element.Uuid.data));
+				}
+
+				FOculusXRAnchorEventDelegates::OculusAnchorsDiscoverResults.Broadcast(RequestId, SpaceDiscoveryResults);
+
+				break;
+			}
+			case ovrpEventType_SpacesSaveResult:
+			{
+				ovrpEventSpacesSaveResult SpacesSaveEvent;
+				GetEventData(buf, SpacesSaveEvent);
+
+				FOculusXRUInt64 RequestId(SpacesSaveEvent.requestId);
+				FOculusXRUInt64 Result(SpacesSaveEvent.result);
+
+				UE_LOG(LogOculusXRAnchors, Verbose, TEXT("ovrpEventType_SpacesSaveResult  Request ID: %llu  --  Result: %d"), RequestId.GetValue(), Result.GetValue());
+				FOculusXRAnchorEventDelegates::OculusAnchorsSaveComplete.Broadcast(RequestId, Result);
+
+				break;
+			}
+			case ovrpEventType_SpacesEraseResult:
+			{
+				ovrpEventSpacesEraseResult SpacesEraseEvent;
+				GetEventData(buf, SpacesEraseEvent);
+
+				FOculusXRUInt64 RequestId(SpacesEraseEvent.requestId);
+				FOculusXRUInt64 Result(SpacesEraseEvent.result);
+
+				UE_LOG(LogOculusXRAnchors, Verbose, TEXT("ovrpEventType_SpacesEraseResult  Request ID: %llu  --  Result: %d"), RequestId.GetValue(), Result.GetValue());
+				FOculusXRAnchorEventDelegates::OculusAnchorsEraseComplete.Broadcast(RequestId, Result);
+
+				break;
+			}
 			case ovrpEventType_None:
 			default:
 			{
@@ -812,5 +885,79 @@ namespace OculusXRAnchors
 		return EOculusXRAnchorResult::Success;
 	}
 
+	EOculusXRAnchorResult::Type FOculusXRAnchorManager::DiscoverSpaces(const FOculusXRSpaceDiscoveryInfo& DiscoveryInfo, uint64& OutRequestId)
+	{
+		uint32 FiltersCount = (uint32)DiscoveryInfo.Filters.Num();
+		ovrpSpaceDiscoveryInfo OvrDiscoveryInfo{ FiltersCount };
+
+		UE_LOG(LogOculusXRAnchors, Display, TEXT("Staring discovery with %d filter(s)"), FiltersCount);
+
+		TArray<const ovrpSpaceDiscoveryFilterHeader*> filters;
+		filters.SetNumZeroed(FiltersCount);
+
+		for (uint32 i = 0; i < FiltersCount; ++i)
+		{
+			ensure(DiscoveryInfo.Filters[i] != nullptr);
+			filters[i] = DiscoveryInfo.Filters[i]->GenerateOVRPFilter();
+		}
+
+		OvrDiscoveryInfo.Filters = filters.GetData();
+		const ovrpResult Result = FOculusXRHMDModule::GetPluginWrapper().DiscoverSpaces(&OvrDiscoveryInfo, &OutRequestId);
+
+		if (!OVRP_SUCCESS(Result))
+		{
+			UE_LOG(LogOculusXRAnchors, Error, TEXT("FOculusXRAnchorManager - Discovery failed -- Result: %d"), Result);
+		}
+
+		return static_cast<EOculusXRAnchorResult::Type>(Result);
+	}
+
+	EOculusXRAnchorResult::Type FOculusXRAnchorManager::SaveSpaces(const TArray<uint64>& Spaces, uint64& OutRequestId)
+	{
+		if (Spaces.Num() == 0)
+		{
+			UE_LOG(LogOculusXRAnchors, Warning, TEXT("FOculusXRAnchorManager - SaveSpaces empty Spaces array"));
+			return EOculusXRAnchorResult::Failure_InvalidParameter;
+		}
+
+		const ovrpResult Result = FOculusXRHMDModule::GetPluginWrapper().SaveSpaces(Spaces.Num(), Spaces.GetData(), &OutRequestId);
+
+		if (!OVRP_SUCCESS(Result))
+		{
+			UE_LOG(LogOculusXRAnchors, Error, TEXT("FOculusXRAnchorManager - SaveSpaces failed -- Result: %d"), Result);
+		}
+
+		return static_cast<EOculusXRAnchorResult::Type>(Result);
+	}
+
+	EOculusXRAnchorResult::Type FOculusXRAnchorManager::EraseSpaces(const TArray<FOculusXRUInt64>& Handles, const TArray<FOculusXRUUID>& UUIDs, uint64& OutRequestId)
+	{
+		if (Handles.IsEmpty() && UUIDs.IsEmpty())
+		{
+			UE_LOG(LogOculusXRAnchors, Warning, TEXT("FOculusXRAnchorManager::EraseSpaces - You cannot have an empty handle and uuid array. At least one array must have elements."));
+			return EOculusXRAnchorResult::Failure_InvalidParameter;
+		}
+
+		TArray<ovrpSpace> ovrpHandles;
+		for (auto& handle : Handles)
+		{
+			ovrpHandles.Add(handle.GetValue());
+		}
+
+		TArray<ovrpUuid> ovrpUUIDs;
+		for (auto& id : UUIDs)
+		{
+			ovrpUUIDs.Add(ConvertFOculusXRUUIDtoOvrpUuid(id));
+		}
+
+		const ovrpResult Result = FOculusXRHMDModule::GetPluginWrapper().EraseSpaces(ovrpHandles.Num(), ovrpHandles.GetData(), ovrpUUIDs.Num(), ovrpUUIDs.GetData(), &OutRequestId);
+
+		if (!OVRP_SUCCESS(Result))
+		{
+			UE_LOG(LogOculusXRAnchors, Error, TEXT("FOculusXRAnchorManager - EraseSpaces failed -- Result: %d"), Result);
+		}
+
+		return static_cast<EOculusXRAnchorResult::Type>(Result);
+	}
 
 } // namespace OculusXRAnchors

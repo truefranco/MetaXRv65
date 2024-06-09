@@ -21,6 +21,7 @@ DEFINE_LOG_CATEGORY(LogMRUK);
 
 const FString FMRUKLabels::Floor("FLOOR");
 const FString FMRUKLabels::WallFace("WALL_FACE");
+const FString FMRUKLabels::InvisibleWallFace("INVISIBLE_WALL_FACE");
 const FString FMRUKLabels::Ceiling("CEILING");
 const FString FMRUKLabels::DoorFrame("DOOR_FRAME");
 const FString FMRUKLabels::WindowFrame("WINDOW_FRAME");

@@ -1236,15 +1236,20 @@ namespace OculusXRInput
 									if (OVRP_SUCCESS(FOculusXRHMDModule::GetPluginWrapper().GetNodePoseState3(ovrpStep_Render, CurrentFrame ? CurrentFrame->FrameNumber : OVRP_CURRENT_FRAMEINDEX, Node, &InPoseState)) && OculusXRHMD->ConvertPose_Internal(InPoseState.Pose, OutPose, Settings, WorldToMetersScale))
 									{
 										FName FinalMotionSource = MotionSource;
-										if (MotionSource == FName("Left") || MotionSource == FName("EControllerHand::Left") || MotionSource == FName("Right") || MotionSource == FName("EControllerHand::Right"))
+										FString MotionSourceStr = MotionSource.ToString();
+
+										// Converting controller hand enum to motion source can leave behind the enum name in the resulting motion source, so just remove that before handling it
+										MotionSourceStr.RemoveFromStart("EControllerHand::");
+
+										if (MotionSourceStr.Equals("Left") || MotionSourceStr.Equals("Right"))
 										{
 											switch (ControllerPoseAlignment)
 											{
 												case EOculusXRControllerPoseAlignment::Grip:
-													FinalMotionSource = FName(MotionSource.ToString().Append(FString("Grip")));
+													FinalMotionSource = FName(MotionSourceStr.Append(FString("Grip")));
 													break;
 												case EOculusXRControllerPoseAlignment::Aim:
-													FinalMotionSource = FName(MotionSource.ToString().Append(FString("Aim")));
+													FinalMotionSource = FName(MotionSourceStr.Append(FString("Aim")));
 													break;
 												case EOculusXRControllerPoseAlignment::Default:
 												default:
@@ -1272,19 +1277,24 @@ namespace OculusXRInput
 											OutOrientation = OutPose.Orientation.Rotator();
 										}
 
-										auto bSuccess = true;
-										EControllerHand ControllerHand;
-										if (GetHandEnumForSourceName(MotionSource, ControllerHand))
+										// Avoid any broadcasting in other threads than the game thread because that is undefined behavior
+										if (IsInGameThread())
 										{
-											// TODO: Just use the motion source name here instead of the legacy enum
-											UOculusXRInputFunctionLibrary::HandMovementFilter.Broadcast(
-												ControllerHand,
-												&OutPosition,
-												&OutOrientation,
-												&bSuccess);
+											auto bSuccess = true;
+											EControllerHand ControllerHand;
+											if (GetHandEnumForSourceName(MotionSource, ControllerHand))
+											{
+												// TODO: Just use the motion source name here instead of the legacy enum
+												UOculusXRInputFunctionLibrary::HandMovementFilter.Broadcast(
+													ControllerHand,
+													&OutPosition,
+													&OutOrientation,
+													&bSuccess);
+											}
+											return bSuccess;
 										}
 
-										return bSuccess;
+										return true;
 									}
 								}
 							}
@@ -1296,16 +1306,20 @@ namespace OculusXRInput
 			}
 		}
 
+		// Avoid any broadcasting in other threads than the game thread because that is undefined behavior
 		auto bSuccess = false;
-		EControllerHand ControllerHand;
-		if (GetHandEnumForSourceName(MotionSource, ControllerHand))
+		if (IsInGameThread())
 		{
-			// TODO: Just use the motion source name here instead of the legacy enum
-			UOculusXRInputFunctionLibrary::HandMovementFilter.Broadcast(
-				ControllerHand,
-				&OutPosition,
-				&OutOrientation,
-				&bSuccess);
+			EControllerHand ControllerHand;
+			if (GetHandEnumForSourceName(MotionSource, ControllerHand))
+			{
+				// TODO: Just use the motion source name here instead of the legacy enum
+				UOculusXRInputFunctionLibrary::HandMovementFilter.Broadcast(
+					ControllerHand,
+					&OutPosition,
+					&OutOrientation,
+					&bSuccess);
+			}
 		}
 		return bSuccess;
 	}

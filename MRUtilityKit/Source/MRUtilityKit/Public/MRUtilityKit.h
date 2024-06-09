@@ -256,12 +256,14 @@ public:
 	 */
 	UPROPERTY(config, EditAnywhere, Category = "MR Utility Kit")
 	bool EnableWorldLock = true;
+
 };
 
 struct MRUTILITYKIT_API FMRUKLabels
 {
 	static const FString Floor;
 	static const FString WallFace;
+	static const FString InvisibleWallFace;
 	static const FString Ceiling;
 	static const FString DoorFrame;
 	static const FString WindowFrame;
@@ -275,6 +277,20 @@ struct MRUTILITYKIT_API FMRUKLabels
 	static const FString WallArt;
 	static const FString GlobalMesh;
 	static const FString Other;
+};
+
+UENUM(BlueprintType)
+enum class EMRUKSpawnMode : uint8
+{
+	/// Do not spawn anything on loading a scene or rooms.
+	None = 0,
+
+	/// Will only take the current room into account. This enables legacy single room behaviour. Keep in mind that if your
+	/// experience loads multiple rooms and you use that mode the behaviour might be undefined.
+	CurrentRoomOnly,
+
+	/// Spawn in every room and keep on spawning whenever a new room was discovered.
+	AllRooms
 };
 
 class FMRUKModule : public IModuleInterface

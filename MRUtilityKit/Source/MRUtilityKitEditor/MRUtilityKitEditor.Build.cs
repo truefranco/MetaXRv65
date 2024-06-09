@@ -33,6 +33,8 @@ public class MRUtilityKitEditor : ModuleRules
 				"OculusXRScene",
 				"Json",
 				"UnrealEd",
+				"RHI",
+				"RenderCore",
 				"ProceduralMeshComponent",
 				"MRUtilityKit",
 			});

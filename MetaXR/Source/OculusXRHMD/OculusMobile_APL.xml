@@ -399,10 +399,7 @@
 			<!-- Add Oculus Splash Screen -->
 			<if condition="bShowLaunchImage">
 				<true>
-					<setElement result="showOculusSplash" value="meta-data"/>
-					<addAttribute tag="$showOculusSplash" name="android:name" value="com.oculus.ossplash"/>
-					<addAttribute tag="$showOculusSplash" name="android:value" value="true"/>
-					<addElement tag="application" name="showOculusSplash"/>
+					
 
 					<!-- Add Oculus Splash Screen colorspace setting -->
 					<setElement result="oculusSplashColorspace" value="meta-data"/>

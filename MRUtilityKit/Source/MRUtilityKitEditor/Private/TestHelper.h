@@ -10,7 +10,10 @@ LICENSE file in the root directory of this source tree.
 
 #include "GameFramework/Actor.h"
 #include "MRUtilityKitAnchor.h"
+#include "MRUtilityKitGridSliceResizer.h"
 #include "TestHelper.generated.h"
+
+bool StartPIE(bool bSimulateInEditor);
 
 UCLASS()
 class URoomAndAnchorObserver : public UObject
@@ -53,3 +56,15 @@ extern const TCHAR* ExampleRoomFurnitureAddedJson;
 extern const TCHAR* ExampleRoomMoreFurnitureAddedJson;
 extern const TCHAR* ExampleRoomFurnitureModifiedJson;
 extern const TCHAR* ExampleOtherRoomJson;
+
+UCLASS()
+class AMeshResizer : public AActor
+{
+	GENERATED_BODY()
+
+public:
+	UPROPERTY()
+	UMRUKGridSliceResizerComponent* GridSliceResizerComponent;
+
+	AMeshResizer();
+};

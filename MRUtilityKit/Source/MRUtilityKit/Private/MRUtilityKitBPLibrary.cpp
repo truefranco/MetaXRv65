@@ -7,6 +7,7 @@ LICENSE file in the root directory of this source tree.
 */
 
 #include "MRUtilityKitBPLibrary.h"
+
 #include "MRUtilityKit.h"
 #include "MRUtilityKitSubsystem.h"
 #include "MRUtilityKitSerializationHelpers.h"
@@ -137,7 +138,7 @@ void UMRUKLoadFromDevice::OnSceneLoaded(bool Succeeded)
 	SetReadyToDestroy();
 }
 
-bool UMRUKBPLibrary::LoadGlobalMeshFromDevice(FOculusXRSpaceQueryResult SpaceQuery, UProceduralMeshComponent* OutProceduralMesh, bool LoadCollision, const UObject* WorldContext)
+bool UMRUKBPLibrary::LoadGlobalMeshFromDevice(FOculusXRUInt64 SpaceHandle, UProceduralMeshComponent* OutProceduralMesh, bool LoadCollision, const UObject* WorldContext)
 {
 	ensure(OutProceduralMesh);
 
@@ -148,7 +149,7 @@ bool UMRUKBPLibrary::LoadGlobalMeshFromDevice(FOculusXRSpaceQueryResult SpaceQue
 	}
 
 	const auto RoomLayoutManager = World->GetGameInstance()->GetSubsystem<UMRUKSubsystem>()->GetRoomLayoutManager();
-	const bool LoadResult = RoomLayoutManager->LoadTriangleMesh(SpaceQuery.Space.Value, OutProceduralMesh, LoadCollision);
+	const bool LoadResult = RoomLayoutManager->LoadTriangleMesh(SpaceHandle.Value, OutProceduralMesh, LoadCollision);
 	if (!LoadResult)
 	{
 		UE_LOG(LogMRUK, Warning, TEXT("Could not load triangle mesh from layout manager"));
@@ -158,7 +159,7 @@ bool UMRUKBPLibrary::LoadGlobalMeshFromDevice(FOculusXRSpaceQueryResult SpaceQue
 	return true;
 }
 
-bool UMRUKBPLibrary::LoadGlobalMeshFromJsonString(const FString& JsonString, FOculusXRSpaceQueryResult SpaceQuery, UProceduralMeshComponent* OutProceduralMesh, bool LoadCollision)
+bool UMRUKBPLibrary::LoadGlobalMeshFromJsonString(const FString& JsonString, FOculusXRUUID AnchorUUID, UProceduralMeshComponent* OutProceduralMesh, bool LoadCollision)
 {
 	ensure(OutProceduralMesh);
 
@@ -179,7 +180,7 @@ bool UMRUKBPLibrary::LoadGlobalMeshFromJsonString(const FString& JsonString, FOc
 		auto RoomObject = RoomJson->AsObject();
 		FOculusXRUUID RoomUUID;
 		MRUKDeserialize(*RoomObject->GetField<EJson::None>(TEXT("UUID")), RoomUUID);
-		if (RoomUUID == SpaceQuery.UUID)
+		if (RoomUUID == AnchorUUID)
 		{
 			// Find global mesh anchor
 			auto AnchorsJson = RoomObject->GetArrayField(TEXT("Anchors"));
@@ -263,4 +264,26 @@ bool UMRUKBPLibrary::IsUnrealEngineMetaFork()
 #else
 	return false;
 #endif
+}
+
+FVector2D UMRUKBPLibrary::ComputeCentroid(const TArray<FVector2D>& PolygonPoints)
+{
+	FVector2D Centroid = FVector2D::ZeroVector;
+
+	double SignedArea = 0.0;
+	for (int32 I = 0; I < PolygonPoints.Num(); ++I)
+	{
+		const double X0 = PolygonPoints[I].X;
+		const double Y0 = PolygonPoints[I].Y;
+		const double X1 = PolygonPoints[(I + 1) % PolygonPoints.Num()].X;
+		const double Y1 = PolygonPoints[(I + 1) % PolygonPoints.Num()].Y;
+
+		const double A = X0 * Y1 - X1 * Y0;
+		SignedArea += A;
+
+		Centroid.X += (X0 + X1) * A;
+		Centroid.Y += (Y0 + Y1) * A;
+	}
+
+	return Centroid / (6.0 * (SignedArea * 0.5));
 }

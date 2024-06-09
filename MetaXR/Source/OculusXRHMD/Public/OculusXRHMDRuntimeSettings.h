@@ -72,6 +72,12 @@ public:
 	UPROPERTY(config, EditAnywhere, Category = PC, meta = (DisplayName = "Meta XR Simulator JSON File."))
 	FFilePath MetaXRJsonPath;
 
+	/**
+	In case of multiple players, when the primary player, which is connected to the HMD, is changed, this setting determins how to restore the previous player's head pose
+	*/
+	UPROPERTY(config, EditAnywhere, Category = PC, meta = (DisplayName = "MultiPlayer Pose Restore Type."))
+	EOculusXRMPPoseRestoreType MPPoseRestoreType;
+
 	/** Maximum allowed pixel density. */
 	UPROPERTY(config, EditAnywhere, Category = "Mobile|Dynamic Resolution", DisplayName = "Enable Dynamic Resolution")
 	bool bDynamicResolution;
@@ -187,6 +193,10 @@ public:
 	/** On supported Oculus mobile platforms, copy compiled .so directly to device. Allows updating compiled code without rebuilding and installing an APK. */
 	UPROPERTY(config, EditAnywhere, Category = Mobile, meta = (DisplayName = "Deploy compiled .so directly to device"))
 	bool bDeploySoToDevice;
+
+	/** Keep previously deployed device contents. Allows cook-on-the-fly to reuse assets from previous runs. */
+	UPROPERTY(config, EditAnywhere, Category = Mobile, meta = (DisplayName = "Enable Iterative Cook on the Fly"))
+	bool bIterativeCookOnTheFly;
 
 	/** Whether experimental features listed below can be used with the app. */
 	UPROPERTY(config, EditAnywhere, Category = Experimental)

@@ -12,45 +12,19 @@ LICENSE file in the root directory of this source tree.
 #include "MRUtilityKitAnchorActorSpawner.h"
 #include "Misc/AutomationTest.h"
 #include "Tests/AutomationEditorCommon.h"
-#include "Engine/StaticMeshActor.h"
-#include "LevelEditor.h"
 #include "Editor/UnrealEdEngine.h"
 #include "UnrealEdGlobals.h"
-#include "ProceduralMeshComponent.h"
 #include "TestHelper.h"
 
 BEGIN_DEFINE_SPEC(FMRUKSpec, TEXT("MR Utility Kit"), EAutomationTestFlags::ProductFilter | EAutomationTestFlags::ApplicationContextMask)
 UMRUKSubsystem* ToolkitSubsystem;
 
-bool StartPIE(bool bSimulateInEditor);
 void SetupMRUKSubsystem();
 void LoadSceneFromJson();
 void TeardownMRUKSubsystem();
 using FAutomationTestBase::TestEqual; // Allows base class function overloads to be accessed
 bool TestEqual(const TCHAR* What, const FVector2D Actual, const FVector2D Expected, float Tolerance = UE_KINDA_SMALL_NUMBER);
 END_DEFINE_SPEC(FMRUKSpec)
-
-bool FMRUKSpec::StartPIE(bool bSimulateInEditor)
-{
-	FLevelEditorModule& LevelEditorModule = FModuleManager::Get().GetModuleChecked<FLevelEditorModule>(TEXT("LevelEditor"));
-
-	FRequestPlaySessionParams Params;
-	Params.DestinationSlateViewport = LevelEditorModule.GetFirstActiveViewport();
-	if (bSimulateInEditor)
-	{
-		Params.WorldType = EPlaySessionWorldType::SimulateInEditor;
-	}
-
-	// Make sure the player start location is a valid location.
-	if (GUnrealEd->CheckForPlayerStart() == nullptr)
-	{
-		FAutomationEditorCommonUtils::SetPlaySessionStartToActiveViewport(Params);
-	}
-
-	GUnrealEd->RequestPlaySession(Params);
-
-	return true;
-}
 
 void FMRUKSpec::SetupMRUKSubsystem()
 {
@@ -407,6 +381,31 @@ void FMRUKSpec::Define()
 			TestTrue("Room bounds valid", (bool)Room->RoomBounds.IsValid);
 		});
 
+		It(TEXT("Compute Centroid"), [this]() {
+			TestEqual("Scene load status", ToolkitSubsystem->SceneLoadStatus, EMRUKInitStatus::Complete);
+			const auto Room = ToolkitSubsystem->GetCurrentRoom();
+			if (!TestNotNull(TEXT("Current room"), Room))
+			{
+				return;
+			}
+
+			const TArray<TPair<double, FVector>> Inputs = {
+				{ 0.0, FVector(-63.212, 41.209, -129.629) },
+				{ 0.5, FVector(-65.876, 40.507, 1.873) },
+				{ 1.0, FVector(-68.540, 39.804, 133.376) },
+			};
+
+			for (int32 I = 0; I < Inputs.Num(); ++I)
+			{
+				const double Z = Inputs[I].Get<0>();
+				const FVector& ExpectedCentroid = Inputs[I].Get<1>();
+
+				const FVector Centroid = Room->ComputeCentroid(Z);
+				constexpr double Tolerance = 0.001;
+				TestEqual(TEXT("Centroid matches"), Centroid, ExpectedCentroid, Tolerance);
+			}
+		});
+
 		It(TEXT("Does room have"), [this]() {
 			auto Room = ToolkitSubsystem->GetCurrentRoom();
 			if (!TestNotNull(TEXT("Current room"), Room))
@@ -440,6 +439,16 @@ void FMRUKSpec::Define()
 			const auto ActualFacingDirection = Couch->GetFacingDirection();
 			constexpr double Tolerance = 0.001;
 			TestEqual(TEXT("Facing direction"), ActualFacingDirection, FVector{ 0.180, -0.984, 0.000 }, Tolerance);
+		});
+
+		It(TEXT("Get anchors by label"), [this] {
+			auto Room = ToolkitSubsystem->GetCurrentRoom();
+			if (!TestNotNull(TEXT("Current room"), Room))
+			{
+				return;
+			}
+			const TArray<AMRUKAnchor*>& Anchors = Room->GetAnchorsByLabel(TEXT("WALL_FACE"));
+			TestEqual(TEXT("All walls found"), Anchors.Num(), 8);
 		});
 
 		It(TEXT("Try get closest seat pose"), [this]() {
@@ -482,7 +491,7 @@ void FMRUKSpec::Define()
 				}
 
 				constexpr double Tolerance = 0.001;
-				TestEqual(TEXT("Actor UUID is the same"), Actor->SpaceQueryResult.UUID, TestData.ExpectedAnchorUUID);
+				TestEqual(TEXT("Actor UUID is the same"), Actor->AnchorUUID, TestData.ExpectedAnchorUUID);
 				TestEqual(TEXT("Location is the same"), ActualSeatTransform.GetLocation(), TestData.ExpectedLocation, Tolerance);
 				TestTrue(TEXT("Rotation is the same"), ActualSeatTransform.GetRotation().Equals(TestData.ExpectedRotation, Tolerance));
 			}
@@ -533,7 +542,7 @@ void FMRUKSpec::Define()
 					{
 						continue;
 					}
-					TestEqual(TEXT("Anchor Uuid"), ActualAnchor->SpaceQueryResult.UUID, TestData.ExpectedAnchorUUID.GetValue());
+					TestEqual(TEXT("Anchor Uuid"), ActualAnchor->AnchorUUID, TestData.ExpectedAnchorUUID.GetValue());
 				}
 				else
 				{
@@ -628,7 +637,7 @@ void FMRUKSpec::Define()
 						return;
 					}
 					constexpr double Tolerance = 0.15;
-					TestEqual(TEXT("Actor UUID is the same"), Actor->SpaceQueryResult.UUID, TestData.ExpectedAnchorUUID.GetValue());
+					TestEqual(TEXT("Actor UUID is the same"), Actor->AnchorUUID, TestData.ExpectedAnchorUUID.GetValue());
 					TestEqual(TEXT("Location is the same"), ActualOutPose.GetLocation(), TestData.ExpectedLocation, Tolerance);
 					TestTrue(TEXT("Rotation is the same"), ActualOutPose.GetRotation().Equals(TestData.ExpectedRotation, Tolerance));
 				}
@@ -647,7 +656,7 @@ void FMRUKSpec::Define()
 			{
 				return;
 			}
-			TestEqual(TEXT("Key wall anchor UUID is correct"), KeyWallAnchor->SpaceQueryResult.UUID, FOculusXRUUID({ 0x93, 0x4C, 0xE7, 0x5D, 0x63, 0xF0, 0x85, 0x6A, 0x94, 0x38, 0xDA, 0xB3, 0xAD, 0xA9, 0x54, 0x09 }));
+			TestEqual(TEXT("Key wall anchor UUID is correct"), KeyWallAnchor->AnchorUUID, FOculusXRUUID({ 0x93, 0x4C, 0xE7, 0x5D, 0x63, 0xF0, 0x85, 0x6A, 0x94, 0x38, 0xDA, 0xB3, 0xAD, 0xA9, 0x54, 0x09 }));
 		});
 
 		It(TEXT("Get largest surface"), [this]() {
@@ -662,14 +671,14 @@ void FMRUKSpec::Define()
 			{
 				return;
 			}
-			TestEqual(TEXT("Anchor UUID is correct"), Anchor->SpaceQueryResult.UUID, FOculusXRUUID({ 0xDE, 0x8D, 0xDD, 0xD9, 0x90, 0xAD, 0x5F, 0xCB, 0x8E, 0x7E, 0x23, 0x7E, 0x93, 0x8C, 0xB0, 0xD3 }));
+			TestEqual(TEXT("Anchor UUID is correct"), Anchor->AnchorUUID, FOculusXRUUID({ 0xDE, 0x8D, 0xDD, 0xD9, 0x90, 0xAD, 0x5F, 0xCB, 0x8E, 0x7E, 0x23, 0x7E, 0x93, 0x8C, 0xB0, 0xD3 }));
 
 			Anchor = Room->GetLargestSurface(FMRUKLabels::Screen);
 			if (!TestNotNull(TEXT("Anchor is not null"), Anchor))
 			{
 				return;
 			}
-			TestEqual(TEXT("Anchor UUID is correct"), Anchor->SpaceQueryResult.UUID, FOculusXRUUID({ 0x4F, 0x3D, 0x50, 0x69, 0x41, 0xFC, 0xDF, 0x2C, 0xDE, 0x52, 0x9B, 0x77, 0x8F, 0x7E, 0x2C, 0xA0 }));
+			TestEqual(TEXT("Anchor UUID is correct"), Anchor->AnchorUUID, FOculusXRUUID({ 0x4F, 0x3D, 0x50, 0x69, 0x41, 0xFC, 0xDF, 0x2C, 0xDE, 0x52, 0x9B, 0x77, 0x8F, 0x7E, 0x2C, 0xA0 }));
 		});
 
 		It(TEXT("Point inside room"), [this]() {
@@ -1055,7 +1064,7 @@ void FMRUKSpec::Define()
 				if (TestData.ExpectedUUID.IsSet())
 				{
 					TestNotNull(TEXT("Actual actor set"), ActualActor);
-					TestEqual(TEXT("Actual actor UUID"), ActualActor->SpaceQueryResult.UUID, TestData.ExpectedUUID.GetValue());
+					TestEqual(TEXT("Actual actor UUID"), ActualActor->AnchorUUID, TestData.ExpectedUUID.GetValue());
 				}
 				else
 				{
@@ -1148,7 +1157,7 @@ void FMRUKSpec::Define()
 				{ EMRUKCoordModeU::MaintainAspectRatio, EMRUKCoordModeV::Stretch },
 				{ EMRUKCoordModeU::MaintainAspectRatioSeamless, EMRUKCoordModeV::Metric },
 			};
-			Room->AttachProceduralMeshToWalls(WallTextureCoordinateModes);
+			Room->AttachProceduralMeshToWalls(WallTextureCoordinateModes, {});
 
 			if (TestTrue(TEXT("Has walls"), !Room->WallAnchors.IsEmpty()))
 			{
@@ -1180,6 +1189,70 @@ void FMRUKSpec::Define()
 					TestEqual(TEXT("Vertex 3 UV 1"), Section->ProcVertexBuffer[3].UV1, FVector2D(10.790611, -0.000000));
 					TestEqual(TEXT("Vertex 3 UV 2"), Section->ProcVertexBuffer[3].UV2, FVector2D(4.179547, -0.000000));
 					TestEqual(TEXT("Vertex 3 UV 3"), Section->ProcVertexBuffer[3].UV3, FVector2D(10.790611, -0.000000));
+				}
+			}
+		});
+
+		It(TEXT("ProceduralMesh with holes"), [this]() {
+			const auto Room = ToolkitSubsystem->GetCurrentRoom();
+			if (!TestNotNull(TEXT("Current room"), Room))
+			{
+				return;
+			}
+
+			Room->AttachProceduralMeshToWalls({}, { FMRUKLabels::WindowFrame, FMRUKLabels::DoorFrame });
+
+			if (TestTrue(TEXT("Has walls"), !Room->WallAnchors.IsEmpty()))
+			{
+				const auto ProceduralMeshComponent = Room->WallAnchors[6]->ProceduralMeshComponent;
+				if (!TestNotNull(TEXT("Has Procedural Mesh Component"), ProceduralMeshComponent.Get()))
+				{
+					return;
+				}
+				const auto Section = ProceduralMeshComponent->GetProcMeshSection(0);
+				if (!TestNotNull(TEXT("Mesh Section"), Section))
+				{
+					return;
+				}
+				if (TestEqual(TEXT("Vertex buffer size"), Section->ProcVertexBuffer.Num(), 8))
+				{
+					constexpr double Tolerance = 0.001;
+					TestEqual(TEXT("Vertex 0"), Section->ProcVertexBuffer[0].Position, FVector(0.0, -168.041, -131.505), Tolerance);
+					TestEqual(TEXT("Vertex 1"), Section->ProcVertexBuffer[1].Position, FVector(0.0, 168.041, -131.505), Tolerance);
+					TestEqual(TEXT("Vertex 2"), Section->ProcVertexBuffer[2].Position, FVector(0.0, 168.041, 131.505), Tolerance);
+					TestEqual(TEXT("Vertex 3"), Section->ProcVertexBuffer[3].Position, FVector(0.0, -168.041, 131.505), Tolerance);
+					TestEqual(TEXT("Vertex 4"), Section->ProcVertexBuffer[4].Position, FVector(0.0, 28.075, 111.358), Tolerance);
+					TestEqual(TEXT("Vertex 5"), Section->ProcVertexBuffer[5].Position, FVector(0.0, 143.493, 111.358), Tolerance);
+					TestEqual(TEXT("Vertex 6"), Section->ProcVertexBuffer[6].Position, FVector(0.0, 143.493, -61.585), Tolerance);
+					TestEqual(TEXT("Vertex 7"), Section->ProcVertexBuffer[7].Position, FVector(0.0, 28.075, -61.585), Tolerance);
+				}
+
+				if (TestEqual(TEXT("Index buffer size"), Section->ProcIndexBuffer.Num(), 24))
+				{
+					TestEqual(TEXT("Index 0"), Section->ProcIndexBuffer[0], 1);
+					TestEqual(TEXT("Index 1"), Section->ProcIndexBuffer[1], 5);
+					TestEqual(TEXT("Index 2"), Section->ProcIndexBuffer[2], 6);
+					TestEqual(TEXT("Index 3"), Section->ProcIndexBuffer[3], 0);
+					TestEqual(TEXT("Index 4"), Section->ProcIndexBuffer[4], 1);
+					TestEqual(TEXT("Index 5"), Section->ProcIndexBuffer[5], 6);
+					TestEqual(TEXT("Index 6"), Section->ProcIndexBuffer[6], 0);
+					TestEqual(TEXT("Index 7"), Section->ProcIndexBuffer[7], 6);
+					TestEqual(TEXT("Index 8"), Section->ProcIndexBuffer[8], 7);
+					TestEqual(TEXT("Index 9"), Section->ProcIndexBuffer[9], 3);
+					TestEqual(TEXT("Index 10"), Section->ProcIndexBuffer[10], 0);
+					TestEqual(TEXT("Index 11"), Section->ProcIndexBuffer[11], 7);
+					TestEqual(TEXT("Index 12"), Section->ProcIndexBuffer[12], 3);
+					TestEqual(TEXT("Index 13"), Section->ProcIndexBuffer[13], 7);
+					TestEqual(TEXT("Index 14"), Section->ProcIndexBuffer[14], 4);
+					TestEqual(TEXT("Index 15"), Section->ProcIndexBuffer[15], 3);
+					TestEqual(TEXT("Index 16"), Section->ProcIndexBuffer[16], 4);
+					TestEqual(TEXT("Index 17"), Section->ProcIndexBuffer[17], 5);
+					TestEqual(TEXT("Index 18"), Section->ProcIndexBuffer[18], 5);
+					TestEqual(TEXT("Index 19"), Section->ProcIndexBuffer[19], 1);
+					TestEqual(TEXT("Index 20"), Section->ProcIndexBuffer[20], 2);
+					TestEqual(TEXT("Index 21"), Section->ProcIndexBuffer[21], 5);
+					TestEqual(TEXT("Index 22"), Section->ProcIndexBuffer[22], 2);
+					TestEqual(TEXT("Index 23"), Section->ProcIndexBuffer[23], 3);
 				}
 			}
 		});

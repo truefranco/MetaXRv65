@@ -9,12 +9,39 @@ LICENSE file in the root directory of this source tree.
 
 #include "GameFramework/Actor.h"
 #include "Dom/JsonObject.h"
-#include "OculusXRRoomLayoutManagerComponent.h"
 #include "MRUtilityKit.h"
-#include "MRUtilityKitAnchorActorSpawner.h"
+#include "OculusXRAnchorTypes.h"
 #include "MRUtilityKitRoom.generated.h"
 
 class UMRUKRoomData;
+
+UENUM(BlueprintType)
+enum class EMRUKSpawnLocation : uint8
+{
+	Floating UMETA(DisplayName = "Floating"),				   // Spawn somewhere floating in the free space within the room
+	AnySurface UMETA(DisplayName = "Any surface"),			   // Spawn on any surface (i.e. a combination of all 3 options below)
+	VerticalSurfaces UMETA(DisplayName = "Vertical surfaces"), // Spawn only on vertical surfaces such as walls, windows, wall art, doors, etc...
+	OnTopOfSurface UMETA(DisplayName = "On top of surfaces"),  // Spawn on surfaces facing upwards such as ground, top of tables, beds, couches, etc...
+	HangingDown UMETA(DisplayName = "Hanging down")			   // Spawn on surfaces facing downwards such as the ceiling
+};
+
+enum class EMRUKBoxSide : uint8
+{
+	XPos,
+	XNeg,
+	YPos,
+	YNeg,
+	ZPos,
+	ZNeg,
+};
+
+UENUM(BlueprintType)
+enum class EMRUKRoomFilter : uint8
+{
+	None,
+	CurrentRoomOnly,
+	AllRooms
+};
 
 /**
  * Method to use when determining the position and rotation for the best pose.
@@ -63,6 +90,18 @@ public:
 	DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnAnchorRemoved, AMRUKAnchor*, Anchor);
 
 	/**
+	 * The space handle of this anchor
+	 */
+	UPROPERTY(VisibleInstanceOnly, Transient, BlueprintReadOnly, Category = "MR Utility Kit")
+	FOculusXRUInt64 SpaceHandle;
+
+	/**
+	 * The anchors UUID
+	 */
+	UPROPERTY(VisibleInstanceOnly, Transient, BlueprintReadOnly, Category = "MR Utility Kit")
+	FOculusXRUUID AnchorUUID;
+
+	/**
 	 * Event that gets fired if a anchor in this room was updated.
 	 * E.g. volume or plane changed.
 	 */
@@ -80,13 +119,6 @@ public:
 	 */
 	UPROPERTY(BlueprintAssignable, Category = "MR Utility Kit")
 	FOnAnchorRemoved OnAnchorRemoved;
-
-	/**
-	 * The space query from which this room was built.
-	 * It contains the UUID of the room.
-	 */
-	UPROPERTY(VisibleInstanceOnly, Transient, BlueprintReadOnly, Category = "MR Utility Kit")
-	FOculusXRSpaceQueryResult SpaceQueryResult;
 
 	/**
 	 * Bounds of the room.
@@ -136,6 +168,7 @@ public:
 	UPROPERTY(VisibleInstanceOnly, Transient, BlueprintReadOnly, Category = "MR Utility Kit")
 	TArray<TObjectPtr<AMRUKAnchor>> AllAnchors;
 
+
 	/**
 	 * Check whether the position is inside the room or not.
 	 * @param Position           The position in world space to check.
@@ -165,6 +198,19 @@ public:
 	 */
 	UFUNCTION(BlueprintCallable, Category = "MR Utility Kit")
 	bool GenerateRandomPositionInRoomFromStream(FVector& OutPosition, const FRandomStream& RandomStream, float MinDistanceToSurface = 0.0f, bool AvoidVolumes = false);
+
+	/**
+	 * Generates a random position on the surface of a given spawn location, while ensuring that the generated position is at least `MinDistanceToEdge` away from any edges. The `LabelFilter` parameter allows you to specify which types of surfaces should be considered for generating the random position.
+	 * 
+	 * @param SpawnLocation			The location where the random position should be generated.
+	 * @param MinDistanceToEdge		The minimum distance from the edge that the generated position must have.
+	 * @param LabelFilter			A filter that specifies which types of surfaces should be considered for generating the random position.
+	 * @param OutPosition			The generated position.
+	 * @param OutNormal				The normal vector of the generated position.
+	 * @return						A boolean value indicating whether a valid position was found. If no valid position could be found, both `OutPosition` and `OutNormal` will be set to zero vectors.
+	 */
+	UFUNCTION(BlueprintCallable, Category = "MR Utility Kit")
+	bool GenerateRandomPositionOnSurface(EMRUKSpawnLocation SpawnLocation, float MinDistanceToEdge, FMRUKLabelFilter LabelFilter, FVector& OutPosition, FVector& OutNormal);
 
 	/**
 	 * Cast a ray and return the closest hit anchor
@@ -199,8 +245,8 @@ public:
 
 	/**
 	 * Check if the room does have any of the labels.
-	 * @param Labels The labels to check.
-	 * @return Whether the label was found in the room.
+	 * @param Labels	The labels to check.
+	 * @return			Whether the label was found in the room.
 	 */
 	UFUNCTION(BlueprintCallable, Category = "MR Utility Kit")
 	bool DoesRoomHave(const TArray<FString>& Labels);
@@ -230,10 +276,10 @@ public:
 
 	/**
 	 * Finds the closest seat given a ray.
-	 * @param RayOrigin The origin of the ray.
-	 * @param RayDirection The direction of the ray.
-	 * @param OutSeatTransform The seat pose.
-	 * @return If any seat was found the Anchor that has seats available will be returned. Otherwise a null pointer.
+	 * @param RayOrigin				The origin of the ray.
+	 * @param RayDirection			The direction of the ray.
+	 * @param OutSeatTransform		The seat pose.
+	 * @return						If any seat was found the Anchor that has seats available will be returned. Otherwise a null pointer.
 	 */
 	UFUNCTION(BlueprintCallable, Category = "MR Utility Kit")
 	AMRUKAnchor* TryGetClosestSeatPose(const FVector& RayOrigin, const FVector& RayDirection, FTransform& OutSeatTransform);
@@ -289,36 +335,38 @@ public:
 	/**
 	 * Attach a procedural mesh to the walls. This is done at the room level to ensure the UV coordinates
 	 * can be done in a seamless way if desired.
-	 * @param WallTextureCoordinateModes Mode of the wall texture coordinates.
-	 * @param ProceduralMaterial Material to apply on top of the procedural mesh.
+	 * @param WallTextureCoordinateModes	Mode of the wall texture coordinates.
+	 * @param ProceduralMaterial			Material to apply on top of the procedural mesh.
 	 */
 	UFUNCTION(BlueprintCallable, Category = "MR Utility Kit", meta = (AutoCreateRefTerm = "WallTextureCoordinateModes"))
-	void AttachProceduralMeshToWalls(const TArray<FMRUKTexCoordModes>& WallTextureCoordinateModes, UMaterialInterface* ProceduralMaterial = nullptr);
+	void AttachProceduralMeshToWalls(const TArray<FMRUKTexCoordModes>& WallTextureCoordinateModes, const TArray<FString>& CutHoleLabels, UMaterialInterface* ProceduralMaterial = nullptr);
 
 	/**
 	 * Spawn meshes on the position of the anchors of the room.
 	 * The actors should have Z as up Y as right and X as forward.
 	 * The pivot point should be in the bottom center.
-	 * @param SpawnGroups                A map wich tells to spawn which actor to a given label.
+	 * @param SpawnGroups                A map which tells to spawn which actor to a given label.
+	 * @param CutHoleLabels		         Labels for which the generated mesh should have holes. Only works with planes.
 	 * @param ProceduralMaterial         Material to apply on top of the procedural mesh if any.
 	 * @param ShouldFallbackToProcedural Whether or not it should by default fallback to generating a procedural mesh if no actor class has been specified for a label.
-	 * @return                           All spawned interior actors. 
+	 * @return                           All spawned interior actors.
 	 */
 	UFUNCTION(BlueprintCallable, Category = "MR Utility Kit")
-	TArray<AActor*> SpawnInterior(const TMap<FString, FMRUKSpawnGroup>& SpawnGroups, UMaterialInterface* ProceduralMaterial = nullptr, bool ShouldFallbackToProcedural = true);
+	TArray<AActor*> SpawnInterior(const TMap<FString, FMRUKSpawnGroup>& SpawnGroups, const TArray<FString>& CutHoleLabels, UMaterialInterface* ProceduralMaterial = nullptr, bool ShouldFallbackToProcedural = true);
 
 	/**
 	 * Spawn meshes on the position of the anchors of the room from a random stream.
 	 * The actors should have Z as up Y as right and X as forward.
 	 * The pivot point should be in the bottom center.
 	 * @param SpawnGroups                A map wich tells to spawn which actor to a given label.
+	 * @param CutHoleLabels		         Labels for which the generated mesh should have holes. Only works with planes.
 	 * @param RandomStream               A random generator to choose randomly between actor classes if there a multiple for one label.
 	 * @param ProceduralMaterial         Material to apply on top of the procedural mesh if any.
 	 * @param ShouldFallbackToProcedural Whether or not it should by default fallback to generating a procedural mesh if no actor class has been specified for a label.
-	 * @return                           All spawned interior actors. 
+	 * @return                           All spawned interior actors.
 	 */
 	UFUNCTION(BlueprintCallable, Category = "MR Utility Kit")
-	TArray<AActor*> SpawnInteriorFromStream(const TMap<FString, FMRUKSpawnGroup>& SpawnGroups, const FRandomStream& RandomStream, UMaterialInterface* ProceduralMaterial = nullptr, bool ShouldFallbackToProcedural = true);
+	TArray<AActor*> SpawnInteriorFromStream(const TMap<FString, FMRUKSpawnGroup>& SpawnGroups, const FRandomStream& RandomStream, const TArray<FString>& CutHoleLabels, UMaterialInterface* ProceduralMaterial = nullptr, bool ShouldFallbackToProcedural = true);
 
 	/**
 	 * Check if the given anchor is a wall anchor.
@@ -353,15 +401,29 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "MR Utility Kit")
 	bool LoadGlobalMeshFromJsonString(const FString& JsonString, UMaterialInterface* Material = nullptr);
 
+	/**
+	 * Compute the centroid of the room by taking the points of the floor boundary.
+	 * The centroid may be outside of the room for non convex rooms.
+	 * The Z value determines the height of the resulting vectors and ranges from
+	 * 0 to 1. A Z value of 1 corresponds to the ceiling positions Z, while a Z value
+	 * of 0 corresponds to the floor positions Z. Any value between 0 and 1 will
+	 * interpolate between the two values.
+	 * In case the floor and ceiling anchors haven't been loaded yet a zero vector
+	 * will be returned.
+	 * @param  Z Value used for interpolation of Z.
+	 * @return The centroid.
+	 */
+	UFUNCTION(BlueprintCallable, Category = "MR Utility Kit")
+	FVector ComputeCentroid(double Z = 0.5);
+
 public:
 	AMRUKRoom(const FObjectInitializer& ObjectInitializer);
 
-	void EndPlay(const EEndPlayReason::Type EndPlayReason) override;
-	void Destroyed() override;
+	void EndPlay(EEndPlayReason::Type Reason) override;
 
 	void LoadFromData(UMRUKRoomData* RoomData);
 
-	void AttachProceduralMeshToWalls(UMaterialInterface* ProceduralMaterial = nullptr);
+	void AttachProceduralMeshToWalls(const TArray<FString>& CutHoleLabels, UMaterialInterface* ProceduralMaterial = nullptr);
 	void UpdateWorldLock(APawn* Pawn, const FVector& HeadWorldPosition) const;
 
 	TSharedRef<FJsonObject> JsonSerialize();
@@ -382,7 +444,7 @@ private:
 	UFUNCTION(CallInEditor)
 	void AddAnchorToRoom(AMRUKAnchor* Anchor);
 
-	UProceduralMeshComponent* GetOrCreateGlobalMeshProceduralMeshComponent(bool& OutExistedAlready) const;
+	class UProceduralMeshComponent* GetOrCreateGlobalMeshProceduralMeshComponent(bool& OutExistedAlready) const;
 	void SetupGlobalMeshProceduralMeshComponent(UProceduralMeshComponent& ProcMeshComponent, bool ExistedAlready, UMaterialInterface* Material) const;
 
 	/**
@@ -394,4 +456,14 @@ private:
 	FOculusXRRoomLayout RoomLayout;
 	UPROPERTY()
 	AMRUKAnchor* KeyWallAnchor = nullptr;
+
+
+	struct Surface
+	{
+		AMRUKAnchor* Anchor;
+		float UsableArea;
+		bool IsPlane;
+		FBox2D Bounds;
+		EMRUKBoxSide Side;
+	};
 };

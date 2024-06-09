@@ -7,7 +7,12 @@ LICENSE file in the root directory of this source tree.
 */
 
 #include "MRUtilityKitEditor.h"
+
+#include "MRUtilityKitGridSliceResizer.h"
+#include "MRUtilityKitGridSliceResizerVisualization.h"
 #include "MRUtilityKitTelemetry.h"
+#include "UnrealEdGlobals.h"
+#include "Editor/UnrealEdEngine.h"
 
 #define LOCTEXT_NAMESPACE "FMRUKEditorModule"
 
@@ -18,10 +23,21 @@ void FMRUKEditorModule::StartupModule()
 	OculusXRTelemetry::IfActiveThen([]() {
 		MRUKTelemetry::FLoadPluginMarker().Start().End(OculusXRTelemetry::EAction::Success);
 	});
+
+	if (GUnrealEd)
+	{
+		const auto ResizerVisualizer = MakeShared<FMRUKGridSliceResizerVisualizer>();
+		GUnrealEd->RegisterComponentVisualizer(UMRUKGridSliceResizerComponent::StaticClass()->GetFName(), ResizerVisualizer);
+		ResizerVisualizer->OnRegister();
+	}
 }
 
 void FMRUKEditorModule::ShutdownModule()
 {
+	if (GUnrealEd)
+	{
+		GUnrealEd->UnregisterComponentVisualizer(UMRUKGridSliceResizerComponent::StaticClass()->GetFName());
+	}
 }
 
 #undef LOCTEXT_NAMESPACE

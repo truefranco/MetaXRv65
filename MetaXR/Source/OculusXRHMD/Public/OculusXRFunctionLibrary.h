@@ -180,6 +180,12 @@ class OCULUSXRHMD_API UOculusXRFunctionLibrary : public UBlueprintFunctionLibrar
 	static float GetGPUFrameTime();
 
 	/**
+	* Returns the performance metrics
+	*/
+	UFUNCTION(BlueprintPure, Category = "OculusLibrary")
+	static void GetPerformanceMetrics(FOculusXRPerformanceMetrics& PerformanceMetrics);
+
+	/**
 	* Returns the foveated rendering method currently being used
 	*/
 	UFUNCTION(BlueprintCallable, Category = "OculusLibrary")
@@ -299,7 +305,7 @@ class OCULUSXRHMD_API UOculusXRFunctionLibrary : public UBlueprintFunctionLibrar
 	static bool IsColorPassthroughSupported();
 
 	/**
-	* Create the environment depth texture swap chain and start receiving 
+	* Create the environment depth texture swap chain and start receiving
 	* depth texture every frame until stopped.
 	*/
 	UFUNCTION(BlueprintCallable, Category = "OculusLibrary")
@@ -355,6 +361,7 @@ class OCULUSXRHMD_API UOculusXRFunctionLibrary : public UBlueprintFunctionLibrar
 	 * Returns IStereoLayers interface to work with overlays.
 	 */
 	static class IStereoLayers* GetStereoLayers();
+
 
 	/* GUARDIAN API */
 	/**

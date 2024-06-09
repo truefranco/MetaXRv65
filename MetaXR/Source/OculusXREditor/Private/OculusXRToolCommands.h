@@ -30,6 +30,7 @@ public:
 
 	TSharedPtr<FUICommandInfo> OpenProjectSetupTool;
 	TSharedPtr<FUICommandInfo> ToggleDeploySo;
+	TSharedPtr<FUICommandInfo> ToggleIterativeCookOnTheFly;
 	TSharedPtr<FUICommandInfo> OpenPlatWindow;
 	TSharedPtr<FUICommandInfo> ToggleMetaXRSim;
 	TSharedPtr<FUICommandInfo> LaunchGameRoom;

@@ -7,9 +7,12 @@ LICENSE file in the root directory of this source tree.
 */
 #pragma once
 
+#include "MRUtilityKit.h"
 #include "GameFramework/Actor.h"
 #include "MRUtilityKitGuardian.h"
 #include "MRUtilityKitGuardianSpawner.generated.h"
+
+class AMRUKRoom;
 
 /**
  * Show a guardian if the player gets close to any furniture or walls.
@@ -23,11 +26,11 @@ public:
 	AMRUKGuardianSpawner();
 
 	/**
-	 * Whether SpawnGuardian() should be called automatically after the scene 
-	 * toolkit has been initialized.
+	 * Whether SpawnGuardian() should be called automatically after the mixed reality utility kit 
+	 * has been initialized.
 	 */
 	UPROPERTY(EditAnywhere, Category = "MR Utility Kit")
-	bool SpawnOnStart = true;
+	EMRUKSpawnMode SpawnMode = EMRUKSpawnMode::CurrentRoomOnly;
 
 	/**
 	 * How close the camera needs to come to a surface before the guardian appears.
@@ -43,11 +46,11 @@ public:
 	bool EnableFade = true;
 
 	/**
-	 * Spawn the guardian. This will get called automatically after the scene toolkit has 
-	 * been initialized if SpawnOnStart is set to true.
+	 * Spawn the guardian. This will get called automatically after the mixed reality utility kit has 
+	 * been initialized if SpawnMode is set to something other than None.
 	 */
 	UFUNCTION(BlueprintCallable, Category = "MR Utility Kit")
-	void SpawnGuardian();
+	void SpawnGuardians(AMRUKRoom* Room);
 
 	/**
 	 * Set the guardian material to a different one.
@@ -81,18 +84,27 @@ protected:
 	UPROPERTY(EditAnywhere, BlueprintSetter = SetGridDensity, Category = "MR Utility Kit")
 	double GridDensity = 2.0;
 
-	UPROPERTY(VisibleInstanceOnly, BlueprintReadOnly, Category = "MR Utility Kit")
-	TArray<AMRUKGuardian*> GuardianActors;
-
 	void BeginPlay() override;
-	void EndPlay(const EEndPlayReason::Type EndPlayReason) override;
 #if WITH_EDITOR
 	void PostEditChangeProperty(FPropertyChangedEvent& PropertyChangedEvent) override;
 #endif
 
 private:
+	// Room UUID to spawned actors in this room
+	TMap<AMRUKRoom*, TArray<AMRUKGuardian*>> SpawnedGuardians;
+
+	UPROPERTY()
 	TObjectPtr<UMaterialInstanceDynamic> DynamicGuardianMaterial = nullptr;
-	void DestroyGuardians();
+
 	UFUNCTION()
-	void SceneLoaded(bool Success);
+	void DestroyGuardians(AMRUKRoom* Room);
+
+	UFUNCTION()
+	void OnRoomCreated(AMRUKRoom* Room);
+
+	UFUNCTION()
+	void OnRoomUpdated(AMRUKRoom* Room);
+
+	UFUNCTION()
+	void OnRoomRemoved(AMRUKRoom* Room);
 };

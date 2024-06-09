@@ -42,7 +42,7 @@ void FMetaXRSimulator::ToggleOpenXRRuntime()
 			TEXT(""));
 		FWindowsPlatformMisc::SetEnvironmentVar(*OpenXrRuntimeEnvKey, *PrevOpenXrRuntimeEnvKey);
 
-		UE_LOG(LogMetaXRSim, Error, TEXT("Meta XR Simulator is deactivated. (%s : %s)"), *OpenXrRuntimeEnvKey, *PrevOpenXrRuntimeEnvKey);
+		UE_LOG(LogMetaXRSim, Log, TEXT("Meta XR Simulator is deactivated. (%s : %s)"), *OpenXrRuntimeEnvKey, *PrevOpenXrRuntimeEnvKey);
 		const auto& NotEnd = Event.AddAnnotation("action", "deactivated");
 	}
 	else
@@ -54,7 +54,7 @@ void FMetaXRSimulator::ToggleOpenXRRuntime()
 			*CurOpenXrRuntimeEnvKey);
 		FWindowsPlatformMisc::SetEnvironmentVar(*OpenXrRuntimeEnvKey, *MetaXRSimPath);
 
-		UE_LOG(LogMetaXRSim, Error, TEXT("Meta XR Simulator is activated. (%s : %s)"), *OpenXrRuntimeEnvKey, *MetaXRSimPath);
+		UE_LOG(LogMetaXRSim, Log, TEXT("Meta XR Simulator is activated. (%s : %s)"), *OpenXrRuntimeEnvKey, *MetaXRSimPath);
 		const auto& NotEnd = Event.AddAnnotation("action", "activated");
 	}
 }

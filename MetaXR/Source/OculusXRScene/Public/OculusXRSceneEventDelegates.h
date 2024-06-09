@@ -9,7 +9,7 @@
 
 
 UCLASS()
-class UOculusXRSceneEventDelegates : public UEngineSubsystem
+class OCULUSXRSCENE_API UOculusXRSceneEventDelegates : public UEngineSubsystem
 {
 	GENERATED_BODY()
 public:

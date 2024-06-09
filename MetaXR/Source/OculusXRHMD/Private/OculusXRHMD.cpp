@@ -50,6 +50,7 @@
 
 #if WITH_EDITOR
 #include "Editor/UnrealEd/Classes/Editor/EditorEngine.h"
+#include "Settings/LevelEditorPlaySettings.h"
 #endif
 
 #if !UE_BUILD_SHIPPING
@@ -252,6 +253,95 @@ namespace OculusXRHMD
 		// immediately - meaning two render frames were enqueued in the span of one game tick.
 	}
 
+#ifdef WITH_OCULUS_BRANCH
+	void FOculusXRHMD::SwitchPrimaryPIE(int PrimaryPIEIndex)
+	{
+		CurPlayerIndex = PrimaryPIEIndex;
+	}
+#endif
+
+	void FOculusXRHMD::InitMultiPlayerPoses(const FPose& CurPose)
+	{
+#if WITH_EDITOR && PLATFORM_WINDOWS
+		if (!GIsEditor || MultiPlayerPoses.Num())
+		{
+			return;
+		}
+
+		ovrpBool bAppHasVRFocus = ovrpBool_False;
+		FOculusXRHMDModule::GetPluginWrapper().GetAppHasVrFocus2(&bAppHasVRFocus);
+		if (!bAppHasVRFocus)
+			return;
+
+		ULevelEditorPlaySettings* PlayInSettings = GetMutableDefault<ULevelEditorPlaySettings>();
+		check(PlayInSettings);
+		int PlayNumberOfClients;
+		PlayInSettings->GetPlayNumberOfClients(PlayNumberOfClients);
+		if (PlayNumberOfClients <= 1)
+		{
+			return;
+		}
+		LastFrameHMDHeadPose = CurPose;
+		MultiPlayerPoses.Empty();
+		MultiPlayerPoses.InsertDefaulted(0, PlayNumberOfClients);
+		for (auto& PlayerPose : MultiPlayerPoses)
+		{
+			PlayerPose = CurPose;
+		}
+		UE_LOG(LogHMD, Log, TEXT("MultiPlayer poses are initialized."));
+#endif
+	}
+
+	void FOculusXRHMD::ResetMultiPlayerPoses()
+	{
+#if WITH_EDITOR && PLATFORM_WINDOWS
+		if (!GIsEditor || GetMutableDefault<UOculusXRHMDRuntimeSettings>()->MPPoseRestoreType == EOculusXRMPPoseRestoreType::Disabled)
+		{
+			return;
+		}
+
+		CurPlayerIndex = 0;
+		LastFrameHMDHeadPose = FPose();
+		MultiPlayerPoses.Empty();
+#endif
+	}
+
+	void FOculusXRHMD::ReCalcMultiPlayerPoses(FPose& CurHMDHeadPose)
+	{
+#if WITH_EDITOR && PLATFORM_WINDOWS
+		if (!GIsEditor || GetMutableDefault<UOculusXRHMDRuntimeSettings>()->MPPoseRestoreType == EOculusXRMPPoseRestoreType::Disabled)
+		{
+			return;
+		}
+
+		if (!MultiPlayerPoses.Num())
+		{
+			InitMultiPlayerPoses(CurHMDHeadPose);
+		}
+
+		if (!MultiPlayerPoses.Num())
+		{
+			return;
+		}
+
+		FPose& PlayerPose = MultiPlayerPoses[CurPlayerIndex];
+		if (GetMutableDefault<UOculusXRHMDRuntimeSettings>()->MPPoseRestoreType == EOculusXRMPPoseRestoreType::PositionOnly)
+		{
+			FVector DeltaPosition = CurHMDHeadPose.Position - LastFrameHMDHeadPose.Position;
+			PlayerPose.Position += DeltaPosition;
+			LastFrameHMDHeadPose.Position = CurHMDHeadPose.Position;
+			CurHMDHeadPose.Position = PlayerPose.Position;
+		}
+		else
+		{
+			FPose DeltaPose = LastFrameHMDHeadPose.Inverse() * CurHMDHeadPose;
+			PlayerPose = PlayerPose * DeltaPose;
+			LastFrameHMDHeadPose = CurHMDHeadPose;
+			CurHMDHeadPose = PlayerPose;
+		}
+#endif
+	}
+
 	bool FOculusXRHMD::GetCurrentPose(int32 InDeviceId, FQuat& OutOrientation, FVector& OutPosition)
 	{
 		OutOrientation = FQuat::Identity;
@@ -293,6 +383,11 @@ namespace OculusXRHMD
 		if (OVRP_FAILURE(FOculusXRHMDModule::GetPluginWrapper().GetNodePoseState3(ovrpStep_Render, CurrentFrame->FrameNumber, Node, &PoseState)) || !ConvertPose_Internal(PoseState.Pose, Pose, CurrentSettings, CurrentFrame->WorldToMetersScale))
 		{
 			return false;
+		}
+
+		if (Node == ovrpNode_Head || Node == ovrpNode_EyeCenter)
+		{
+			ReCalcMultiPlayerPoses(Pose);
 		}
 
 		OutPosition = Pose.Position;
@@ -596,6 +691,7 @@ namespace OculusXRHMD
 			//Settings->WorldToMetersScale = InWorldContext.World()->GetWorldSettings()->WorldToMeters;
 			//Settings->Flags.bWorldToMetersOverride = false;
 			InitDevice();
+			ResetMultiPlayerPoses();
 
 			FApp::SetUseVRFocus(true);
 			FApp::SetHasVRFocus(true);
@@ -672,11 +768,16 @@ namespace OculusXRHMD
 	DEFINE_STAT(STAT_OculusSystem_CpuCore6Util);
 	DEFINE_STAT(STAT_OculusSystem_CpuCore7Util);
 
-	void UpdateOculusSystemMetricsStats()
+	void UpdateOculusSystemMetricsStats(FOculusXRPerformanceMetrics& PerformanceMetrics)
 	{
 		if (FOculusXRHMDModule::GetPluginWrapper().GetInitialized() == ovrpBool_False)
 		{
 			return;
+		}
+
+		if (PerformanceMetrics.CpuCoreUtil.Num() == 0)
+		{
+			PerformanceMetrics.CpuCoreUtil.Init(0, 8);
 		}
 
 		ovrpBool bIsSupported;
@@ -686,56 +787,64 @@ namespace OculusXRHMD
 		{
 			if (OVRP_SUCCESS(FOculusXRHMDModule::GetPluginWrapper().GetPerfMetricsFloat(ovrpPerfMetrics_App_CpuTime_Float, &valueFloat)))
 			{
-				SET_FLOAT_STAT(STAT_OculusSystem_AppCpuTime, valueFloat * 1000);
+				PerformanceMetrics.AppCpuTime = valueFloat * 1000;
+				SET_FLOAT_STAT(STAT_OculusSystem_AppCpuTime, PerformanceMetrics.AppCpuTime);
 			}
 		}
 		if (OVRP_SUCCESS(FOculusXRHMDModule::GetPluginWrapper().IsPerfMetricsSupported(ovrpPerfMetrics_App_GpuTime_Float, &bIsSupported)) && bIsSupported == ovrpBool_True)
 		{
 			if (OVRP_SUCCESS(FOculusXRHMDModule::GetPluginWrapper().GetPerfMetricsFloat(ovrpPerfMetrics_App_GpuTime_Float, &valueFloat)))
 			{
-				SET_FLOAT_STAT(STAT_OculusSystem_AppGpuTime, valueFloat * 1000);
+				PerformanceMetrics.AppGpuTime = valueFloat * 1000;
+				SET_FLOAT_STAT(STAT_OculusSystem_AppGpuTime, PerformanceMetrics.AppGpuTime);
 			}
 		}
 		if (OVRP_SUCCESS(FOculusXRHMDModule::GetPluginWrapper().IsPerfMetricsSupported(ovrpPerfMetrics_Compositor_CpuTime_Float, &bIsSupported)) && bIsSupported == ovrpBool_True)
 		{
 			if (OVRP_SUCCESS(FOculusXRHMDModule::GetPluginWrapper().GetPerfMetricsFloat(ovrpPerfMetrics_Compositor_CpuTime_Float, &valueFloat)))
 			{
-				SET_FLOAT_STAT(STAT_OculusSystem_ComCpuTime, valueFloat * 1000);
+				PerformanceMetrics.ComCpuTime = valueFloat * 1000;
+				SET_FLOAT_STAT(STAT_OculusSystem_ComCpuTime, PerformanceMetrics.ComCpuTime);
 			}
 		}
 		if (OVRP_SUCCESS(FOculusXRHMDModule::GetPluginWrapper().IsPerfMetricsSupported(ovrpPerfMetrics_Compositor_GpuTime_Float, &bIsSupported)) && bIsSupported == ovrpBool_True)
 		{
 			if (OVRP_SUCCESS(FOculusXRHMDModule::GetPluginWrapper().GetPerfMetricsFloat(ovrpPerfMetrics_Compositor_GpuTime_Float, &valueFloat)))
 			{
-				SET_FLOAT_STAT(STAT_OculusSystem_ComGpuTime, valueFloat * 1000);
+				PerformanceMetrics.ComGpuTime = valueFloat * 1000;
+				SET_FLOAT_STAT(STAT_OculusSystem_ComGpuTime, PerformanceMetrics.ComGpuTime);
 			}
 		}
 		if (OVRP_SUCCESS(FOculusXRHMDModule::GetPluginWrapper().IsPerfMetricsSupported(ovrpPerfMetrics_Compositor_DroppedFrameCount_Int, &bIsSupported)) && bIsSupported == ovrpBool_True)
 		{
 			if (OVRP_SUCCESS(FOculusXRHMDModule::GetPluginWrapper().GetPerfMetricsInt(ovrpPerfMetrics_Compositor_DroppedFrameCount_Int, &valueInt)))
 			{
-				SET_DWORD_STAT(STAT_OculusSystem_DroppedFrames, valueInt);
+				PerformanceMetrics.DroppedFrames = valueInt;
+				SET_DWORD_STAT(STAT_OculusSystem_DroppedFrames, PerformanceMetrics.DroppedFrames);
 			}
 		}
 		if (OVRP_SUCCESS(FOculusXRHMDModule::GetPluginWrapper().IsPerfMetricsSupported(ovrpPerfMetrics_System_GpuUtilPercentage_Float, &bIsSupported)) && bIsSupported == ovrpBool_True)
 		{
 			if (OVRP_SUCCESS(FOculusXRHMDModule::GetPluginWrapper().GetPerfMetricsFloat(ovrpPerfMetrics_System_GpuUtilPercentage_Float, &valueFloat)))
 			{
-				SET_FLOAT_STAT(STAT_OculusSystem_GpuUtil, valueFloat * 100);
+				PerformanceMetrics.GpuUtil = valueFloat * 100;
+				SET_FLOAT_STAT(STAT_OculusSystem_GpuUtil, PerformanceMetrics.GpuUtil);
 			}
 		}
 		if (OVRP_SUCCESS(FOculusXRHMDModule::GetPluginWrapper().IsPerfMetricsSupported(ovrpPerfMetrics_System_CpuUtilAveragePercentage_Float, &bIsSupported)) && bIsSupported == ovrpBool_True)
 		{
 			if (OVRP_SUCCESS(FOculusXRHMDModule::GetPluginWrapper().GetPerfMetricsFloat(ovrpPerfMetrics_System_CpuUtilAveragePercentage_Float, &valueFloat)))
 			{
-				SET_FLOAT_STAT(STAT_OculusSystem_CpuUtilAvg, valueFloat * 100);
+				PerformanceMetrics.CpuUtilAvg = valueFloat * 100;
+				SET_FLOAT_STAT(STAT_OculusSystem_CpuUtilAvg, PerformanceMetrics.CpuUtilAvg);
 			}
 		}
 		if (OVRP_SUCCESS(FOculusXRHMDModule::GetPluginWrapper().IsPerfMetricsSupported(ovrpPerfMetrics_System_CpuUtilWorstPercentage_Float, &bIsSupported)) && bIsSupported == ovrpBool_True)
 		{
 			if (OVRP_SUCCESS(FOculusXRHMDModule::GetPluginWrapper().GetPerfMetricsFloat(ovrpPerfMetrics_System_CpuUtilWorstPercentage_Float, &valueFloat)))
 			{
-				SET_FLOAT_STAT(STAT_OculusSystem_CpuUtilWorst, valueFloat * 100);
+				PerformanceMetrics.CpuUtilWorst = valueFloat * 100;
+				SET_FLOAT_STAT(STAT_OculusSystem_CpuUtilWorst, PerformanceMetrics.CpuUtilWorst);
 			}
 		}
 		if (OVRP_SUCCESS(FOculusXRHMDModule::GetPluginWrapper().IsPerfMetricsSupported(ovrpPerfMetrics_Device_CpuClockFrequencyInMHz_Float, &bIsSupported)) && bIsSupported == ovrpBool_True)
@@ -770,65 +879,88 @@ namespace OculusXRHMD
 		{
 			if (OVRP_SUCCESS(FOculusXRHMDModule::GetPluginWrapper().GetPerfMetricsInt(ovrpPerfMetrics_Compositor_SpaceWarp_Mode_Int, &valueInt)))
 			{
-				SET_DWORD_STAT(STAT_OculusSystem_ComSpaceWarpMode, valueInt);
+				PerformanceMetrics.ComSpaceWarpMode = valueInt;
+				SET_DWORD_STAT(STAT_OculusSystem_ComSpaceWarpMode, PerformanceMetrics.ComSpaceWarpMode);
 			}
 		}
 		if (OVRP_SUCCESS(FOculusXRHMDModule::GetPluginWrapper().IsPerfMetricsSupported(ovrpPerfMetrics_Device_CpuCore0UtilPercentage_Float, &bIsSupported)) && bIsSupported == ovrpBool_True)
 		{
 			if (OVRP_SUCCESS(FOculusXRHMDModule::GetPluginWrapper().GetPerfMetricsFloat(ovrpPerfMetrics_Device_CpuCore0UtilPercentage_Float, &valueFloat)))
 			{
-				SET_FLOAT_STAT(STAT_OculusSystem_CpuCore0Util, valueFloat);
+				PerformanceMetrics.CpuCoreUtil[0] = valueFloat;
+				SET_FLOAT_STAT(STAT_OculusSystem_CpuCore0Util, PerformanceMetrics.CpuCoreUtil[0]);
 			}
 		}
 		if (OVRP_SUCCESS(FOculusXRHMDModule::GetPluginWrapper().IsPerfMetricsSupported(ovrpPerfMetrics_Device_CpuCore1UtilPercentage_Float, &bIsSupported)) && bIsSupported == ovrpBool_True)
 		{
 			if (OVRP_SUCCESS(FOculusXRHMDModule::GetPluginWrapper().GetPerfMetricsFloat(ovrpPerfMetrics_Device_CpuCore1UtilPercentage_Float, &valueFloat)))
 			{
-				SET_FLOAT_STAT(STAT_OculusSystem_CpuCore1Util, valueFloat);
+				PerformanceMetrics.CpuCoreUtil[1] = valueFloat;
+				SET_FLOAT_STAT(STAT_OculusSystem_CpuCore1Util, PerformanceMetrics.CpuCoreUtil[1]);
 			}
 		}
 		if (OVRP_SUCCESS(FOculusXRHMDModule::GetPluginWrapper().IsPerfMetricsSupported(ovrpPerfMetrics_Device_CpuCore2UtilPercentage_Float, &bIsSupported)) && bIsSupported == ovrpBool_True)
 		{
 			if (OVRP_SUCCESS(FOculusXRHMDModule::GetPluginWrapper().GetPerfMetricsFloat(ovrpPerfMetrics_Device_CpuCore2UtilPercentage_Float, &valueFloat)))
 			{
-				SET_FLOAT_STAT(STAT_OculusSystem_CpuCore2Util, valueFloat);
+				PerformanceMetrics.CpuCoreUtil[2] = valueFloat;
+				SET_FLOAT_STAT(STAT_OculusSystem_CpuCore2Util, PerformanceMetrics.CpuCoreUtil[2]);
 			}
 		}
 		if (OVRP_SUCCESS(FOculusXRHMDModule::GetPluginWrapper().IsPerfMetricsSupported(ovrpPerfMetrics_Device_CpuCore3UtilPercentage_Float, &bIsSupported)) && bIsSupported == ovrpBool_True)
 		{
 			if (OVRP_SUCCESS(FOculusXRHMDModule::GetPluginWrapper().GetPerfMetricsFloat(ovrpPerfMetrics_Device_CpuCore3UtilPercentage_Float, &valueFloat)))
 			{
-				SET_FLOAT_STAT(STAT_OculusSystem_CpuCore3Util, valueFloat);
+				PerformanceMetrics.CpuCoreUtil[3] = valueFloat;
+				SET_FLOAT_STAT(STAT_OculusSystem_CpuCore3Util, PerformanceMetrics.CpuCoreUtil[3]);
 			}
 		}
 		if (OVRP_SUCCESS(FOculusXRHMDModule::GetPluginWrapper().IsPerfMetricsSupported(ovrpPerfMetrics_Device_CpuCore4UtilPercentage_Float, &bIsSupported)) && bIsSupported == ovrpBool_True)
 		{
 			if (OVRP_SUCCESS(FOculusXRHMDModule::GetPluginWrapper().GetPerfMetricsFloat(ovrpPerfMetrics_Device_CpuCore4UtilPercentage_Float, &valueFloat)))
 			{
-				SET_FLOAT_STAT(STAT_OculusSystem_CpuCore4Util, valueFloat);
+				PerformanceMetrics.CpuCoreUtil[4] = valueFloat;
+				SET_FLOAT_STAT(STAT_OculusSystem_CpuCore4Util, PerformanceMetrics.CpuCoreUtil[4]);
 			}
 		}
 		if (OVRP_SUCCESS(FOculusXRHMDModule::GetPluginWrapper().IsPerfMetricsSupported(ovrpPerfMetrics_Device_CpuCore5UtilPercentage_Float, &bIsSupported)) && bIsSupported == ovrpBool_True)
 		{
 			if (OVRP_SUCCESS(FOculusXRHMDModule::GetPluginWrapper().GetPerfMetricsFloat(ovrpPerfMetrics_Device_CpuCore5UtilPercentage_Float, &valueFloat)))
 			{
-				SET_FLOAT_STAT(STAT_OculusSystem_CpuCore5Util, valueFloat);
+				PerformanceMetrics.CpuCoreUtil[5] = valueFloat;
+				SET_FLOAT_STAT(STAT_OculusSystem_CpuCore5Util, PerformanceMetrics.CpuCoreUtil[5]);
 			}
 		}
 		if (OVRP_SUCCESS(FOculusXRHMDModule::GetPluginWrapper().IsPerfMetricsSupported(ovrpPerfMetrics_Device_CpuCore6UtilPercentage_Float, &bIsSupported)) && bIsSupported == ovrpBool_True)
 		{
 			if (OVRP_SUCCESS(FOculusXRHMDModule::GetPluginWrapper().GetPerfMetricsFloat(ovrpPerfMetrics_Device_CpuCore6UtilPercentage_Float, &valueFloat)))
 			{
-				SET_FLOAT_STAT(STAT_OculusSystem_CpuCore6Util, valueFloat);
+				PerformanceMetrics.CpuCoreUtil[6] = valueFloat;
+				SET_FLOAT_STAT(STAT_OculusSystem_CpuCore6Util, PerformanceMetrics.CpuCoreUtil[6]);
 			}
 		}
 		if (OVRP_SUCCESS(FOculusXRHMDModule::GetPluginWrapper().IsPerfMetricsSupported(ovrpPerfMetrics_Device_CpuCore7UtilPercentage_Float, &bIsSupported)) && bIsSupported == ovrpBool_True)
 		{
 			if (OVRP_SUCCESS(FOculusXRHMDModule::GetPluginWrapper().GetPerfMetricsFloat(ovrpPerfMetrics_Device_CpuCore7UtilPercentage_Float, &valueFloat)))
 			{
-				SET_FLOAT_STAT(STAT_OculusSystem_CpuCore7Util, valueFloat);
+				PerformanceMetrics.CpuCoreUtil[7] = valueFloat;
+				SET_FLOAT_STAT(STAT_OculusSystem_CpuCore7Util, PerformanceMetrics.CpuCoreUtil[7]);
 			}
 		}
+	}
+
+	const FOculusXRPerformanceMetrics FOculusXRHMD::GetPerformanceMetrics() const
+	{
+		return PerformanceMetrics;
+	}
+
+	void FOculusXRHMD::OnBeginRendering_GameThread()
+	{
+		CheckInGameThread();
+		// We need to make sure we keep the Wait/Begin/End triplet in sync, so here we signal that we
+		// can wait for the next frame in the next tick. Without this signal it's possible that two ticks
+		// happen before the next frame is actually rendered.
+		bShouldWait_GameThread = true;
 	}
 
 	bool FOculusXRHMD::OnStartGameFrame(FWorldContext& InWorldContext)
@@ -852,7 +984,7 @@ namespace OculusXRHMD
 			return false;
 		}
 
-		UpdateOculusSystemMetricsStats();
+		UpdateOculusSystemMetricsStats(PerformanceMetrics);
 
 		RefreshTrackingToWorldTransform(InWorldContext);
 
@@ -1142,6 +1274,8 @@ namespace OculusXRHMD
 			EyeLayer_RenderThread.Reset();
 
 			DeferredDeletion.HandleLayerDeferredDeletionQueue_RenderThread(true);
+
+			EnableInsightPassthrough_RenderThread(false);
 		});
 
 		Frame.Reset();
@@ -1159,7 +1293,6 @@ namespace OculusXRHMD
 			FApp::SetHasVRFocus(false);
 		}
 
-		ShutdownInsightPassthrough();
 		ShutdownSession();
 	}
 
@@ -1382,6 +1515,59 @@ namespace OculusXRHMD
 		}
 	}
 
+	void FOculusXRHMD::GetMotionControllerData(UObject* WorldContext, const EControllerHand Hand, FXRMotionControllerData& MotionControllerData)
+	{
+		MotionControllerData.DeviceName = OculusSystemName;
+		MotionControllerData.ApplicationInstanceID = FApp::GetInstanceId();
+		MotionControllerData.DeviceVisualType = EXRVisualType::Controller;
+		MotionControllerData.TrackingStatus = ETrackingStatus::NotTracked;
+		MotionControllerData.HandIndex = Hand;
+		MotionControllerData.bValid = false;
+
+		if ((Hand == EControllerHand::Left) || (Hand == EControllerHand::Right))
+		{
+			const FName MotionControllerName("OculusXRInputDevice");
+			TArray<IMotionController*> MotionControllers = IModularFeatures::Get().GetModularFeatureImplementations<IMotionController>(IMotionController::GetModularFeatureName());
+			const IMotionController* MotionController = nullptr;
+			for (const IMotionController* Itr : MotionControllers)
+			{
+				if (Itr->GetMotionControllerDeviceTypeName() == MotionControllerName)
+				{
+					MotionController = Itr;
+					break;
+				}
+			}
+
+			const float WorldToMeters = GetWorldToMetersScale();
+			if (MotionController)
+			{
+				bool bSuccess = false;
+				FVector Position = FVector::ZeroVector;
+				FRotator Rotation = FRotator::ZeroRotator;
+				const FTransform TrackingToWorld = GetTrackingToWorldTransform();
+				const FName AimSource = Hand == EControllerHand::Left ? FName("LeftAim") : FName("RightAim");
+				bSuccess = MotionController->GetControllerOrientationAndPosition(0, AimSource, Rotation, Position, WorldToMeters);
+				if (bSuccess)
+				{
+					MotionControllerData.AimPosition = TrackingToWorld.TransformPosition(Position);
+					MotionControllerData.AimRotation = TrackingToWorld.TransformRotation(FQuat(Rotation));
+				}
+				MotionControllerData.bValid |= bSuccess;
+
+				FName GripSource = Hand == EControllerHand::Left ? FName("LeftGrip") : FName("RightGrip");
+				bSuccess = MotionController->GetControllerOrientationAndPosition(0, GripSource, Rotation, Position, WorldToMeters);
+				if (bSuccess)
+				{
+					MotionControllerData.GripPosition = TrackingToWorld.TransformPosition(Position);
+					MotionControllerData.GripRotation = TrackingToWorld.TransformRotation(FQuat(Rotation));
+				}
+				MotionControllerData.bValid |= bSuccess;
+
+				MotionControllerData.TrackingStatus = MotionController->GetControllerTrackingStatus(0, GripSource);
+			}
+		}
+	}
+
 	bool FOculusXRHMD::IsStereoEnabled() const
 	{
 		if (IsInGameThread())
@@ -1408,6 +1594,7 @@ namespace OculusXRHMD
 		if (bStereo)
 		{
 			LoadFromSettings();
+			CheckMultiPlayer();
 		}
 
 		return DoEnableStereo(bStereo);
@@ -2130,7 +2317,7 @@ namespace OculusXRHMD
 		IStereoLayers::FLayerDesc StereoLayerDesc;
 
 		ovrpBool cylinderSupported = ovrpBool_False;
-		ovrpResult result = FOculusXRHMDModule::GetPluginWrapper().IsLayerShapeSupported(ovrpShape_Cylinder, &cylinderSupported);
+		ovrpResult result = FOculusXRHMDModule::GetPluginWrapper().GetInitialized() ? FOculusXRHMDModule::GetPluginWrapper().IsLayerShapeSupported(ovrpShape_Cylinder, &cylinderSupported) : ovrpFailure;
 		if (OVRP_SUCCESS(result) && cylinderSupported)
 		{
 			StereoLayerDesc = IStereoLayers::FLayerDesc(FCylinderLayer(100.f, 488.f / 4, 180.f));
@@ -2148,6 +2335,7 @@ namespace OculusXRHMD
 		StereoLayerDesc.Flags |= IStereoLayers::ELayerFlags::LAYER_FLAG_QUAD_PRESERVE_TEX_RATIO;
 		return StereoLayerDesc;
 	}
+
 
 	void FOculusXRHMD::SetupViewFamily(FSceneViewFamily& InViewFamily)
 	{
@@ -2184,9 +2372,9 @@ namespace OculusXRHMD
 		StartRenderFrame_GameThread();
 	}
 
-	void FOculusXRHMD::UpdateInsightPassthrough()
+	void FOculusXRHMD::EnableInsightPassthrough_RenderThread(bool bEnablePassthrough)
 	{
-		const bool bShouldEnable = (InsightInitStatus == FInsightInitStatus::NotInitialized) && (Settings_RenderThread->Flags.bInsightPassthroughEnabled);
+		const bool bShouldEnable = (InsightInitStatus == FInsightInitStatus::NotInitialized) && bEnablePassthrough;
 
 		if (bShouldEnable)
 		{
@@ -2203,27 +2391,19 @@ namespace OculusXRHMD
 		}
 		else
 		{
-			const bool bShouldShutdown = (InsightInitStatus == FInsightInitStatus::Initialized) && (!Settings_RenderThread->Flags.bInsightPassthroughEnabled);
+			const bool bShouldShutdown = (InsightInitStatus == FInsightInitStatus::Initialized) && !bEnablePassthrough;
 			if (bShouldShutdown)
 			{
-				ShutdownInsightPassthrough();
-			}
-		}
-	}
-
-	void FOculusXRHMD::ShutdownInsightPassthrough()
-	{
-		if (InsightInitStatus == FInsightInitStatus::Initialized)
-		{
-			// it may already be deinitialized.
-			if (!FOculusXRHMDModule::GetPluginWrapper().GetInsightPassthroughInitialized() || OVRP_SUCCESS(FOculusXRHMDModule::GetPluginWrapper().ShutdownInsightPassthrough()))
-			{
-				UE_LOG(LogHMD, Log, TEXT("Passthrough shutdown"));
-				InsightInitStatus = FInsightInitStatus::NotInitialized;
-			}
-			else
-			{
-				UE_LOG(LogHMD, Log, TEXT("Failed to shut down passthrough. It may be still in use."));
+				// it may already be deinitialized.
+				if (!FOculusXRHMDModule::GetPluginWrapper().GetInsightPassthroughInitialized() || OVRP_SUCCESS(FOculusXRHMDModule::GetPluginWrapper().ShutdownInsightPassthrough()))
+				{
+					UE_LOG(LogHMD, Log, TEXT("Passthrough shutdown"));
+					InsightInitStatus = FInsightInitStatus::NotInitialized;
+				}
+				else
+				{
+					UE_LOG(LogHMD, Log, TEXT("Failed to shut down passthrough. It may be still in use."));
+				}
 			}
 		}
 	}
@@ -2287,7 +2467,7 @@ namespace OculusXRHMD
 		FAndroidApplication::GetJavaEnv();
 #endif
 
-		UpdateInsightPassthrough();
+		EnableInsightPassthrough_RenderThread(Settings_RenderThread->Flags.bInsightPassthroughEnabled);
 
 		// Start RHI frame
 		StartRHIFrame_RenderThread();
@@ -2305,7 +2485,9 @@ namespace OculusXRHMD
 	{
 		CheckInRenderThread();
 
-		if (InViewFamily.Views[0]->StereoPass != EStereoscopicPass::eSSP_FULL)
+		const bool bIsSceneCapture = InViewFamily.Views.Num() > 0 && InViewFamily.Views[0]->bIsSceneCapture;
+
+		if (!bIsSceneCapture && InViewFamily.Views[0]->StereoPass != EStereoscopicPass::eSSP_FULL)
 		{
 			FinishRenderFrame_RenderThread(GraphBuilder);
 		}
@@ -2410,6 +2592,8 @@ namespace OculusXRHMD
 		, ConsoleCommands(this)
 		, InsightInitStatus(FInsightInitStatus::NotInitialized)
 		, bShutdownRequestQueued(false)
+		, bShouldWait_GameThread(true)
+		, bIsRendering_RenderThread(false)
 	{
 		Flags.Raw = 0;
 		OCFlags.Raw = 0;
@@ -2434,6 +2618,11 @@ namespace OculusXRHMD
 		SplashRotation = FRotator();
 
 		bIsStandaloneStereoOnlyDevice = IHeadMountedDisplayModule::IsAvailable() && IHeadMountedDisplayModule::Get().IsStandaloneStereoOnlyDevice();
+
+		bMultiPlayer = false;
+		CurPlayerIndex = 0;
+		LastFrameHMDHeadPose = FPose();
+		MultiPlayerPoses.Empty();
 	}
 
 	FOculusXRHMD::~FOculusXRHMD()
@@ -2670,6 +2859,9 @@ namespace OculusXRHMD
 			bEyeTrackedFoveatedRenderingSupported = Supported == ovrpBool_True;
 			SetFoveatedRenderingMethod(Settings->FoveatedRenderingMethod);
 			SetFoveatedRenderingLevel(Settings->FoveatedRenderingLevel, Settings->bDynamicFoveatedRendering);
+
+			NextFrameNumber = 0;
+			WaitFrameNumber = (uint32)-1;
 		}
 
 		FOculusXRHMDModule::GetPluginWrapper().SetAppEngineInfo2(
@@ -2690,9 +2882,6 @@ namespace OculusXRHMD
 
 		OCFlags.NeedSetTrackingOrigin = true;
 
-		NextFrameNumber = 0;
-		WaitFrameNumber = (uint32)-1;
-
 		FOculusXRHMDModule::GetPluginWrapper().SetClientColorDesc((ovrpColorSpace)Settings->ColorSpace);
 
 		return true;
@@ -2707,6 +2896,8 @@ namespace OculusXRHMD
 		});
 
 		FOculusXRHMDModule::GetPluginWrapper().Shutdown2();
+
+		bIsRendering_RenderThread = false;
 	}
 
 	bool FOculusXRHMD::InitDevice()
@@ -2767,8 +2958,11 @@ namespace OculusXRHMD
 		UpdateHmdRenderInfo();
 		UpdateStereoRenderingParams();
 
-		ExecuteOnRenderThread([this](FRHICommandListImmediate& RHICmdList) {
+		const bool bEnablePassthrough = Settings->Flags.bInsightPassthroughEnabled;
+
+		ExecuteOnRenderThread([this, bEnablePassthrough](FRHICommandListImmediate& RHICmdList) {
 			InitializeEyeLayer_RenderThread(RHICmdList);
+			EnableInsightPassthrough_RenderThread(bEnablePassthrough);
 		});
 
 		if (!EyeLayer_RenderThread.IsValid() || !EyeLayer_RenderThread->GetSwapChain().IsValid())
@@ -4082,10 +4276,12 @@ namespace OculusXRHMD
 		ovrpEnvironmentDepthFrameDesc DepthFrameDesc[ovrpEye_Count];
 		if (FOculusXRHMDModule::GetPluginWrapper().GetEnvironmentDepthFrameDesc(ovrpEye_Left, &DepthFrameDesc[0]) != ovrpSuccess || !DepthFrameDesc[0].IsValid)
 		{
+			UE_LOG(LogHMD, Error, TEXT("Failed to load a depth texture frame description for the left eye."));
 			return false;
 		}
 		if (FOculusXRHMDModule::GetPluginWrapper().GetEnvironmentDepthFrameDesc(ovrpEye_Right, &DepthFrameDesc[1]) != ovrpSuccess || !DepthFrameDesc[1].IsValid)
 		{
+			UE_LOG(LogHMD, Error, TEXT("Failed to load a depth texture frame description for the right eye."));
 			return false;
 		}
 
@@ -4107,11 +4303,10 @@ namespace OculusXRHMD
 				// NOTE: This matrix is the same as applied in SetupViewFrustum in SceneView.cpp
 				auto ViewMatrix = DepthOrientation.Inverse().ToMatrix() * FMatrix(FPlane(0, 0, 1, 0), FPlane(1, 0, 0, 0), FPlane(0, 1, 0, 0), FPlane(0, 0, 0, 1));
 
-				auto DepthTranslation = ToFVector(DepthFrameDesc[i].CreatePose.Position) * WorldToMetersScale;
-
 				ovrpPoseStatef EyePoseState;
-				if (IsMobilePlatform(Settings->CurrentShaderPlatform) && OVRP_SUCCESS(FOculusXRHMDModule::GetPluginWrapper().GetNodePoseState3(ovrpStep_Render, Frame_RenderThread->FrameNumber, (ovrpNode)i, &EyePoseState)))
+				if (OVRP_SUCCESS(FOculusXRHMDModule::GetPluginWrapper().GetNodePoseState3(ovrpStep_Render, Frame_RenderThread->FrameNumber, (ovrpNode)i, &EyePoseState)))
 				{
+					auto DepthTranslation = ToFVector(DepthFrameDesc[i].CreatePose.Position) * WorldToMetersScale;
 					auto EyePos = ToFVector(EyePoseState.Pose.Position) * WorldToMetersScale;
 					auto Delta = EyePos - DepthTranslation;
 
@@ -4241,10 +4436,12 @@ namespace OculusXRHMD
 
 		if (!Frame_RenderThread.IsValid() || InView.bIsSceneCapture || InView.bIsReflectionCapture || InView.bIsPlanarReflection || !ComputeEnvironmentDepthParameters_RenderThread(DepthFactors, ScreenToDepthMatrices, nullptr, SwapchainIndex))
 		{
+			UE_LOG(LogHMD, Error, TEXT("Failed to compute a depth texture parameters"));
 			return;
 		}
 		if (SwapchainIndex >= EnvironmentDepthSwapchain.Num())
 		{
+			UE_LOG(LogHMD, Error, TEXT("Depth texture swapchain index %d outside of boundaries"), SwapchainIndex);
 			return;
 		}
 
@@ -4343,6 +4540,13 @@ namespace OculusXRHMD
 		CheckInGameThread();
 		check(Settings.IsValid());
 
+		// TODO: Below check should NOT be limited to bMultiPlayer specificially even though we haven't found a non-MultiPlayer case falling into this case yet.
+		//		Remove bMultiPlayer.
+		if (bMultiPlayer && !bShouldWait_GameThread)
+		{
+			return;
+		}
+
 		if (!Frame.IsValid())
 		{
 			Splash->UpdateLoadingScreen_GameThread(); //the result of this is used in CreateGameFrame to know if Frame is a "real" one or a "splash" one.
@@ -4371,6 +4575,7 @@ namespace OculusXRHMD
 						else
 						{
 							WaitFrameNumber = Frame->FrameNumber;
+							bShouldWait_GameThread = false;
 						}
 					}
 
@@ -4489,6 +4694,13 @@ namespace OculusXRHMD
 	{
 		CheckInRenderThread();
 
+		// TODO: Below check should NOT be limited to bMultiPlayer specificially even though we haven't found a non-MultiPlayer case falling into this case yet.
+		//		Remove bMultiPlayer.
+		if (bMultiPlayer && !bIsRendering_RenderThread)
+		{ //we must keep Frame_RenderThread alive if we haven't started to use it to render yet!
+			return;
+		}
+
 		if (Frame_RenderThread.IsValid())
 		{
 			UE_LOG(LogHMD, VeryVerbose, TEXT("FinishRenderFrame %u"), Frame_RenderThread->FrameNumber);
@@ -4505,6 +4717,8 @@ namespace OculusXRHMD
 				Frame_RenderThread.Reset();
 			});
 		}
+
+		bIsRendering_RenderThread = false;
 	}
 
 	void FOculusXRHMD::StartRHIFrame_RenderThread()
@@ -4567,6 +4781,12 @@ namespace OculusXRHMD
 					}
 				}
 			});
+
+			// TODO: Add a hook to resolve discarded frames before we start a new frame.
+			// TODO: Below check should NOT be limited to bMultiPlayer specificially even though we haven't found a non-MultiPlayer case falling into this case yet.
+			//		Remove bMultiPlayer.
+			UE_CLOG(bMultiPlayer && bIsRendering_RenderThread, LogHMD, Verbose, TEXT("Discarded previous frame and started rendering a new frame."));
+			bIsRendering_RenderThread = true;
 		}
 	}
 
@@ -4768,6 +4988,17 @@ namespace OculusXRHMD
 
 		Settings->FaceTrackingDataSource.Empty(ovrpFaceConstants_FaceTrackingDataSourcesCount);
 		Settings->FaceTrackingDataSource.Append(HMDSettings->FaceTrackingDataSource);
+	}
+
+	void FOculusXRHMD::CheckMultiPlayer()
+	{
+#if WITH_EDITOR && PLATFORM_WINDOWS
+		ULevelEditorPlaySettings* PlayInSettings = GetMutableDefault<ULevelEditorPlaySettings>();
+		check(PlayInSettings);
+		int PlayNumberOfClients = 0;
+		PlayInSettings->GetPlayNumberOfClients(PlayNumberOfClients);
+		bMultiPlayer = PlayNumberOfClients > 1;
+#endif
 	}
 
 	/// @endcond

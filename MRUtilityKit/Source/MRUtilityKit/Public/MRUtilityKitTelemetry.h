@@ -19,4 +19,5 @@ namespace MRUKTelemetry
 	using FLoadAnchorActorSpawnerMarker = OculusXRTelemetry::TMarker<257232670>;
 	using FLoadSceneFromDeviceMarker = OculusXRTelemetry::TMarker<257235234>;
 	using FLoadSceneFromJsonMarker = OculusXRTelemetry::TMarker<257237876>;
+	using FLoadGridSliceResizerMarker = OculusXRTelemetry::TMarker<257238248>;
 } // namespace MRUKTelemetry

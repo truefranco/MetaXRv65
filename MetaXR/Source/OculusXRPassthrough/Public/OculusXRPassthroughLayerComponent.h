@@ -211,6 +211,7 @@ class OCULUSXRPASSTHROUGH_API UOculusXRPassthroughLayerComponent : public UStere
 
 public:
 	void DestroyComponent(bool bPromoteChildren) override;
+	void OnRegister() override;
 
 	void TickComponent(float DeltaTime, enum ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction) override;
 

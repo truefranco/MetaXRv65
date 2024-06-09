@@ -10,9 +10,9 @@
 	"DocsURL": "https://developer.oculus.com/documentation/unreal/unreal-mr-utility-kit-overview/",
 	"MarketplaceURL": "",
 	"SupportURL": "https://forums.oculusvr.com/developer",
+	"EngineVersion": "5.4.0",
 	"CanContainContent": true,
-	"IsBetaVersion": false,
-	"Installed": false,
+	"Installed": true,
 	"SupportedTargetPlatforms": [
 		"Win64",
 		"Android"
@@ -34,6 +34,5 @@
 			"Name": "OculusXR",
 			"Enabled": true
 		}
-	],
-	"IsExperimentalVersion": false
+	]
 }

@@ -53,6 +53,8 @@ namespace OculusXRHMD
 		}
 	}
 
+	void FDynamicResolutionState::SetTemporalUpscaler(const UE::Renderer::Private::ITemporalUpscaler* InTemporalUpscaler){}
+
 	DynamicRenderScaling::TMap<float> FDynamicResolutionState::GetResolutionFractionsApproximation() const
 	{
 		DynamicRenderScaling::TMap<float> ResolutionFractions;

@@ -5,7 +5,7 @@
 #include "OculusXRSceneTypes.generated.h"
 
 USTRUCT()
-struct FSceneTypesPlaceholder
+struct OCULUSXRSCENE_API FSceneTypesPlaceholder
 {
 	GENERATED_BODY()
 public:

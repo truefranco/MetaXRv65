@@ -44,6 +44,7 @@ UOculusXRHMDRuntimeSettings::UOculusXRHMDRuntimeSettings(const FObjectInitialize
 	bAnchorSupportEnabled = DefaultSettings.Flags.bAnchorSupportEnabled;
 	bAnchorSharingEnabled = DefaultSettings.Flags.bAnchorSharingEnabled;
 	bSceneSupportEnabled = DefaultSettings.Flags.bSceneSupportEnabled;
+	bIterativeCookOnTheFly = DefaultSettings.Flags.bIterativeCookOnTheFly;
 	ProcessorFavor = DefaultSettings.ProcessorFavor;
 	bTileTurnOffEnabled = DefaultSettings.Flags.bTileTurnOffEnabled;
 
@@ -87,6 +88,8 @@ UOculusXRHMDRuntimeSettings::UOculusXRHMDRuntimeSettings(const FObjectInitialize
 	bAnchorSupportEnabled = false;
 	bAnchorSharingEnabled = false;
 	bSceneSupportEnabled = false;
+	MPPoseRestoreType = EOculusXRMPPoseRestoreType::None;
+	bIterativeCookOnTheFly = false;
 	ProcessorFavor = EProcessorFavor::FavorEqually;
 	bTileTurnOffEnabled = false;
 #endif

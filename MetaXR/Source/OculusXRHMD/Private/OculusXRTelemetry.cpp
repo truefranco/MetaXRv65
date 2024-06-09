@@ -32,11 +32,19 @@ namespace OculusXRTelemetry
 		});
 	}
 
-	void SetTelemetryConsent(bool Consent)
+	void PropagateTelemetryConsent()
 	{
+#ifdef WITH_EDITOR
+		// The consent mechanism only deals with in-editor preferences by developer. In runtime, this consent doesn't matter.
+		bool HasConsent = false;
+		if (const auto EditorPrivacySettings = GetDefault<UOculusXRTelemetryPrivacySettings>())
+		{
+			HasConsent = EditorPrivacySettings->bIsEnabled;
+		}
 		if (FOculusXRHMDModule::Get().IsOVRPluginAvailable() && FOculusXRHMDModule::GetPluginWrapper().IsInitialized())
 		{
-			FOculusXRHMDModule::GetPluginWrapper().QplSetConsent(Consent);
+			FOculusXRHMDModule::GetPluginWrapper().QplSetConsent(HasConsent);
 		}
+#endif
 	}
 } // namespace OculusXRTelemetry

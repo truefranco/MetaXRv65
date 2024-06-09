@@ -47,25 +47,25 @@ class MRUTILITYKIT_API UMRUKBPLibrary : public UBlueprintFunctionLibrary
 public:
 	/**
 	 * Load the global mesh from the device.
-	 * @param SpaceQuery        Space query of the room.
+	 * @param SpaceHandle       Space handle of the room.
 	 * @param OutProceduralMesh Procedural mesh to load the triangle data in.
 	 * @param LoadCollision     Whether to generate collision or not.
 	 * @param WorldContext      Context of the world.
 	 * @return                  Whether the load was successful or not.
 	 */
 	UFUNCTION(BlueprintCallable, Category = "MR Utility Kit", meta = (WorldContext = "WorldContext"))
-	static bool LoadGlobalMeshFromDevice(FOculusXRSpaceQueryResult SpaceQuery, UProceduralMeshComponent* OutProceduralMesh, bool LoadCollision, const UObject* WorldContext);
+	static bool LoadGlobalMeshFromDevice(FOculusXRUInt64 SpaceHandle, UProceduralMeshComponent* OutProceduralMesh, bool LoadCollision, const UObject* WorldContext);
 
 	/**
 	 * Load the global mesh from a JSON string.
 	 * @param JsonString        The string containing the JSON.
-	 * @param SpaceQuery        Space query of the room.
+	 * @param AnchorUUID        Anchor UUID of the room
 	 * @param OutProceduralMesh Procedural mesh to load the triangle data in.
 	 * @param LoadCollision     Whether to generate collision or not
 	 * @return                  Whether the load was successful or not.
 	 */
 	UFUNCTION(BlueprintCallable, Category = "MR Utility Kit")
-	static bool LoadGlobalMeshFromJsonString(const FString& JsonString, FOculusXRSpaceQueryResult SpaceQuery, UProceduralMeshComponent* OutProceduralMesh, bool LoadCollision);
+	static bool LoadGlobalMeshFromJsonString(const FString& JsonString, FOculusXRUUID AnchorUUID, UProceduralMeshComponent* OutProceduralMesh, bool LoadCollision);
 
 	/**
      * (Re)Calculate Normals and Tangents of the given procedural mesh.
@@ -80,4 +80,13 @@ public:
 	 */
 	UFUNCTION(BlueprintCallable, BlueprintPure, Category = "MR Utility Kit")
 	static bool IsUnrealEngineMetaFork();
+
+	/**
+	 *  Compute the centroid of a polygon that is defined by the points.
+	 *  The centroid may be outside of the polygon in case the polygon is non convex.
+	 * @param PolygonPoints Points that define the polygon.
+	 * @return The centroid.
+	 */
+	UFUNCTION(BlueprintCallable, BlueprintPure, Category = "MR Utility Kit")
+	static FVector2D ComputeCentroid(const TArray<FVector2D>& PolygonPoints);
 };

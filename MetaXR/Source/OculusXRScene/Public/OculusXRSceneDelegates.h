@@ -6,7 +6,7 @@
 #include "OculusXRSceneTypes.h"
 #include "Delegates/Delegate.h"
 
-class FOculusXRSceneEventDelegates
+class OCULUSXRSCENE_API FOculusXRSceneEventDelegates
 {
 public:
 

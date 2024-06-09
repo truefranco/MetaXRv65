@@ -7,7 +7,7 @@
 #include "Engine/ImportantToggleSettingInterface.h"
 #include "OculusXRTelemetryPrivacySettings.generated.h"
 
-UCLASS(MinimalAPI, hidecategories = Object, config = EditorPerProjectUserSettings)
+UCLASS(MinimalAPI, hidecategories = Object, config = EditorSettings)
 class UOculusXRTelemetryPrivacySettings : public UObject, public IImportantToggleSettingInterface
 {
 	GENERATED_UCLASS_BODY()

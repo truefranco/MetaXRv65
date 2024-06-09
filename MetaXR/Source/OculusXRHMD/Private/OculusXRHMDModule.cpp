@@ -303,7 +303,7 @@ TSharedPtr<class IXRTrackingSystem, ESPMode::ThreadSafe> FOculusXRHMDModule::Cre
 	if (bPreInit || (GIsEditor && PLATFORM_WINDOWS))
 	{
 		//If -HMDSimulator is used as the command option to launch UE, use simulator runtime instead of the physical HMD runtime (like PC-Link).
-		if (FParse::Param(FCommandLine::Get(), TEXT("HMDSimulator")))
+		if (FParse::Param(FCommandLine::Get(), TEXT("HMDSimulator")) && GetMutableDefault<UOculusXRHMDRuntimeSettings>()->MetaXRJsonPath.FilePath.Len())
 		{
 			if (!IsSimulatorActivated())
 			{

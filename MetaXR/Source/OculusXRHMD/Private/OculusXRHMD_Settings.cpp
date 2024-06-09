@@ -73,6 +73,8 @@ namespace OculusXRHMD
 
 		RenderTargetSize = FIntPoint(0, 0);
 
+		Flags.bIterativeCookOnTheFly = false;
+
 #ifdef WITH_OCULUS_BRANCH
 		Flags.bTileTurnOffEnabled = false;
 #else

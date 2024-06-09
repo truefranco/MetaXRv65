@@ -3,6 +3,8 @@
 #pragma once
 #include "IOculusXRPassthroughModule.h"
 
+#include "OculusXRPassthroughXR.h"
+
 #define LOCTEXT_NAMESPACE "OculusXRPassthrough"
 
 //-------------------------------------------------------------------------------------------------
@@ -21,6 +23,9 @@ public:
 
 	virtual void StartupModule() override;
 	virtual void ShutdownModule() override;
+
+	typedef TSharedPtr<XRPassthrough::FPassthroughXR, ESPMode::ThreadSafe> FPassthroughXRPtr;
+	FPassthroughXRPtr PassthroughXR;
 };
 
 #undef LOCTEXT_NAMESPACE

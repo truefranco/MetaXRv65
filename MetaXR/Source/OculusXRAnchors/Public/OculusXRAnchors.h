@@ -13,6 +13,11 @@ DECLARE_DELEGATE_TwoParams(FOculusXRAnchorSaveDelegate, EOculusXRAnchorResult::T
 DECLARE_DELEGATE_TwoParams(FOculusXRAnchorSaveListDelegate, EOculusXRAnchorResult::Type /*Result*/, const TArray<UOculusXRAnchorComponent*>& /*SavedAnchors*/);
 DECLARE_DELEGATE_TwoParams(FOculusXRAnchorQueryDelegate, EOculusXRAnchorResult::Type /*Result*/, const TArray<FOculusXRSpaceQueryResult>& /*Results*/);
 DECLARE_DELEGATE_ThreeParams(FOculusXRAnchorShareDelegate, EOculusXRAnchorResult::Type /*Result*/, const TArray<UOculusXRAnchorComponent*>& /*Anchors*/, const TArray<uint64>& /*Users*/);
+DECLARE_DELEGATE_TwoParams(FOculusXRSaveAnchorsDelegate, EOculusXRAnchorResult::Type /*Result*/, const TArray<UOculusXRAnchorComponent*>& /*SavedAnchors*/);
+DECLARE_DELEGATE_FourParams(FOculusXREraseAnchorsDelegate, EOculusXRAnchorResult::Type /*Result*/, const TArray<UOculusXRAnchorComponent*>& /*ErasedAnchors*/, const TArray<FOculusXRUInt64>& /*ErasedAnchorsUUIDs*/, const TArray<FOculusXRUUID>& /*ErasedAnchorsUUIDs*/);
+DECLARE_DELEGATE_OneParam(FOculusXRDiscoverAnchorsResultsDelegate, const TArray<FOculusXRAnchorsDiscoverResult>& /*DiscoveredSpace*/);
+DECLARE_DELEGATE_OneParam(FOculusXRDiscoverAnchorsCompleteDelegate, EOculusXRAnchorResult::Type /*Result*/);
+DECLARE_DELEGATE_TwoParams(FOculusXRGetSharedAnchorsDelegate, EOculusXRAnchorResult::Type /*Result*/, const TArray<FOculusXRAnchorsDiscoverResult>& /*Results*/);
 
 namespace OculusXRAnchors
 {
@@ -51,8 +56,16 @@ namespace OculusXRAnchors
 		static bool GetSpaceBoundary2D(uint64 Space, TArray<FVector2f>& OutVertices, EOculusXRAnchorResult::Type& OutResult);
 
 
+		static bool SaveAnchors(const TArray<UOculusXRAnchorComponent*>& Anchors, const FOculusXRSaveAnchorsDelegate& ResultCallback, EOculusXRAnchorResult::Type& OutResult);
+		static bool EraseAnchors(const TArray<UOculusXRAnchorComponent*>& Anchors, const FOculusXREraseAnchorsDelegate& ResultCallback, EOculusXRAnchorResult::Type& OutResult);
+		static bool EraseAnchors(const TArray<FOculusXRUInt64>& AnchorHandles, const TArray<FOculusXRUUID>& AnchorUUIDs, const FOculusXREraseAnchorsDelegate& ResultCallback, EOculusXRAnchorResult::Type& OutResult);
+		static bool DiscoverAnchors(const FOculusXRSpaceDiscoveryInfo& DiscoveryInfo, const FOculusXRDiscoverAnchorsResultsDelegate& DiscoveryResultsCallback, const FOculusXRDiscoverAnchorsCompleteDelegate& DiscoveryCompleteCallback, EOculusXRAnchorResult::Type& OutResult);
+		static bool GetSharedAnchors(const TArray<FOculusXRUUID>& AnchorUUIDs, const FOculusXRGetSharedAnchorsDelegate& ResultCallback, EOculusXRAnchorResult::Type& OutResult);
 
 	private:
+		struct AnchorQueryBinding;
+		struct GetSharedAnchorsBinding;
+
 		void HandleSpatialAnchorCreateComplete(FOculusXRUInt64 RequestId, int Result, FOculusXRUInt64 Space, FOculusXRUUID UUID);
 		void HandleAnchorEraseComplete(FOculusXRUInt64 RequestId, int Result, FOculusXRUUID UUID, EOculusXRSpaceStorageLocation Location);
 
@@ -61,12 +74,23 @@ namespace OculusXRAnchors
 		void HandleAnchorSaveComplete(FOculusXRUInt64 RequestId, FOculusXRUInt64 Space, bool Success, int Result, FOculusXRUUID UUID);
 		void HandleAnchorSaveListComplete(FOculusXRUInt64 RequestId, int Result);
 
-		void HandleAnchorQueryResultsBegin(FOculusXRUInt64 RequestId);
 		void HandleAnchorQueryResultElement(FOculusXRUInt64 RequestId, FOculusXRUInt64 Space, FOculusXRUUID UUID);
+		void UpdateQuerySpacesBinding(AnchorQueryBinding* Binding, FOculusXRUInt64 RequestId, FOculusXRUInt64 Space, FOculusXRUUID UUID);
+		void UpdateGetSharedAnchorsBinding(GetSharedAnchorsBinding* Binding, FOculusXRUInt64 RequestId, FOculusXRUInt64 Space, FOculusXRUUID UUID);
+
 		void HandleAnchorQueryComplete(FOculusXRUInt64 RequestId, int Result);
+		void QuerySpacesComplete(AnchorQueryBinding* Binding, FOculusXRUInt64 RequestId, int Result);
+		void GetSharedAnchorsComplete(GetSharedAnchorsBinding* Binding, FOculusXRUInt64 RequestId, int Result);
 
 		void HandleAnchorSharingComplete(FOculusXRUInt64 RequestId, int Result);
 
+		void HandleAnchorsSaveComplete(FOculusXRUInt64 RequestId, int Result);
+		void HandleAnchorsEraseComplete(FOculusXRUInt64 RequestId, int Result);
+		void HandleAnchorsEraseByComponentsComplete(FOculusXRUInt64 RequestId, int Result);
+		void HandleAnchorsEraseByHandleAndUUIDComplete(FOculusXRUInt64 RequestId, int Result);
+
+		void HandleAnchorsDiscoverResults(FOculusXRUInt64 RequestId, const TArray<FOculusXRAnchorsDiscoverResult>& Results);
+		void HandleAnchorsDiscoverComplete(FOculusXRUInt64 RequestId, int Result);
 
 		struct EraseAnchorBinding
 		{
@@ -121,6 +145,35 @@ namespace OculusXRAnchors
 			TArray<uint64> OculusUserIds;
 		};
 
+		struct SaveAnchorsBinding
+		{
+			FOculusXRUInt64 RequestId;
+			FOculusXRSaveAnchorsDelegate Binding;
+			TArray<TWeakObjectPtr<UOculusXRAnchorComponent>> SavedAnchors;
+		};
+
+		struct EraseAnchorsBinding
+		{
+			FOculusXRUInt64 RequestId;
+			FOculusXREraseAnchorsDelegate Binding;
+			TArray<TWeakObjectPtr<UOculusXRAnchorComponent>> ErasedAnchors;
+			TArray<FOculusXRUInt64> ErasedAnchorsHandles;
+			TArray<FOculusXRUUID> ErasedAnchorsUUIDs;
+		};
+
+		struct AnchorDiscoveryBinding
+		{
+			FOculusXRUInt64 RequestId;
+			FOculusXRDiscoverAnchorsResultsDelegate ResultBinding;
+			FOculusXRDiscoverAnchorsCompleteDelegate CompleteBinding;
+		};
+
+		struct GetSharedAnchorsBinding
+		{
+			FOculusXRUInt64 RequestId;
+			FOculusXRGetSharedAnchorsDelegate ResultBinding;
+			TArray<FOculusXRAnchorsDiscoverResult> Results;
+		};
 
 		// Delegate bindings
 		TMap<uint64, CreateAnchorBinding> CreateSpatialAnchorBindings;
@@ -130,6 +183,10 @@ namespace OculusXRAnchors
 		TMap<uint64, SaveAnchorListBinding> AnchorSaveListBindings;
 		TMap<uint64, AnchorQueryBinding> AnchorQueryBindings;
 		TMap<uint64, ShareAnchorsBinding> ShareAnchorsBindings;
+		TMap<uint64, SaveAnchorsBinding> SaveAnchorsBindings;
+		TMap<uint64, EraseAnchorsBinding> EraseAnchorsBindings;
+		TMap<uint64, AnchorDiscoveryBinding> AnchorDiscoveryBindings;
+		TMap<uint64, GetSharedAnchorsBinding> GetSharedAnchorsBindings;
 
 		// Delegate handles
 		FDelegateHandle DelegateHandleAnchorCreate;
@@ -141,6 +198,10 @@ namespace OculusXRAnchors
 		FDelegateHandle DelegateHandleQueryResultElement;
 		FDelegateHandle DelegateHandleQueryComplete;
 		FDelegateHandle DelegateHandleAnchorShare;
+		FDelegateHandle DelegateHandleAnchorsSave;
+		FDelegateHandle DelegateHandleAnchorsErase;
+		FDelegateHandle DelegateHandleAnchorsDiscoverResults;
+		FDelegateHandle DelegateHandleAnchorsDiscoverComplete;
 	};
 
 } // namespace OculusXRAnchors

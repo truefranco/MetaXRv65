@@ -269,18 +269,19 @@ bool UOculusXRFunctionLibrary::HasSystemOverlayPresent()
 
 void UOculusXRFunctionLibrary::GetGPUUtilization(bool& IsGPUAvailable, float& GPUUtilization)
 {
-	IsGPUAvailable = false;
 	GPUUtilization = 0.0f;
-
 #if OCULUS_HMD_SUPPORTED_PLATFORMS
 	const OculusXRHMD::FOculusXRHMD* const OculusXRHMD = GetOculusXRHMD();
 	if (OculusXRHMD != nullptr)
 	{
-		ovrpBool GPUAvailable;
-		if (OVRP_SUCCESS(FOculusXRHMDModule::GetPluginWrapper().GetGPUUtilSupported(&GPUAvailable)))
+		ovrpBool bIsSupported = ovrpBool_False;
+		if (OVRP_SUCCESS(FOculusXRHMDModule::GetPluginWrapper().IsPerfMetricsSupported(ovrpPerfMetrics_System_GpuUtilPercentage_Float, &bIsSupported)) && bIsSupported == ovrpBool_True)
 		{
-			IsGPUAvailable = (GPUAvailable != ovrpBool_False);
-			FOculusXRHMDModule::GetPluginWrapper().GetGPUUtilLevel(&GPUUtilization);
+			if (OVRP_SUCCESS(FOculusXRHMDModule::GetPluginWrapper().GetPerfMetricsFloat(ovrpPerfMetrics_System_GpuUtilPercentage_Float, &GPUUtilization)))
+			{
+				IsGPUAvailable = true;
+				GPUUtilization *= 100;
+			}
 		}
 	}
 #endif // OCULUS_HMD_SUPPORTED_PLATFORMS
@@ -288,19 +289,35 @@ void UOculusXRFunctionLibrary::GetGPUUtilization(bool& IsGPUAvailable, float& GP
 
 float UOculusXRFunctionLibrary::GetGPUFrameTime()
 {
-	float frameTime = 0;
+	float FrameTime = 0;
 #if OCULUS_HMD_SUPPORTED_PLATFORMS
 	const OculusXRHMD::FOculusXRHMD* const OculusXRHMD = GetOculusXRHMD();
 	if (OculusXRHMD != nullptr)
 	{
-		if (OVRP_SUCCESS(FOculusXRHMDModule::GetPluginWrapper().GetGPUFrameTime(&frameTime)))
+		ovrpBool bIsSupported = ovrpBool_False;
+		if (OVRP_SUCCESS(FOculusXRHMDModule::GetPluginWrapper().IsPerfMetricsSupported(ovrpPerfMetrics_App_GpuTime_Float, &bIsSupported)) && bIsSupported == ovrpBool_True)
 		{
-			return frameTime;
+			if (OVRP_SUCCESS(FOculusXRHMDModule::GetPluginWrapper().GetPerfMetricsFloat(ovrpPerfMetrics_App_GpuTime_Float, &FrameTime)))
+			{
+				return FrameTime * 1000;
+			}
 		}
 	}
 #endif // OCULUS_HMD_SUPPORTED_PLATFORMS
 	return 0.0f;
 }
+
+void UOculusXRFunctionLibrary::GetPerformanceMetrics(FOculusXRPerformanceMetrics& PerformanceMetrics)
+{
+#if OCULUS_HMD_SUPPORTED_PLATFORMS
+	const OculusXRHMD::FOculusXRHMD* const OculusXRHMD = GetOculusXRHMD();
+	if (OculusXRHMD != nullptr)
+	{
+		PerformanceMetrics = OculusXRHMD->GetPerformanceMetrics();
+	}
+#endif
+}
+
 
 EOculusXRFoveatedRenderingMethod UOculusXRFunctionLibrary::GetFoveatedRenderingMethod()
 {

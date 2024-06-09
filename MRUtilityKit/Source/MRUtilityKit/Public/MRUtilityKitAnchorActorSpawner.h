@@ -20,7 +20,7 @@ class MRUTILITYKIT_API AMRUKAnchorActorSpawner : public AActor
 	GENERATED_BODY()
 
 public:
-	DECLARE_DYNAMIC_MULTICAST_DELEGATE(FOnInteriorSpawned);
+	DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnInteriorSpawned, AMRUKRoom*, Room);
 
 	/**
 	 * Event that gets fired when the interior spawner finished spawning actors.
@@ -38,11 +38,11 @@ public:
 	int AnchorRandomSpawnSeed = -1;
 
 	/**
-	 * Whether SpawnInterior() should be called automatically after the scene 
-	 * toolkit has been initialized.
+	 * Whether actors should be spawned automatically after the mixed reality 
+	 * utility kit has been initialized. This should not be changed after the scene has been loaded.
 	 */
 	UPROPERTY(EditAnywhere, Category = "MR Utility Kit")
-	bool SpawnOnStart = true;
+	EMRUKSpawnMode SpawnMode = EMRUKSpawnMode::CurrentRoomOnly;
 
 	/**
 	 * Material to use when falling back to procedural material.
@@ -57,6 +57,13 @@ public:
 	 */
 	UPROPERTY(EditAnywhere, Category = "MR Utility Kit")
 	bool ShouldFallbackToProcedural = true;
+
+	/**
+	 * Labels for which holes should be created in the parents plane mesh.
+	 * E.g. if holes are needed in the walls where the windows and doors are, specify DOOR_FRAME and WINDOW_FRAME.
+	 */
+	UPROPERTY(EditAnywhere, Category = "MR Utility Kit")
+	TArray<FString> CutHoleLabels;
 
 	/**
 	 * A map of Actor classes to spawn for the given label.
@@ -75,34 +82,56 @@ public:
 		{ FMRUKLabels::Table, {} },
 		{ FMRUKLabels::WallArt, {} },
 		{ FMRUKLabels::WallFace, {} },
+		{ FMRUKLabels::InvisibleWallFace, { {}, EMRUKSpawnerSelectionMode::Random, EMRUKFallbackToProceduralOverwrite::NoFallback } },
 		{ FMRUKLabels::WindowFrame, {} },
 		{ FMRUKLabels::Other, {} },
 	};
 
 	/**
-	 * The spawned interior actors.
-	 */
-	UPROPERTY(VisibleInstanceOnly, BlueprintReadOnly, Transient, Category = "MR Utility Kit")
-	TArray<TObjectPtr<AActor>> InteriorActors;
-
-	/**
 	 * Spawns the meshes for the given labels above on the anchor positions in each room.
 	 * There might be multiple actor classes for a give label. If thats the case a actor class will be chosen radomly. 
 	 * The seed for this random generator can be set by AnchorRandomSpawnSeed.
-	 * This function will be called automatically after the scene toolkit initialized unless
+	 * This function will be called automatically after the mixed reality utility kit initialized unless
 	 * the option SpawnOnStart is set to false.
 	 * If there is no actor class specified for a label then a procedural mesh matching the anchors volume and plane
 	 * will be generated.
 	 */
 	UFUNCTION(BlueprintCallable, Category = "MR Utility Kit")
-	void SpawnInterior();
+	void SpawnActors(AMRUKRoom* Room);
+
+	/**
+	 * Return all spawned actors from the give room.
+	 * @param Room The room from which the actors should be returned
+	 * @param Actors The spawned actors.
+	 */
+	UFUNCTION(BlueprintCallable, Category = "MR Utility Kit")
+	void GetSpawnedActorsByRoom(AMRUKRoom* Room, TArray<AActor*>& Actors);
+
+	/**
+	 * Return all spawned actors from all rooms.
+	 * @param Actors The spawned actors.
+	 */
+	UFUNCTION(BlueprintCallable, Category = "MR Utility Kit")
+	void GetSpawnedActors(TArray<AActor*>& Actors);
 
 protected:
 	void BeginPlay() override;
 
 	UFUNCTION()
-	void OnSceneLoaded(bool Success);
+	void OnRoomCreated(AMRUKRoom* Room);
+
+	UFUNCTION()
+	void OnRoomUpdated(AMRUKRoom* Room);
+
+	UFUNCTION()
+	void OnRoomRemoved(AMRUKRoom* Room);
+
+	UFUNCTION()
+	void RemoveActors(AMRUKRoom* Room);
 
 private:
+	// Room UUID to spawned actors in this room
+	TMap<AMRUKRoom*, TArray<AActor*>> SpawnedActors;
+
 	int32 LastSeed = -1;
 };

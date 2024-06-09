@@ -33,7 +33,7 @@ AMRUKDistanceMapGenerator::AMRUKDistanceMapGenerator()
 	SceneCapture2D->CaptureSource = ESceneCaptureSource::SCS_SceneColorHDR;
 	SceneCapture2D->PrimitiveRenderMode = ESceneCapturePrimitiveRenderMode::PRM_UseShowOnlyList;
 	SceneCapture2D->bCaptureEveryFrame = false;
-	SceneCapture2D->bCaptureOnMovement = true;
+	SceneCapture2D->bCaptureOnMovement = false;
 
 	const ConstructorHelpers::FObjectFinder<UCanvasRenderTarget2D> RT1Finder(TEXT("/MRUtilityKit/Textures/CRT_JumpFlood1"));
 	if (RT1Finder.Succeeded())
@@ -79,13 +79,31 @@ void AMRUKDistanceMapGenerator::BeginPlay()
 {
 	Super::BeginPlay();
 
-	const auto Subsystem = GetGameInstance()->GetSubsystem<UMRUKSubsystem>();
-	for (auto& Room : Subsystem->Rooms)
+	if (SpawnMode == EMRUKSpawnMode::CurrentRoomOnly)
 	{
-		CreateMaskMeshesForRoom(Room);
+		const auto Subsystem = GetGameInstance()->GetSubsystem<UMRUKSubsystem>();
+		if (AMRUKRoom* CurrentRoom = Subsystem->GetCurrentRoom())
+		{
+			CreateMaskMeshesForRoom(CurrentRoom);
+		}
+		else
+		{
+			Subsystem->OnRoomCreated.AddUniqueDynamic(this, &AMRUKDistanceMapGenerator::OnRoomCreated);
+		}
+	}
+	else if (SpawnMode == EMRUKSpawnMode::AllRooms)
+	{
+		const auto Subsystem = GetGameInstance()->GetSubsystem<UMRUKSubsystem>();
+		for (auto& Room : Subsystem->Rooms)
+		{
+			CreateMaskMeshesForRoom(Room);
+		}
+
+		Subsystem->OnRoomCreated.AddUniqueDynamic(this, &AMRUKDistanceMapGenerator::OnRoomCreated);
 	}
 
-	Subsystem->OnRoomCreated.AddDynamic(this, &AMRUKDistanceMapGenerator::CreateMaskMeshesForRoom);
+	SceneObjectMaskMaterial->EnsureIsComplete();
+	FloorMaskMaterial->EnsureIsComplete();
 }
 
 UTexture* AMRUKDistanceMapGenerator::CaptureDistanceMap()
@@ -163,12 +181,39 @@ void AMRUKDistanceMapGenerator::RenderDistanceMap()
 	DistanceMapRT = RTIndex;
 }
 
+void AMRUKDistanceMapGenerator::OnRoomCreated(AMRUKRoom* Room)
+{
+	if (SpawnMode == EMRUKSpawnMode::CurrentRoomOnly && SpawnedMaskMeshes.Num() > 0 && !SpawnedMaskMeshes.Find(Room))
+	{
+		// We already spawned a room
+		return;
+	}
+
+	CreateMaskMeshesForRoom(Room);
+}
+
 void AMRUKDistanceMapGenerator::CreateMaskMeshesForRoom(AMRUKRoom* Room)
 {
-	check(Room);
+	if (!Room)
+	{
+		UE_LOG(LogMRUK, Warning, TEXT("Can not create masked meshes for room that is a nullptr"));
+		return;
+	}
+
+	if (TArray<AActor*>* Actors = SpawnedMaskMeshes.Find(Room))
+	{
+		for (AActor* Actor : *Actors)
+		{
+			Actor->Destroy();
+		}
+		Actors->Empty();
+		SpawnedMaskMeshes.Remove(Room);
+	}
 
 	// Create for each anchor a mesh with a material to use as a mask
 	// to initialize the jump flood algorithm.
+
+	TArray<AActor*> SpawnedActors;
 
 	for (auto& Anchor : Room->AllAnchors)
 	{
@@ -177,20 +222,21 @@ void AMRUKDistanceMapGenerator::CreateMaskMeshesForRoom(AMRUKRoom* Room)
 			continue;
 		}
 
-		CreateMaskMeshOfAnchor(Anchor);
+		SpawnedActors.Push(CreateMaskMeshOfAnchor(Anchor));
 	}
 	if (Room->FloorAnchor)
 	{
-		CreateMaskMeshOfAnchor(Room->FloorAnchor);
+		SpawnedActors.Push(CreateMaskMeshOfAnchor(Room->FloorAnchor));
 	}
 
-	Room->OnAnchorCreated.AddDynamic(this, &AMRUKDistanceMapGenerator::CreateMaskMeshOfAnchor);
-	Room->OnAnchorUpdated.AddDynamic(this, &AMRUKDistanceMapGenerator::UpdateMaskMeshOfAnchor);
+	SpawnedMaskMeshes.Add(Room, SpawnedActors);
 
-	SceneCapture2D->PrimitiveRenderMode = ESceneCapturePrimitiveRenderMode::PRM_UseShowOnlyList;
+	const auto Subsystem = GetGameInstance()->GetSubsystem<UMRUKSubsystem>();
+	Subsystem->OnRoomRemoved.AddUniqueDynamic(this, &AMRUKDistanceMapGenerator::RemoveMaskMeshesFromRoom);
+	Subsystem->OnRoomUpdated.AddUniqueDynamic(this, &AMRUKDistanceMapGenerator::OnRoomCreated);
 }
 
-void AMRUKDistanceMapGenerator::CreateMaskMeshOfAnchor(AMRUKAnchor* Anchor)
+AActor* AMRUKDistanceMapGenerator::CreateMaskMeshOfAnchor(AMRUKAnchor* Anchor)
 {
 	check(Anchor);
 
@@ -209,7 +255,7 @@ void AMRUKDistanceMapGenerator::CreateMaskMeshOfAnchor(AMRUKAnchor* Anchor)
 	Actor->AttachToActor(Anchor, FAttachmentTransformRules::KeepRelativeTransform);
 
 	const auto ProceduralMesh = NewObject<UProceduralMeshComponent>(Actor, TEXT("DistanceMapMesh"));
-	Anchor->GenerateProceduralAnchorMesh(*ProceduralMesh, {}, true, false);
+	Anchor->GenerateProceduralAnchorMesh(*ProceduralMesh, {}, {}, true, false);
 
 	// Set a material depending if the anchor is the floor or a scene object.
 	// The different materials have different colors. These colors will be used to create different
@@ -234,9 +280,11 @@ void AMRUKDistanceMapGenerator::CreateMaskMeshOfAnchor(AMRUKAnchor* Anchor)
 
 	ProceduralMesh->SetVisibleInSceneCaptureOnly(true);
 	SceneCapture2D->ShowOnlyActors.Push(Actor);
+
+	return Actor;
 }
 
-void AMRUKDistanceMapGenerator::UpdateMaskMeshOfAnchor(AMRUKAnchor* Anchor)
+AActor* AMRUKDistanceMapGenerator::UpdateMaskMeshOfAnchor(AMRUKAnchor* Anchor)
 {
 	TArray<AActor*> ChildActors;
 	Anchor->GetAllChildActors(ChildActors);
@@ -251,7 +299,7 @@ void AMRUKDistanceMapGenerator::UpdateMaskMeshOfAnchor(AMRUKAnchor* Anchor)
 		}
 	}
 
-	CreateMaskMeshOfAnchor(Anchor);
+	return CreateMaskMeshOfAnchor(Anchor);
 }
 
 UTexture* AMRUKDistanceMapGenerator::GetDistanceMap() const
@@ -272,4 +320,23 @@ FMinimalViewInfo AMRUKDistanceMapGenerator::GetSceneCaptureView() const
 	FMinimalViewInfo Info = {};
 	SceneCapture2D->GetCameraView(1.0f, Info);
 	return Info;
+}
+
+void AMRUKDistanceMapGenerator::RemoveMaskMeshesFromRoom(AMRUKRoom* Room)
+{
+	if (!Room)
+	{
+		UE_LOG(LogMRUK, Warning, TEXT("Can not remove masked meshes for room that is a nullptr"));
+		return;
+	}
+
+	if (TArray<AActor*>* Actors = SpawnedMaskMeshes.Find(Room))
+	{
+		for (AActor* Actor : *Actors)
+		{
+			Actor->Destroy();
+		}
+		Actors->Empty();
+		SpawnedMaskMeshes.Remove(Room);
+	}
 }

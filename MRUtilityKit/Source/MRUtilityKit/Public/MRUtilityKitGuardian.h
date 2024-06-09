@@ -7,6 +7,7 @@ LICENSE file in the root directory of this source tree.
 */
 #pragma once
 
+#include "MRUtilityKitRoom.h"
 #include "GameFramework/Actor.h"
 #include "ProceduralMeshComponent.h"
 #include "MRUtilityKitGuardian.generated.h"

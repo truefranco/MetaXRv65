@@ -8,12 +8,12 @@ LICENSE file in the root directory of this source tree.
 
 #include "MRUtilityKitAnchor.h"
 #include "MRUtilityKit.h"
+#include "MRUtilityKitGeometry.h"
 #include "MRUtilityKitSubsystem.h"
 #include "MRUtilityKitSerializationHelpers.h"
 #include "MRUtilityKitSeatsComponent.h"
 #include "MRUtilityKitRoom.h"
 #include "OculusXRAnchorTypes.h"
-#include "OculusXRAnchorBPFunctionLibrary.h"
 #include "Engine/World.h"
 
 #define LOCTEXT_NAMESPACE "MRUKAnchor"
@@ -22,109 +22,6 @@ LICENSE file in the root directory of this source tree.
 
 namespace
 {
-	bool IsConvex(const FVector& PrevPoint, const FVector& CurrPoint, const FVector& NextPoint)
-	{
-		const FVector Edge1 = PrevPoint - CurrPoint;
-		const FVector Edge2 = NextPoint - CurrPoint;
-
-		const double CrossProductZ = Edge1.Y * Edge2.Z - Edge1.Z * Edge2.Y;
-
-		return CrossProductZ <= 0;
-	}
-
-	bool PointInTriangle(const FVector& A, const FVector& B, const FVector& C, const FVector& P)
-	{
-		const FVector AB = B - A;
-		const FVector BC = C - B;
-		const FVector CA = A - C;
-
-		const FVector AP = P - A;
-		const FVector BP = P - B;
-		const FVector CP = P - C;
-
-		const double CrossProductZ1 = AB.Y * AP.Z - AB.Z * AP.Y;
-		const double CrossProductZ2 = BC.Y * BP.Z - BC.Z * BP.Y;
-		const double CrossProductZ3 = CA.Y * CP.Z - CA.Z * CP.Y;
-
-		return (CrossProductZ1 >= 0) && (CrossProductZ2 >= 0) && (CrossProductZ3 >= 0);
-	}
-
-	bool IsEar(const TArray<FVector>& Vertices, const TArray<int32>& Indices, int32 PrevIndex, int32 CurrIndex, int32 NextIndex)
-	{
-		const int32 NumPoints = Indices.Num();
-
-		const FVector& PrevPoint = Vertices[PrevIndex];
-		const FVector& CurrPoint = Vertices[CurrIndex];
-		const FVector& NextPoint = Vertices[NextIndex];
-
-		for (int32 i = 0; i < NumPoints; ++i)
-		{
-			const int32 Index = Indices[i];
-			if (Index != PrevIndex && Index != CurrIndex && Index != NextIndex)
-			{
-				const FVector TestPoint = Vertices[Index];
-
-				if (PointInTriangle(PrevPoint, CurrPoint, NextPoint, TestPoint))
-				{
-					return false;
-				}
-			}
-		}
-
-		return true;
-	}
-
-	// Ear clipping algorithm to triangulate the boundary
-	TArray<int32> TriangulatePoints(const TArray<FVector>& Vertices)
-	{
-		TArray<int32> Indices;
-		TArray<int32> Triangles;
-		const int32 NumTriangles = FMath::Max(Vertices.Num() - 2, 0);
-		Triangles.Reserve(3 * NumTriangles);
-
-		Indices.Reserve(Vertices.Num());
-		for (int i = 0; i < Vertices.Num(); ++i)
-		{
-			Indices.Push(i);
-		}
-
-		while (Indices.Num() > 3)
-		{
-			bool EarFound = false;
-
-			for (int32 i = 0; i < Indices.Num(); ++i)
-			{
-				int32 PrevIndex = Indices[(i + Indices.Num() - 1) % Indices.Num()];
-				int32 CurrIndex = Indices[i];
-				int32 NextIndex = Indices[(i + 1) % Indices.Num()];
-
-				if (IsConvex(Vertices[PrevIndex], Vertices[CurrIndex], Vertices[NextIndex]) && IsEar(Vertices, Indices, PrevIndex, CurrIndex, NextIndex))
-				{
-					Triangles.Add(PrevIndex);
-					Triangles.Add(CurrIndex);
-					Triangles.Add(NextIndex);
-
-					Indices.RemoveAt(i);
-					EarFound = true;
-					break;
-				}
-			}
-
-			if (!EarFound)
-			{
-				UE_LOG(LogMRUK, Error, TEXT("Failed to triangulate points."));
-				break;
-			}
-		}
-
-		if (Indices.Num() == 3)
-		{
-			Triangles.Append(Indices);
-		}
-
-		return Triangles;
-	}
-
 	/**
 	 * In Unreal Engine, scale is always applied in the local space to avoid any skew. This means that if you have a component which has a 90 degree rotation and is scaled,
 	 * or any of its children are scaled then the scale axes will not be applied as you would expect. This is can make it very awkward to work with when trying to scale the
@@ -215,7 +112,8 @@ bool AMRUKAnchor::LoadFromData(UMRUKAnchorData* AnchorData)
 		Changed = true;
 	}
 
-	SpaceQueryResult = AnchorData->SpaceQuery;
+	AnchorUUID = AnchorData->SpaceQuery.UUID;
+	SpaceHandle = AnchorData->SpaceQuery.Space;
 
 	SetActorTransform(AnchorData->Transform, false, nullptr, ETeleportType::ResetPhysics);
 	const auto NewSemanticClassifications = AnchorData->SemanticClassifications;
@@ -314,9 +212,9 @@ FVector AMRUKAnchor::GenerateRandomPositionOnPlaneFromStream(const FRandomStream
 		for (int i = 0; i < PlaneBoundary2D.Num(); ++i)
 		{
 			auto Vertex = PlaneBoundary2D[i];
-			Mesh.Vertices.Push(FVector(0, Vertex.X, Vertex.Y));
+			Mesh.Vertices.Push(FVector2D(Vertex.X, Vertex.Y));
 		}
-		Mesh.Triangles = TriangulatePoints(Mesh.Vertices);
+		Mesh.Triangles = MRUKTriangulatePoints(Mesh.Vertices);
 
 		// Compute the area of each triangle and the total surface area of the mesh
 		Mesh.Areas.Reserve(Mesh.Triangles.Num() / 3);
@@ -329,8 +227,8 @@ FVector AMRUKAnchor::GenerateRandomPositionOnPlaneFromStream(const FRandomStream
 			auto V0 = Mesh.Vertices[I0];
 			auto V1 = Mesh.Vertices[I1];
 			auto V2 = Mesh.Vertices[I2];
-			auto Cross = FVector::CrossProduct(V1 - V0, V2 - V0);
-			float Area = Cross.Length() * 0.5f;
+			const auto Cross = FVector2D::CrossProduct(V1 - V0, V2 - V0);
+			float Area = Cross * 0.5f;
 			Mesh.TotalArea += Area;
 			Mesh.Areas.Add(Area);
 		}
@@ -356,9 +254,9 @@ FVector AMRUKAnchor::GenerateRandomPositionOnPlaneFromStream(const FRandomStream
 	const auto I0 = Triangles[TriangleIndex * 3];
 	const auto I1 = Triangles[TriangleIndex * 3 + 1];
 	const auto I2 = Triangles[TriangleIndex * 3 + 2];
-	const auto V0 = Vertices[I0];
-	const auto V1 = Vertices[I1];
-	const auto V2 = Vertices[I2];
+	const auto V0 = FVector(0.0, Vertices[I0].X, Vertices[I0].Y);
+	const auto V1 = FVector(0.0, Vertices[I1].X, Vertices[I1].Y);
+	const auto V2 = FVector(0.0, Vertices[I2].X, Vertices[I2].Y);
 
 	// Calculate a random point on that triangle
 	float U = RandomStream.FRandRange(0.0f, 1.0f);
@@ -469,12 +367,12 @@ bool AMRUKAnchor::RaycastAll(const FVector& Origin, const FVector& Direction, fl
 	return FoundHit;
 }
 
-void AMRUKAnchor::AttachProceduralMesh(bool GenerateCollision, UMaterialInterface* ProceduralMaterial)
+void AMRUKAnchor::AttachProceduralMesh(const TArray<FString>& CutHoleLabels, bool GenerateCollision, UMaterialInterface* ProceduralMaterial)
 {
-	AttachProceduralMesh({}, GenerateCollision, ProceduralMaterial);
+	AttachProceduralMesh({}, CutHoleLabels, GenerateCollision, ProceduralMaterial);
 }
 
-void AMRUKAnchor::AttachProceduralMesh(TArray<FMRUKPlaneUV> PlaneUVAdjustments, bool GenerateCollision, UMaterialInterface* ProceduralMaterial)
+void AMRUKAnchor::AttachProceduralMesh(TArray<FMRUKPlaneUV> PlaneUVAdjustments, const TArray<FString>& CutHoleLabels, bool GenerateCollision, UMaterialInterface* ProceduralMaterial)
 {
 	if (ProceduralMeshComponent)
 	{
@@ -486,7 +384,7 @@ void AMRUKAnchor::AttachProceduralMesh(TArray<FMRUKPlaneUV> PlaneUVAdjustments, 
 	ProceduralMeshComponent->SetupAttachment(RootComponent);
 	ProceduralMeshComponent->RegisterComponent();
 
-	GenerateProceduralAnchorMesh(*ProceduralMeshComponent, PlaneUVAdjustments, false, GenerateCollision);
+	GenerateProceduralAnchorMesh(*ProceduralMeshComponent, PlaneUVAdjustments, CutHoleLabels, false, GenerateCollision);
 
 	for (int32 SectionIndex = 0; SectionIndex < ProceduralMeshComponent->GetNumSections(); ++SectionIndex)
 	{
@@ -494,7 +392,7 @@ void AMRUKAnchor::AttachProceduralMesh(TArray<FMRUKPlaneUV> PlaneUVAdjustments, 
 	}
 }
 
-void AMRUKAnchor::GenerateProceduralAnchorMesh(UProceduralMeshComponent& ProceduralMesh, const TArray<FMRUKPlaneUV>& PlaneUVAdjustments, bool PreferVolume, bool GenerateCollision, double Offset)
+void AMRUKAnchor::GenerateProceduralAnchorMesh(UProceduralMeshComponent& ProceduralMesh, const TArray<FMRUKPlaneUV>& PlaneUVAdjustments, const TArray<FString>& CutHoleLabels, bool PreferVolume, bool GenerateCollision, double Offset)
 {
 	int SectionIndex = 0;
 	if (VolumeBounds.IsValid)
@@ -581,10 +479,42 @@ void AMRUKAnchor::GenerateProceduralAnchorMesh(UProceduralMeshComponent& Procedu
 				}
 			}
 		}
+
 		ProceduralMesh.CreateMeshSection_LinearColor(SectionIndex++, Vertices, Triangles, Normals, UVs, Colors, Tangents, GenerateCollision);
 	}
 	if (PlaneBounds.bIsValid && !(VolumeBounds.IsValid && PreferVolume))
 	{
+		TArray<TArray<FVector2D>> Holes;
+
+		if (!CutHoleLabels.IsEmpty())
+		{
+			for (const auto& ChildAnchor : ChildAnchors)
+			{
+				if (!ChildAnchor->HasAnyLabel(CutHoleLabels))
+				{
+					continue;
+				}
+
+				if (!ChildAnchor->PlaneBounds.bIsValid)
+				{
+					UE_LOG(LogMRUK, Warning, TEXT("Can only cut holes with anchors that have a plane"));
+					continue;
+				}
+
+				const FVector ChildPositionLS = GetActorTransform().InverseTransformPosition(ChildAnchor->GetActorLocation());
+				TArray<FVector2D> HoleBoundary;
+				HoleBoundary.Reserve(ChildAnchor->PlaneBoundary2D.Num());
+				for (int32 I = ChildAnchor->PlaneBoundary2D.Num() - 1; I >= 0; --I)
+				{
+					HoleBoundary.Push(FVector2D(ChildPositionLS.Y, ChildPositionLS.Z) + ChildAnchor->PlaneBoundary2D[I]);
+				}
+				Holes.Push(HoleBoundary);
+			}
+		}
+
+		const FMRUKOutline Outline = MRUKComputeOutline(PlaneBoundary2D, Holes);
+		const TArray<int32> Triangles = MRUKTriangulateMesh(Outline);
+
 		TArray<FVector> Vertices;
 		TArray<FVector> Normals;
 		TArray<FVector2D> UV0s;
@@ -593,8 +523,7 @@ void AMRUKAnchor::GenerateProceduralAnchorMesh(UProceduralMeshComponent& Procedu
 		TArray<FVector2D> UV3s;
 		TArray<FLinearColor> Colors; // Currently unused
 		TArray<FProcMeshTangent> Tangents;
-		const int32 NumVertices = PlaneBoundary2D.Num();
-		Vertices.Reserve(NumVertices);
+		const int32 NumVertices = Outline.Vertices.Num();
 		Normals.Reserve(NumVertices);
 		UV0s.Reserve(NumVertices);
 		UV1s.Reserve(NumVertices);
@@ -605,7 +534,7 @@ void AMRUKAnchor::GenerateProceduralAnchorMesh(UProceduralMeshComponent& Procedu
 		static const FVector Normal = -FVector::XAxisVector;
 		const FVector NormalOffset = Normal * Offset;
 		auto BoundsSize = PlaneBounds.GetSize();
-		for (const auto& PlaneBoundaryVertex : PlaneBoundary2D)
+		for (const auto& PlaneBoundaryVertex : Outline.Vertices)
 		{
 			const FVector Vertex = FVector(0, PlaneBoundaryVertex.X, PlaneBoundaryVertex.Y) + NormalOffset;
 			Vertices.Push(Vertex);
@@ -634,7 +563,6 @@ void AMRUKAnchor::GenerateProceduralAnchorMesh(UProceduralMeshComponent& Procedu
 				UV3s.Push(FVector2D(U, V) * PlaneUVAdjustments[3].Scale + PlaneUVAdjustments[3].Offset);
 			}
 		}
-		TArray<int32> Triangles = TriangulatePoints(Vertices);
 		ProceduralMesh.CreateMeshSection_LinearColor(SectionIndex++, Vertices, Triangles, Normals, UV0s, UV1s, UV2s, UV3s, Colors, Tangents, GenerateCollision);
 	}
 }
@@ -769,11 +697,7 @@ FVector AMRUKAnchor::GetDirectionAwayFromClosestWall(int* OutCardinalAxisIndex, 
 
 AActor* AMRUKAnchor::SpawnInterior(const TSubclassOf<class AActor>& ActorClass, bool MatchAspectRatio, bool CalculateFacingDirection, EMRUKSpawnerScalingMode ScalingMode)
 {
-	FActorSpawnParameters Params{};
-	Params.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AlwaysSpawn;
-	Params.Owner = this;
-
-	Interior = GetWorld()->SpawnActor(ActorClass, nullptr, Params);
+	Interior = GetWorld()->SpawnActor(ActorClass);
 	auto InteriorRoot = Interior->GetRootComponent();
 	if (!InteriorRoot)
 	{
@@ -781,7 +705,7 @@ AActor* AMRUKAnchor::SpawnInterior(const TSubclassOf<class AActor>& ActorClass, 
 		return nullptr;
 	}
 	InteriorRoot->SetMobility(EComponentMobility::Movable);
-	Interior->AttachToActor(this, FAttachmentTransformRules::KeepRelativeTransform);
+	Interior->AttachToComponent(GetRootComponent(), FAttachmentTransformRules::KeepRelativeTransform);
 	Interior->SetActorRelativeScale3D(FVector::OneVector);
 
 	const auto ChildLocalBounds = Interior->CalculateComponentsBoundingBoxInLocalSpace(true);
@@ -911,7 +835,7 @@ AActor* AMRUKAnchor::SpawnInterior(const TSubclassOf<class AActor>& ActorClass, 
 TSharedRef<FJsonObject> AMRUKAnchor::JsonSerialize()
 {
 	TSharedRef<FJsonObject> JsonObject = MakeShareable(new FJsonObject);
-	JsonObject->SetField(TEXT("UUID"), MRUKSerialize(SpaceQueryResult.UUID));
+	JsonObject->SetField(TEXT("UUID"), MRUKSerialize(AnchorUUID));
 	JsonObject->SetField(TEXT("SemanticClassifications"), MRUKSerialize(SemanticClassifications));
 	JsonObject->SetField(TEXT("Transform"), MRUKSerialize(GetTransform()));
 	if (PlaneBounds.bIsValid)
@@ -939,7 +863,7 @@ TSharedRef<FJsonObject> AMRUKAnchor::JsonSerialize()
 				ensure(ProcMeshComponent->GetNumSections() == 1);
 
 				auto GlobalMeshJson = MakeShared<FJsonObject>();
-				GlobalMeshJson->SetField(TEXT("UUID"), MRUKSerialize(SpaceQueryResult.UUID));
+				GlobalMeshJson->SetField(TEXT("UUID"), MRUKSerialize(AnchorUUID));
 
 				const auto ProcMeshSection = ProcMeshComponent->GetProcMeshSection(0);
 
@@ -963,6 +887,15 @@ TSharedRef<FJsonObject> AMRUKAnchor::JsonSerialize()
 	}
 
 	return JsonObject;
+}
+
+void AMRUKAnchor::EndPlay(EEndPlayReason::Type Reason)
+{
+	if (Interior)
+	{
+		Interior->Destroy();
+	}
+	Super::EndPlay(Reason);
 }
 
 bool AMRUKAnchor::RayCastPlane(const FRay& LocalRay, float MaxDist, FMRUKHit& OutHit)

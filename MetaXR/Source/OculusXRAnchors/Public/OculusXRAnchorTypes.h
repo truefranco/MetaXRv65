@@ -39,9 +39,65 @@ namespace EOculusXRAnchorResult
 		Failure_SpaceNetworkRequestFailed = -2004,
 
 
+		/// APD warnings and error cases
+		Failure_SpaceInsufficientResources = -9000,
+		Failure_SpaceStorageAtCapacity = -9001,
+		Failure_SpaceInsufficientView = -9002,
+		Failure_SpacePermissionInsufficient = -9003,
+		Failure_SpaceRateLimited = -9004,
+		Failure_SpaceTooDark = -9005,
+		Failure_SpaceTooBright = -9006,
 
 	};
 } // namespace EOculusXRAnchorResult
+
+UENUM(BlueprintType, meta = (Bitflags))
+enum class EOculusLocationFlags : uint8
+{
+	None = 0, // required for the metadata generation
+	OrientationValid = (1 << 0),
+	PositionValid = (1 << 1),
+	OrientationTracked = (1 << 2),
+	PositionTracked = (1 << 3)
+};
+
+USTRUCT(BlueprintType)
+struct OCULUSXRANCHORS_API FOculusXRAnchorLocationFlags
+{
+	GENERATED_BODY()
+public:
+	FOculusXRAnchorLocationFlags(uint32 InFlags = 0)
+		: Flags(InFlags) {}
+
+	bool OrientationValid() const
+	{
+		return Flags & static_cast<uint32>(EOculusLocationFlags::OrientationValid);
+	}
+
+	bool PositionValid() const
+	{
+		return Flags & static_cast<uint32>(EOculusLocationFlags::PositionValid);
+	}
+
+	bool OrientationTracked() const
+	{
+		return Flags & static_cast<uint32>(EOculusLocationFlags::OrientationTracked);
+	}
+
+	bool PositionTracked() const
+	{
+		return Flags & static_cast<uint32>(EOculusLocationFlags::PositionTracked);
+	}
+
+	bool IsValid() const
+	{
+		return OrientationValid() && PositionValid();
+	}
+
+private:
+	UPROPERTY(BlueprintReadOnly, Category = "OculusXR|SpatialAnchor", meta = (AllowPrivateAccess = "true", Bitmask, BitmaskEnum = "EOculusLocationFlags"))
+	int32 Flags;
+};
 
 USTRUCT(BlueprintType)
 struct OCULUSXRANCHORS_API FOculusXRUUID
@@ -217,6 +273,98 @@ public:
 	TArray<EOculusXRSpaceComponentType> ComponentTypes; // used if filtering by component types
 };
 
+struct ovrpSpaceDiscoveryFilterHeader_;
+typedef ovrpSpaceDiscoveryFilterHeader_ ovrpSpaceDiscoveryFilterHeader;
+
+UCLASS(BlueprintType)
+class OCULUSXRANCHORS_API UOculusXRSpaceDiscoveryFilterBase : public UObject
+{
+	GENERATED_BODY()
+public:
+	virtual const ovrpSpaceDiscoveryFilterHeader* GenerateOVRPFilter()
+	{
+		return nullptr;
+	}
+};
+
+USTRUCT(BlueprintType)
+struct OCULUSXRANCHORS_API FOculusXRSpaceDiscoveryInfo
+{
+	GENERATED_BODY()
+public:
+	FOculusXRSpaceDiscoveryInfo()
+	{
+	}
+
+	UPROPERTY(BlueprintReadWrite, Category = "OculusXR|SpatialAnchor")
+	TArray<UOculusXRSpaceDiscoveryFilterBase*> Filters;
+};
+
+USTRUCT(BlueprintType)
+struct OCULUSXRANCHORS_API FOculusXRAnchorsDiscoverResult
+{
+	GENERATED_BODY()
+public:
+	FOculusXRAnchorsDiscoverResult()
+		: Space(0), UUID() {}
+	FOculusXRAnchorsDiscoverResult(FOculusXRUInt64 SpaceHandle, FOculusXRUUID ID)
+		: Space(SpaceHandle), UUID(ID) {}
+
+	UPROPERTY(BlueprintReadWrite, Category = "OculusXR|SpatialAnchor")
+	FOculusXRUInt64 Space;
+
+	UPROPERTY(BlueprintReadWrite, Category = "OculusXR|SpatialAnchor")
+	FOculusXRUUID UUID;
+};
+
+struct ovrpSpaceDiscoveryFilterIds_;
+typedef ovrpSpaceDiscoveryFilterIds_ ovrpSpaceDiscoveryFilterIds;
+struct ovrpSpaceDiscoveryFilterIdsDelete
+{
+	void operator()(ovrpSpaceDiscoveryFilterIds* ptr) const;
+};
+
+struct DiscoveryUuidWrapper
+{
+	unsigned char data[16];
+};
+
+UCLASS(Blueprintable, Category = "OculusXR|SpatialAnchor")
+class OCULUSXRANCHORS_API UOculusXRSpaceDiscoveryIdsFilter : public UOculusXRSpaceDiscoveryFilterBase
+{
+	GENERATED_BODY()
+public:
+	UPROPERTY(BlueprintReadWrite, Category = "OculusXR|SpatialAnchor")
+	TArray<FOculusXRUUID> Uuids;
+
+	TArray<DiscoveryUuidWrapper> wrappedUUIDs;
+
+	virtual const ovrpSpaceDiscoveryFilterHeader* GenerateOVRPFilter() override;
+
+private:
+	std::unique_ptr<ovrpSpaceDiscoveryFilterIds, ovrpSpaceDiscoveryFilterIdsDelete> OVRPFilterIds;
+};
+
+struct ovrpSpaceDiscoveryFilterComponents_;
+typedef ovrpSpaceDiscoveryFilterComponents_ ovrpSpaceDiscoveryFilterComponents;
+struct ovrpSpaceDiscoveryFilterComponentsDelete
+{
+	void operator()(ovrpSpaceDiscoveryFilterComponents* ptr) const;
+};
+
+UCLASS(Blueprintable, Category = "OculusXR|SpatialAnchor")
+class OCULUSXRANCHORS_API UOculusXRSpaceDiscoveryComponentsFilter : public UOculusXRSpaceDiscoveryFilterBase
+{
+	GENERATED_BODY()
+public:
+	UPROPERTY(BlueprintReadWrite, Category = "OculusXR|SpatialAnchor")
+	EOculusXRSpaceComponentType ComponentType;
+
+	virtual const ovrpSpaceDiscoveryFilterHeader* GenerateOVRPFilter() override;
+
+private:
+	std::unique_ptr<ovrpSpaceDiscoveryFilterComponents, ovrpSpaceDiscoveryFilterComponentsDelete> OVRPFilterComponent;
+};
 
 // Represents a room layout within a specific space
 USTRUCT(BlueprintType)

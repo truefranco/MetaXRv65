@@ -11,6 +11,7 @@ LICENSE file in the root directory of this source tree.
 #include "MRUtilityKitSubsystem.h"
 #include "MRUtilityKitGuardian.h"
 #include "IXRTrackingSystem.h"
+#include "MRUtilityKitRoom.h"
 #include "Materials/MaterialInstanceDynamic.h"
 
 AMRUKGuardianSpawner::AMRUKGuardianSpawner()
@@ -18,19 +19,6 @@ AMRUKGuardianSpawner::AMRUKGuardianSpawner()
 	PrimaryActorTick.bCanEverTick = true;
 	PrimaryActorTick.bTickEvenWhenPaused = true;
 	PrimaryActorTick.TickGroup = TG_PrePhysics;
-}
-
-void AMRUKGuardianSpawner::SpawnGuardian()
-{
-	if (GuardianMaterial)
-	{
-		SetGuardianMaterial(GuardianMaterial);
-	}
-
-	for (const auto GuardianActor : GuardianActors)
-	{
-		GuardianActor->SetActorHiddenInGame(IsHidden());
-	}
 }
 
 void AMRUKGuardianSpawner::SetGuardianMaterial(UMaterialInstance* Material)
@@ -44,60 +32,70 @@ void AMRUKGuardianSpawner::SetGuardianMaterial(UMaterialInstance* Material)
 	DynamicGuardianMaterial = UMaterialInstanceDynamic::Create(GuardianMaterial, this);
 	DynamicGuardianMaterial->SetVectorParameterValue(TEXT("WallScale"), FVector(GridDensity));
 
-	const auto GameInstance = GetGameInstance();
-	if (!GameInstance)
+	// Recreate guardian meshes
+	TArray<AMRUKRoom*> Rooms;
+	SpawnedGuardians.GetKeys(Rooms);
+	for (AMRUKRoom* Room : Rooms)
 	{
-		// We are probably currently just in the editor and didn't started a play session.
-		return;
+		SpawnGuardians(Room);
 	}
-	const auto Subsystem = GameInstance->GetSubsystem<UMRUKSubsystem>();
-	const auto CurrentRoom = Subsystem->GetCurrentRoom();
-	if (!CurrentRoom)
+}
+
+void AMRUKGuardianSpawner::SpawnGuardians(AMRUKRoom* Room)
+{
+	if (!IsValid(Room))
 	{
+		UE_LOG(LogMRUK, Warning, TEXT("Can not spawn Guardians for a room that is a nullptr"));
 		return;
 	}
 
-	// Destroy old guardians if there are any
-	DestroyGuardians();
+	// Remove guardians that are already in this room
+	DestroyGuardians(Room);
 
-	// Generate new guardians
+	const auto Subsystem = GetGameInstance()->GetSubsystem<UMRUKSubsystem>();
+	Subsystem->OnRoomUpdated.AddUniqueDynamic(this, &AMRUKGuardianSpawner::OnRoomUpdated);
+	Subsystem->OnRoomRemoved.AddUniqueDynamic(this, &AMRUKGuardianSpawner::OnRoomRemoved);
 
 	const auto SpawnGuardian = [this](AMRUKAnchor* Anchor, const TArray<FMRUKPlaneUV>& PlaneUVAdjustments) {
 		// Create guardian actor
-		FActorSpawnParameters ActorSpawnParams;
-		ActorSpawnParams.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AlwaysSpawn;
-		ActorSpawnParams.Owner = Anchor;
-		AMRUKGuardian* GuardianActor = GetWorld()->SpawnActor<AMRUKGuardian>(ActorSpawnParams);
-		GuardianActor->AttachToActor(Anchor, FAttachmentTransformRules::KeepRelativeTransform);
-		GuardianActors.Push(GuardianActor);
+		const auto GuardianActor = GetWorld()->SpawnActor<AMRUKGuardian>();
+		GuardianActor->AttachToComponent(Anchor->GetRootComponent(), FAttachmentTransformRules::KeepRelativeTransform);
+		GuardianActor->SetActorHiddenInGame(IsHidden());
 
 		// Generate procedural mesh
 		const auto ProceduralMesh = NewObject<UProceduralMeshComponent>(GuardianActor, TEXT("GuardianMesh"));
-		Anchor->GenerateProceduralAnchorMesh(*ProceduralMesh, PlaneUVAdjustments, true, false, 0.01);
+		Anchor->GenerateProceduralAnchorMesh(*ProceduralMesh, PlaneUVAdjustments, {}, true, false, 0.01);
 		ProceduralMesh->SetMaterial(0, DynamicGuardianMaterial);
 		GuardianActor->CreateGuardian(ProceduralMesh);
+
+		return GuardianActor;
 	};
+
+	TArray<AMRUKGuardian*> SpawnedActors;
 
 	// Attach procedural meshes to the walls first because they are connected.
 	TArray<FMRUKAnchorWithPlaneUVs> AnchorsWithPlaneUVs;
 	const TArray<FMRUKTexCoordModes> WallTextureCoordinateModes = { { EMRUKCoordModeU::Metric, EMRUKCoordModeV::Metric } };
-	CurrentRoom->ComputeWallMeshUVAdjustments(WallTextureCoordinateModes, AnchorsWithPlaneUVs);
+	Room->ComputeWallMeshUVAdjustments(WallTextureCoordinateModes, AnchorsWithPlaneUVs);
+
 	for (const auto& [Anchor, PlaneUVs] : AnchorsWithPlaneUVs)
 	{
-		SpawnGuardian(Anchor, PlaneUVs);
+		SpawnedActors.Push(SpawnGuardian(Anchor, PlaneUVs));
 	}
 
 	// Attach procedural meshes to the rest of the anchors. The walls have already meshes applied
 	// because of the first step and will therefore be ignored by this code automatically.
-	for (const auto& Anchor : CurrentRoom->AllAnchors)
+	for (const auto& Anchor : Room->AllAnchors)
 	{
-		if (!Anchor || Anchor == CurrentRoom->FloorAnchor || Anchor == CurrentRoom->CeilingAnchor || CurrentRoom->IsWallAnchor(Anchor))
+		if (!Anchor || Anchor == Room->FloorAnchor || Anchor == Room->CeilingAnchor || Room->IsWallAnchor(Anchor))
 		{
 			continue;
 		}
 
-		SpawnGuardian(Anchor, {});
+		SpawnedActors.Push(SpawnGuardian(Anchor, {}));
 	}
+
+	SpawnedGuardians.Add(Room, SpawnedActors);
 }
 
 void AMRUKGuardianSpawner::SetGridDensity(double Density)
@@ -146,6 +144,8 @@ void AMRUKGuardianSpawner::BeginPlay()
 {
 	Super::BeginPlay();
 
+	SetGuardianMaterial(GuardianMaterial);
+
 #if WITH_EDITOR
 	if (OculusXRTelemetry::IsActive())
 	{
@@ -153,27 +153,39 @@ void AMRUKGuardianSpawner::BeginPlay()
 	}
 #endif
 
-	if (SpawnOnStart)
+	if (SpawnMode == EMRUKSpawnMode::CurrentRoomOnly)
 	{
 		const auto Subsystem = GetGameInstance()->GetSubsystem<UMRUKSubsystem>();
 		if (Subsystem->SceneLoadStatus == EMRUKInitStatus::Complete)
 		{
-			SpawnGuardian();
+			if (AMRUKRoom* CurrentRoom = Subsystem->GetCurrentRoom())
+			{
+				SpawnGuardians(CurrentRoom);
+			}
 		}
-		// Register to the event because we don't want to miss future updates
-		Subsystem->OnSceneLoaded.AddUniqueDynamic(this, &AMRUKGuardianSpawner::SceneLoaded);
+		else
+		{
+			// Only listen for the room created event in case no current room was available yet
+			Subsystem->OnRoomCreated.AddUniqueDynamic(this, &AMRUKGuardianSpawner::OnRoomCreated);
+		}
 	}
-}
+	else if (SpawnMode == EMRUKSpawnMode::AllRooms)
+	{
+		const auto Subsystem = GetGameInstance()->GetSubsystem<UMRUKSubsystem>();
+		for (auto Room : Subsystem->Rooms)
+		{
+			SpawnGuardians(Room);
+		}
 
-void AMRUKGuardianSpawner::EndPlay(const EEndPlayReason::Type EndPlayReason)
-{
-	DestroyGuardians();
+		// Listen for new rooms that get created
+		Subsystem->OnRoomCreated.AddUniqueDynamic(this, &AMRUKGuardianSpawner::OnRoomCreated);
+	}
 }
 
 #if WITH_EDITOR
 void AMRUKGuardianSpawner::PostEditChangeProperty(FPropertyChangedEvent& PropertyChangedEvent)
 {
-	const auto PropertyName = (PropertyChangedEvent.Property != NULL) ? PropertyChangedEvent.Property->GetFName() : NAME_None;
+	const auto PropertyName = (PropertyChangedEvent.Property != nullptr) ? PropertyChangedEvent.Property->GetFName() : NAME_None;
 	if (PropertyName == GET_MEMBER_NAME_CHECKED(AMRUKGuardianSpawner, GridDensity))
 	{
 		SetGridDensity(GridDensity);
@@ -186,22 +198,45 @@ void AMRUKGuardianSpawner::PostEditChangeProperty(FPropertyChangedEvent& Propert
 }
 #endif
 
-void AMRUKGuardianSpawner::DestroyGuardians()
+void AMRUKGuardianSpawner::OnRoomCreated(AMRUKRoom* Room)
 {
-	for (const auto GuardianActor : GuardianActors)
+	if (SpawnMode == EMRUKSpawnMode::CurrentRoomOnly && SpawnedGuardians.Num() > 0)
 	{
-		if (IsValid(GuardianActor))
-		{
-			GuardianActor->Destroy();
-		}
+		// We already spawned a room
+		return;
 	}
-	GuardianActors.Empty();
+
+	SpawnGuardians(Room);
 }
 
-void AMRUKGuardianSpawner::SceneLoaded(bool Success)
+void AMRUKGuardianSpawner::OnRoomUpdated(AMRUKRoom* Room)
 {
-	if (Success)
+	if (!SpawnedGuardians.Find(Room))
 	{
-		SpawnGuardian();
+		// A room was updated that we don't care about. If we are in current room only mode
+		// we only want to update the one room we created
+		return;
+	}
+	SpawnGuardians(Room);
+}
+
+void AMRUKGuardianSpawner::OnRoomRemoved(AMRUKRoom* Room)
+{
+	DestroyGuardians(Room);
+}
+
+void AMRUKGuardianSpawner::DestroyGuardians(AMRUKRoom* Room)
+{
+	if (TArray<AMRUKGuardian*>* Actors = SpawnedGuardians.Find(Room))
+	{
+		for (AActor* Actor : *Actors)
+		{
+			if (IsValid(Actor))
+			{
+				Actor->Destroy();
+			}
+		}
+		Actors->Empty();
+		SpawnedGuardians.Remove(Room);
 	}
 }

@@ -22,40 +22,91 @@ void AMRUKAnchorActorSpawner::BeginPlay()
 	}
 #endif
 
-	if (SpawnOnStart)
+	if (SpawnMode == EMRUKSpawnMode::CurrentRoomOnly)
 	{
 		const auto Subsystem = GetGameInstance()->GetSubsystem<UMRUKSubsystem>();
 		if (Subsystem->SceneLoadStatus == EMRUKInitStatus::Complete)
 		{
-			SpawnInterior();
+			SpawnActors(Subsystem->GetCurrentRoom());
 		}
-		// Register for the OnSceneLoaded event anyway, because we don't want to miss future updates
-		Subsystem->OnSceneLoaded.AddUniqueDynamic(this, &AMRUKAnchorActorSpawner::OnSceneLoaded);
-	}
-}
-
-void AMRUKAnchorActorSpawner::OnSceneLoaded(bool Success)
-{
-	if (Success)
-	{
-		SpawnInterior();
-	}
-}
-
-void AMRUKAnchorActorSpawner::SpawnInterior()
-{
-	for (auto InteriorActor : InteriorActors)
-	{
-		if (InteriorActor)
+		else
 		{
-			InteriorActor->Destroy();
+			// Only listen for the room created event in case no current room was available yet
+			Subsystem->OnRoomCreated.AddUniqueDynamic(this, &AMRUKAnchorActorSpawner::OnRoomCreated);
 		}
 	}
-	InteriorActors.Empty();
+	else if (SpawnMode == EMRUKSpawnMode::AllRooms)
+	{
+		const auto Subsystem = GetGameInstance()->GetSubsystem<UMRUKSubsystem>();
+		for (auto Room : Subsystem->Rooms)
+		{
+			SpawnActors(Room);
+		}
 
-	const auto Subsystem = GetGameInstance()->GetSubsystem<UMRUKSubsystem>();
+		// Listen for new rooms that get created
+		Subsystem->OnRoomCreated.AddUniqueDynamic(this, &AMRUKAnchorActorSpawner::OnRoomCreated);
+	}
+}
 
-	// Use last seed if possible to keep spawing determenistic after the first spawn.
+void AMRUKAnchorActorSpawner::OnRoomCreated(AMRUKRoom* Room)
+{
+	if (SpawnMode == EMRUKSpawnMode::CurrentRoomOnly && SpawnedActors.Num() > 0)
+	{
+		// We already spawned a room
+		return;
+	}
+	SpawnActors(Room);
+}
+
+void AMRUKAnchorActorSpawner::OnRoomUpdated(AMRUKRoom* Room)
+{
+	if (!SpawnedActors.Find(Room))
+	{
+		// A room was updated that we don't care about. If we are in current room only mode
+		// we only want to update the one room we created
+		return;
+	}
+	SpawnActors(Room);
+}
+
+void AMRUKAnchorActorSpawner::OnRoomRemoved(AMRUKRoom* Room)
+{
+	RemoveActors(Room);
+}
+
+void AMRUKAnchorActorSpawner::RemoveActors(AMRUKRoom* Room)
+{
+	if (!IsValid(Room))
+	{
+		UE_LOG(LogMRUK, Warning, TEXT("Can not remove actors from room that is a nullptr"));
+		return;
+	}
+
+	if (TArray<AActor*>* Actors = SpawnedActors.Find(Room))
+	{
+		for (AActor* Actor : *Actors)
+		{
+			if (IsValid(Actor))
+			{
+				Actor->Destroy();
+			}
+		}
+		Actors->Empty();
+		SpawnedActors.Remove(Room);
+	}
+}
+
+void AMRUKAnchorActorSpawner::SpawnActors(AMRUKRoom* Room)
+{
+	if (!IsValid(Room))
+	{
+		UE_LOG(LogMRUK, Warning, TEXT("Can not spawn actors in Room that is a nullptr"));
+		return;
+	}
+
+	RemoveActors(Room);
+
+	// Use last seed if possible to keep spawning deterministic after the first spawn.
 	// In case the anchor random spawn seed has been changed it will be used instead
 	// of the last seed.
 	int32 Seed = -1;
@@ -81,7 +132,29 @@ void AMRUKAnchorActorSpawner::SpawnInterior()
 		RandomStream.GenerateNewSeed();
 	}
 	LastSeed = RandomStream.GetCurrentSeed();
-	InteriorActors = Subsystem->SpawnInteriorFromStream(SpawnGroups, RandomStream, ProceduralMaterial, ShouldFallbackToProcedural);
+	const TArray<AActor*>& Actors = Room->SpawnInteriorFromStream(SpawnGroups, RandomStream, CutHoleLabels,
+		ProceduralMaterial, ShouldFallbackToProcedural);
+	SpawnedActors.Add(Room, Actors);
 
-	OnActorsSpawned.Broadcast();
+	const auto Subsystem = GetGameInstance()->GetSubsystem<UMRUKSubsystem>();
+	Subsystem->OnRoomUpdated.AddUniqueDynamic(this, &AMRUKAnchorActorSpawner::OnRoomUpdated);
+	Subsystem->OnRoomRemoved.AddUniqueDynamic(this, &AMRUKAnchorActorSpawner::OnRoomRemoved);
+
+	OnActorsSpawned.Broadcast(Room);
+}
+
+void AMRUKAnchorActorSpawner::GetSpawnedActorsByRoom(AMRUKRoom* Room, TArray<AActor*>& Actors)
+{
+	if (const TArray<AActor*>* A = SpawnedActors.Find(Room))
+	{
+		Actors.Append(*A);
+	}
+}
+
+void AMRUKAnchorActorSpawner::GetSpawnedActors(TArray<AActor*>& Actors)
+{
+	for (const auto& KeyValue : SpawnedActors)
+	{
+		Actors.Append(KeyValue.Value);
+	}
 }

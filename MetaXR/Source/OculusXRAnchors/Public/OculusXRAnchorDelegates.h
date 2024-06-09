@@ -119,4 +119,47 @@ public:
 	DECLARE_MULTICAST_DELEGATE_TwoParams(FOculusXRSceneCaptureCompleteDelegate, FOculusXRUInt64 /*requestId*/, bool /*success*/);
 	static OCULUSXRANCHORS_API FOculusXRSceneCaptureCompleteDelegate OculusSceneCaptureComplete;
 
+	/* ovrpEventType_SpaceDiscoveryComplete
+	 *
+	 *        SpaceDiscoveryComplete
+	 * Prefix:
+	 * FOculusXRSpaceDiscoveryComplete
+	 * Suffix:
+	 * FOculusXRDiscoverSpacesCompleteDelegate
+	 */
+	DECLARE_MULTICAST_DELEGATE_TwoParams(FOculusXRAnchorsDiscoverCompleteDelegate, FOculusXRUInt64 /*requestId*/, int /*result*/);
+	static OCULUSXRANCHORS_API FOculusXRAnchorsDiscoverCompleteDelegate OculusAnchorsDiscoverComplete;
+
+	/* ovrpEventType_SpaceDiscoveryResultsAvailable
+	 *
+	 *        SpaceDiscoveryResults
+	 * Prefix:
+	 * FOculusXRAnchorsDiscoverResults
+	 * Suffix:
+	 * FOculusXRAnchorsDiscoverResultsDelegate
+	 */
+	DECLARE_MULTICAST_DELEGATE_TwoParams(FOculusXRAnchorsDiscoverResultsDelegate, FOculusXRUInt64 /*requestId*/, const TArray<FOculusXRAnchorsDiscoverResult>& /*results*/);
+	static OCULUSXRANCHORS_API FOculusXRAnchorsDiscoverResultsDelegate OculusAnchorsDiscoverResults;
+
+	/* ovrpEventType_SpacesSaveResult
+	 *
+	 *        SpacesSaveComplete
+	 * Prefix:
+	 * FOculusXRAnchorsSaveComplete
+	 * Suffix:
+	 * FOculusXRAnchorsSaveCompleteDelegate
+	 */
+	DECLARE_MULTICAST_DELEGATE_TwoParams(FOculusXRAnchorsSaveCompleteDelegate, FOculusXRUInt64 /*requestId*/, int /*result*/);
+	static OCULUSXRANCHORS_API FOculusXRAnchorsSaveCompleteDelegate OculusAnchorsSaveComplete;
+
+	/* ovrpEventType_SpacesEraseResult
+	 *
+	 *        SpacesEraseResult
+	 * Prefix:
+	 * FOculusXRAnchorsEraseComplete
+	 * Suffix:
+	 * FOculusXRAnchorsEraseCompleteDelegate
+	 */
+	DECLARE_MULTICAST_DELEGATE_TwoParams(FOculusXRAnchorsEraseCompleteDelegate, FOculusXRUInt64 /*requestId*/, int /*result*/);
+	static OCULUSXRANCHORS_API FOculusXRAnchorsEraseCompleteDelegate OculusAnchorsEraseComplete;
 };

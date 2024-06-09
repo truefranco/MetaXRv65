@@ -31,7 +31,14 @@ void AMRUKLocalizer::Tick(float DeltaTime)
 		if (UOculusXRAnchorBPFunctionLibrary::GetAnchorTransformByHandle(Query->SpaceQuery.Space, Query->Transform))
 		{
 			Query->NeedAnchorLocalization = false;
-			UE_LOG(LogMRUK, Log, TEXT("Localized anchor"));
+			if (Query->SemanticClassifications.IsEmpty())
+			{
+				UE_LOG(LogMRUK, Log, TEXT("Localized anchor %s"), *Query->SpaceQuery.UUID.ToString());
+			}
+			else
+			{
+				UE_LOG(LogMRUK, Log, TEXT("Localized anchor %s - %s"), *Query->SpaceQuery.UUID.ToString(), *Query->SemanticClassifications[0]);
+			}
 			AnchorsData.RemoveAt(i);
 			--i;
 		}
@@ -44,25 +51,25 @@ void AMRUKLocalizer::Tick(float DeltaTime)
 	}
 }
 
-void UMRUKAnchorData::LoadFromDevice(const FOculusXRSpaceQueryResult& SpaceQueryResult, int32 MaxQueries)
+void UMRUKAnchorData::LoadFromDevice(const FOculusXRAnchorsDiscoverResult& AnchorsDiscoverResult, int32 MaxQueries)
 {
-	SpaceQuery = SpaceQueryResult;
+	SpaceQuery = AnchorsDiscoverResult;
 
 	Transform = FTransform::Identity;
 	NeedAnchorLocalization = false;
 	if (!UOculusXRAnchorBPFunctionLibrary::GetAnchorTransformByHandle(SpaceQuery.Space, Transform))
 	{
-		UE_LOG(LogMRUK, Error, TEXT("Failed to get anchor transform. Querying it async."));
+		UE_LOG(LogMRUK, Log, TEXT("Anchor %s is not localized yet. Localize it async."), *SpaceQuery.UUID.ToString());
 		NeedAnchorLocalization = true;
 	}
 
 	EOculusXRAnchorResult::Type Result;
 	if (!OculusXRAnchors::FOculusXRAnchors::GetSpaceSemanticClassification(SpaceQuery.Space.Value, SemanticClassifications, Result))
 	{
-		UE_LOG(LogMRUK, Error, TEXT("Failed to get semantic classification space."));
+		UE_LOG(LogMRUK, Error, TEXT("Failed to get semantic classification space for %s."), *SpaceQuery.UUID.ToString());
 	}
 
-	UWorld* World = GetWorld();
+	const UWorld* World = GetWorld();
 	const float WorldToMeters = World ? World->GetWorldSettings()->WorldToMeters : 100.0;
 
 	FVector ScenePlanePos;
@@ -114,9 +121,9 @@ void UMRUKAnchorData::LoadFromJson(const FJsonValue& Value)
 	NeedAnchorLocalization = false;
 }
 
-void UMRUKRoomData::LoadFromDevice(FOculusXRSpaceQueryResult SpaceQueryResult, int32 MaxQueries)
+void UMRUKRoomData::LoadFromDevice(const FOculusXRAnchorsDiscoverResult& AnchorsDiscoverResult, int32 MaxQueries)
 {
-	SpaceQuery = SpaceQueryResult;
+	SpaceQuery = AnchorsDiscoverResult;
 
 	const auto Subsystem = GetWorld()->GetGameInstance()->GetSubsystem<UMRUKSubsystem>();
 
@@ -127,16 +134,18 @@ void UMRUKRoomData::LoadFromDevice(FOculusXRSpaceQueryResult SpaceQueryResult, i
 		return;
 	}
 
-	EOculusXRAnchorResult::Type AnchorQueryResult;
-	if (!OculusXRAnchors::FOculusXRAnchors::QueryAnchors(
-			RoomLayout.RoomObjectUUIDs,
-			EOculusXRSpaceStorageLocation::Local,
-			FOculusXRAnchorQueryDelegate::CreateUObject(this, &UMRUKRoomData::RoomQueryComplete, SpaceQuery.Space),
-			AnchorQueryResult))
+	EOculusXRAnchorResult::Type Result{};
+
+	const auto Filter = NewObject<UOculusXRSpaceDiscoveryIdsFilter>(this);
+	Filter->Uuids = RoomLayout.RoomObjectUUIDs;
+	FOculusXRSpaceDiscoveryInfo DiscoveryInfo{};
+	DiscoveryInfo.Filters.Push(Filter);
+
+	OculusXRAnchors::FOculusXRAnchors::DiscoverAnchors(DiscoveryInfo, FOculusXRDiscoverAnchorsResultsDelegate::CreateUObject(this, &UMRUKRoomData::RoomDataLoadedComplete), FOculusXRDiscoverAnchorsCompleteDelegate::CreateUObject(this, &UMRUKRoomData::RoomDataLoadedResult), Result);
+	if (Result != EOculusXRAnchorResult::Success)
 	{
-		UE_LOG(LogMRUK, Error, TEXT("Could not query anchors"));
+		UE_LOG(LogMRUK, Error, TEXT("Failed to discover anchors"));
 		FinishQuery(false);
-		return;
 	}
 }
 
@@ -161,23 +170,31 @@ void UMRUKRoomData::FinishQuery(bool Success)
 	OnComplete.Broadcast(Success);
 }
 
-void UMRUKRoomData::RoomQueryComplete(EOculusXRAnchorResult::Type AnchorResult, const TArray<FOculusXRSpaceQueryResult>& QueryResults, const FOculusXRUInt64 RoomSpaceID)
+void UMRUKRoomData::RoomDataLoadedResult(EOculusXRAnchorResult::Type Result)
 {
-	if (!UOculusXRAnchorBPFunctionLibrary::IsAnchorResultSuccess(AnchorResult))
+	if (!UOculusXRAnchorBPFunctionLibrary::IsAnchorResultSuccess(Result))
 	{
-		UE_LOG(LogMRUK, Error, TEXT("Querying room data failed"));
+		UE_LOG(LogMRUK, Error, TEXT("Dicovering room data failed"));
 		FinishQuery(false);
+		return;
+	}
+}
+
+void UMRUKRoomData::RoomDataLoadedComplete(const TArray<FOculusXRAnchorsDiscoverResult>& DiscoverResults)
+{
+	if (DiscoverResults.Num() == 0)
+	{
 		return;
 	}
 
 	TArray<UMRUKAnchorData*> AnchorQueriesLocalization;
 
-	UE_LOG(LogMRUK, Log, TEXT("Received %d anchors from device"), QueryResults.Num());
+	UE_LOG(LogMRUK, Log, TEXT("Received %d anchors from device"), DiscoverResults.Num());
 
-	for (auto& AnchorQueryElement : QueryResults)
+	for (auto& DiscoverResult : DiscoverResults)
 	{
 		auto AnchorQuery = NewObject<UMRUKAnchorData>(this);
-		AnchorQuery->LoadFromDevice(AnchorQueryElement);
+		AnchorQuery->LoadFromDevice(DiscoverResult);
 		if (AnchorQuery->NeedAnchorLocalization)
 		{
 			AnchorQueriesLocalization.Push(AnchorQuery);
@@ -203,7 +220,7 @@ void UMRUKRoomData::RoomQueryComplete(EOculusXRAnchorResult::Type AnchorResult, 
 void UMRUKRoomData::AnchorsInitialized(bool Success)
 {
 	UE_LOG(LogMRUK, Log, TEXT("Anchors data initialized Success==%d"), Success);
-	if (LocalizationActor)
+	if (IsValid(LocalizationActor))
 	{
 		LocalizationActor->Destroy();
 		LocalizationActor = nullptr;
@@ -215,15 +232,17 @@ void UMRUKSceneData::LoadFromDevice(int32 MaxQueries)
 {
 	NumRoomsLeftToInitialize = 0;
 
-	FOculusXRSpaceQueryInfo QueryInfo;
-	QueryInfo.MaxQuerySpaces = MaxQueries;
-	QueryInfo.FilterType = EOculusXRSpaceQueryFilterType::FilterByComponentType;
-	QueryInfo.ComponentFilter.Add(EOculusXRSpaceComponentType::RoomLayout);
+	EOculusXRAnchorResult::Type Result{};
 
-	EOculusXRAnchorResult::Type AnchorQueryResult;
-	if (!OculusXRAnchors::FOculusXRAnchors::QueryAnchorsAdvanced(QueryInfo, FOculusXRAnchorQueryDelegate::CreateUObject(this, &UMRUKSceneData::SceneDataLoadedComplete), AnchorQueryResult))
+	const auto Filter = NewObject<UOculusXRSpaceDiscoveryComponentsFilter>(this);
+	Filter->ComponentType = EOculusXRSpaceComponentType::RoomLayout;
+	FOculusXRSpaceDiscoveryInfo DiscoveryInfo{};
+	DiscoveryInfo.Filters.Push(Filter);
+
+	OculusXRAnchors::FOculusXRAnchors::DiscoverAnchors(DiscoveryInfo, FOculusXRDiscoverAnchorsResultsDelegate::CreateUObject(this, &UMRUKSceneData::SceneDataLoadedComplete), FOculusXRDiscoverAnchorsCompleteDelegate::CreateUObject(this, &UMRUKSceneData::SceneDataLoadedResult), Result);
+	if (Result != EOculusXRAnchorResult::Success)
 	{
-		UE_LOG(LogMRUK, Error, TEXT("Failed to query scene"));
+		UE_LOG(LogMRUK, Error, TEXT("Failed to discover room layouts"));
 		FinishQuery(false);
 	}
 }
@@ -282,9 +301,18 @@ void UMRUKSceneData::FinishQuery(bool Success)
 	}
 }
 
-void UMRUKSceneData::SceneDataLoadedComplete(EOculusXRAnchorResult::Type AnchorResult, const TArray<FOculusXRSpaceQueryResult>& QueryResults)
+void UMRUKSceneData::SceneDataLoadedResult(EOculusXRAnchorResult::Type Result)
 {
-	NumRoomsLeftToInitialize = QueryResults.Num();
+	if (!UOculusXRAnchorBPFunctionLibrary::IsAnchorResultSuccess(Result) || RoomsData.IsEmpty())
+	{
+		UE_LOG(LogMRUK, Error, TEXT("Discovering room layouts failed"));
+		FinishQuery(false);
+	}
+}
+
+void UMRUKSceneData::SceneDataLoadedComplete(const TArray<FOculusXRAnchorsDiscoverResult>& DiscoverResults)
+{
+	NumRoomsLeftToInitialize = DiscoverResults.Num();
 	UE_LOG(LogMRUK, Log, TEXT("Found on %d rooms on the device"), NumRoomsLeftToInitialize);
 
 #if WITH_EDITOR
@@ -292,24 +320,24 @@ void UMRUKSceneData::SceneDataLoadedComplete(EOculusXRAnchorResult::Type AnchorR
 	{
 		MRUKTelemetry::FLoadSceneFromDeviceMarker()
 			.Start()
-			.AddAnnotation("NumRooms", TCHAR_TO_ANSI(*FString::FromInt(QueryResults.Num())))
-			.End(QueryResults.Num() > 0 ? OculusXRTelemetry::EAction::Success : OculusXRTelemetry::EAction::Fail);
+			.AddAnnotation("NumRooms", TCHAR_TO_ANSI(*FString::FromInt(DiscoverResults.Num())))
+			.End(DiscoverResults.Num() > 0 ? OculusXRTelemetry::EAction::Success : OculusXRTelemetry::EAction::Fail);
 	}
 #endif
 
-	if (!UOculusXRAnchorBPFunctionLibrary::IsAnchorResultSuccess(AnchorResult) || NumRoomsLeftToInitialize == 0)
+	if (NumRoomsLeftToInitialize == 0)
 	{
-		UE_LOG(LogMRUK, Error, TEXT("Scene query failed"));
+		UE_LOG(LogMRUK, Error, TEXT("No room layouts discovered"));
 		FinishQuery(false);
 		return;
 	}
 
-	for (auto& QueryElement : QueryResults)
+	for (auto& DiscoverResult : DiscoverResults)
 	{
 		auto RoomQuery = NewObject<UMRUKRoomData>(this);
 		RoomsData.Push(RoomQuery);
 		RoomQuery->OnComplete.AddDynamic(this, &UMRUKSceneData::RoomQueryComplete);
-		RoomQuery->LoadFromDevice(QueryElement);
+		RoomQuery->LoadFromDevice(DiscoverResult);
 	}
 }
 

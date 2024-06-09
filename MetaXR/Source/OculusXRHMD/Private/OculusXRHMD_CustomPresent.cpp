@@ -24,6 +24,89 @@
 
 namespace OculusXRHMD
 {
+	/**
+	 * A pixel shader for rendering a textured screen element with mip maps and array slice.
+	 */
+	class FScreenPSMipLevelArray : public FGlobalShader
+	{
+		DECLARE_SHADER_TYPE(FScreenPSMipLevelArray, Global);
+
+	public:
+		static bool ShouldCompilePermutation(const FGlobalShaderPermutationParameters& Parameters) { return true; }
+
+		FScreenPSMipLevelArray(const ShaderMetaType::CompiledShaderInitializerType& Initializer)
+			: FGlobalShader(Initializer)
+		{
+			InTexture.Bind(Initializer.ParameterMap, TEXT("InTexture"), SPF_Mandatory);
+			InTextureSampler.Bind(Initializer.ParameterMap, TEXT("InTextureSampler"));
+			InMipLevelParameter.Bind(Initializer.ParameterMap, TEXT("MipLevel"));
+			InArraySliceParameter.Bind(Initializer.ParameterMap, TEXT("ArraySlice"));
+		}
+		FScreenPSMipLevelArray() {}
+
+		void SetParameters(FRHIBatchedShaderParameters& BatchedParameters, const FTexture* Texture, int ArraySlice, int MipLevel)
+		{
+			SetTextureParameter(BatchedParameters, InTexture, InTextureSampler, Texture);
+			SetShaderValue(BatchedParameters, InMipLevelParameter, MipLevel);
+			SetShaderValue(BatchedParameters, InArraySliceParameter, ArraySlice);
+		}
+
+		void SetParameters(FRHIBatchedShaderParameters& BatchedParameters, FRHISamplerState* SamplerStateRHI, FRHITexture* TextureRHI, int ArraySlice, int MipLevel)
+		{
+			SetTextureParameter(BatchedParameters, InTexture, InTextureSampler, SamplerStateRHI, TextureRHI);
+			SetShaderValue(BatchedParameters, InMipLevelParameter, MipLevel);
+			SetShaderValue(BatchedParameters, InArraySliceParameter, ArraySlice);
+		}
+
+	private:
+		LAYOUT_FIELD(FShaderResourceParameter, InTexture);
+		LAYOUT_FIELD(FShaderResourceParameter, InTextureSampler);
+		LAYOUT_FIELD(FShaderParameter, InMipLevelParameter);
+		LAYOUT_FIELD(FShaderParameter, InArraySliceParameter);
+	};
+	IMPLEMENT_SHADER_TYPE(, FScreenPSMipLevelArray, TEXT("/Plugin/OculusXR/Private/ScreenPixelShaderArraySlice.usf"), TEXT("MainMipLevel"), SF_Pixel);
+
+	/**
+	 * A pixel shader for rendering a textured screen element with mip maps and array slice.
+	 */
+	class FScreenPSsRGBSourceMipLevelArray : public FGlobalShader
+	{
+		DECLARE_SHADER_TYPE(FScreenPSsRGBSourceMipLevelArray, Global);
+
+	public:
+		static bool ShouldCompilePermutation(const FGlobalShaderPermutationParameters& Parameters) { return true; }
+
+		FScreenPSsRGBSourceMipLevelArray(const ShaderMetaType::CompiledShaderInitializerType& Initializer)
+			: FGlobalShader(Initializer)
+		{
+			InTexture.Bind(Initializer.ParameterMap, TEXT("InTexture"), SPF_Mandatory);
+			InTextureSampler.Bind(Initializer.ParameterMap, TEXT("InTextureSampler"));
+			InMipLevelParameter.Bind(Initializer.ParameterMap, TEXT("MipLevel"));
+			InArraySliceParameter.Bind(Initializer.ParameterMap, TEXT("ArraySlice"));
+		}
+		FScreenPSsRGBSourceMipLevelArray() {}
+
+		void SetParameters(FRHIBatchedShaderParameters& BatchedParameters, const FTexture* Texture, int ArraySlice, int MipLevel)
+		{
+			SetTextureParameter(BatchedParameters, InTexture, InTextureSampler, Texture);
+			SetShaderValue(BatchedParameters, InMipLevelParameter, MipLevel);
+			SetShaderValue(BatchedParameters, InArraySliceParameter, ArraySlice);
+		}
+
+		void SetParameters(FRHIBatchedShaderParameters& BatchedParameters, FRHISamplerState* SamplerStateRHI, FRHITexture* TextureRHI, int ArraySlice, int MipLevel)
+		{
+			SetTextureParameter(BatchedParameters, InTexture, InTextureSampler, SamplerStateRHI, TextureRHI);
+			SetShaderValue(BatchedParameters, InMipLevelParameter, MipLevel);
+			SetShaderValue(BatchedParameters, InArraySliceParameter, ArraySlice);
+		}
+
+	private:
+		LAYOUT_FIELD(FShaderResourceParameter, InTexture);
+		LAYOUT_FIELD(FShaderResourceParameter, InTextureSampler);
+		LAYOUT_FIELD(FShaderParameter, InMipLevelParameter);
+		LAYOUT_FIELD(FShaderParameter, InArraySliceParameter);
+	};
+	IMPLEMENT_SHADER_TYPE(, FScreenPSsRGBSourceMipLevelArray, TEXT("/Plugin/OculusXR/Private/ScreenPixelShaderArraySlice.usf"), TEXT("MainsRGBSourceMipLevel"), SF_Pixel);
 
 	//-------------------------------------------------------------------------------------------------
 	// FCustomPresent
@@ -302,23 +385,18 @@ namespace OculusXRHMD
 	{
 		CheckInRenderThread();
 
-		FRHITexture2D* DstTexture2D = DstTexture->GetTexture2D();
-		FRHITextureCube* DstTextureCube = DstTexture->GetTextureCube();
-		FRHITexture2D* SrcTexture2D = SrcTexture->GetTexture2DArray() ? SrcTexture->GetTexture2DArray() : SrcTexture->GetTexture2D();
-		FRHITextureCube* SrcTextureCube = SrcTexture->GetTextureCube();
-
 		FIntPoint DstSize;
 		FIntPoint SrcSize;
 
-		if (DstTexture2D && SrcTexture2D)
+		if (DstTexture->GetDesc().IsTexture2D() && SrcTexture->GetDesc().IsTexture2D())
 		{
-			DstSize = FIntPoint(DstTexture2D->GetSizeX(), DstTexture2D->GetSizeY());
-			SrcSize = FIntPoint(SrcTexture2D->GetSizeX(), SrcTexture2D->GetSizeY());
+			DstSize = FIntPoint(DstTexture->GetSizeX(), DstTexture->GetSizeY());
+			SrcSize = FIntPoint(SrcTexture->GetSizeX(), SrcTexture->GetSizeY());
 		}
-		else if (DstTextureCube && SrcTextureCube)
+		else if (DstTexture->GetDesc().IsTextureCube() && SrcTexture->GetDesc().IsTextureCube())
 		{
-			DstSize = FIntPoint(DstTextureCube->GetSize(), DstTextureCube->GetSize());
-			SrcSize = FIntPoint(SrcTextureCube->GetSize(), SrcTextureCube->GetSize());
+			DstSize = FIntPoint(DstTexture->GetSize(), DstTexture->GetSize());
+			SrcSize = FIntPoint(SrcTexture->GetSize(), SrcTexture->GetSize());
 		}
 		else
 		{
@@ -396,7 +474,7 @@ namespace OculusXRHMD
 		GraphicsPSOInit.BoundShaderState.VertexDeclarationRHI = GFilterVertexDeclaration.VertexDeclarationRHI;
 		GraphicsPSOInit.BoundShaderState.VertexShaderRHI = VertexShader.GetVertexShader();
 
-		if (DstTexture2D)
+		if (DstTexture->GetDesc().IsTexture2D())
 		{
 			sRGBSource &= EnumHasAnyFlags(SrcTexture->GetFlags(), TexCreate_SRGB);
 
@@ -407,65 +485,98 @@ namespace OculusXRHMD
 			uint32 NumMips = 1;
 #endif
 
+			const bool bUseTexArrayShader = SrcTexture->GetDesc().IsTextureArray() && DstTexture->GetDesc().IsTextureArray();
+			const int32 SliceCount = bUseTexArrayShader ? FMath::Min(SrcTexture->GetDesc().ArraySize, DstTexture->GetDesc().ArraySize) : 1;
+
 			for (uint32 MipIndex = 0; MipIndex < NumMips; MipIndex++)
 			{
 				FRHIRenderPassInfo RPInfo(DstTexture, ERenderTargetActions::Load_Store);
 				RPInfo.ColorRenderTargets[0].MipIndex = MipIndex;
 
-				RHICmdList.BeginRenderPass(RPInfo, TEXT("CopyTexture"));
+				for (int32 SliceIndex = 0; SliceIndex < SliceCount; ++SliceIndex)
 				{
-					const uint32 MipViewportWidth = ViewportWidth >> MipIndex;
-					const uint32 MipViewportHeight = ViewportHeight >> MipIndex;
-					const FIntPoint MipTargetSize(MipViewportWidth, MipViewportHeight);
+					RPInfo.ColorRenderTargets[0].ArraySlice = SliceIndex;
 
-					if (bNoAlphaWrite || bInvertAlpha)
+					RHICmdList.BeginRenderPass(RPInfo, TEXT("CopyTexture"));
 					{
-						RHICmdList.SetViewport(DstRect.Min.X, DstRect.Min.Y, 0.0f, DstRect.Max.X, DstRect.Max.Y, 1.0f);
-						DrawClearQuad(RHICmdList, bAlphaPremultiply ? FLinearColor::Black : FLinearColor::White);
-					}
+						const uint32 MipViewportWidth = ViewportWidth >> MipIndex;
+						const uint32 MipViewportHeight = ViewportHeight >> MipIndex;
+						const FIntPoint MipTargetSize(MipViewportWidth, MipViewportHeight);
 
-					RHICmdList.ApplyCachedRenderTargets(GraphicsPSOInit);
-					FRHISamplerState* SamplerState = DstRect.Size() == SrcRect.Size() ? TStaticSamplerState<SF_Point>::GetRHI() : TStaticSamplerState<SF_Bilinear>::GetRHI();
+						if (bNoAlphaWrite || bInvertAlpha)
+						{
+							RHICmdList.SetViewport(DstRect.Min.X, DstRect.Min.Y, 0.0f, DstRect.Max.X, DstRect.Max.Y, 1.0f);
+							DrawClearQuad(RHICmdList, bAlphaPremultiply ? FLinearColor::Black : FLinearColor::White);
+						}
 
-					if (!sRGBSource)
-					{
-						TShaderMapRef<FScreenPSMipLevel> PixelShader(ShaderMap);
-						GraphicsPSOInit.BoundShaderState.PixelShaderRHI = PixelShader.GetPixelShader();
-						SetGraphicsPipelineState(RHICmdList, GraphicsPSOInit, 0);
+						RHICmdList.ApplyCachedRenderTargets(GraphicsPSOInit);
+						FRHISamplerState* SamplerState = DstRect.Size() == SrcRect.Size() ? TStaticSamplerState<SF_Point>::GetRHI() : TStaticSamplerState<SF_Bilinear>::GetRHI();
+
+						if (!sRGBSource)
+						{
+							if (bUseTexArrayShader)
+							{
+								TShaderMapRef<FScreenPSMipLevelArray> PixelShader(ShaderMap);
+								GraphicsPSOInit.BoundShaderState.PixelShaderRHI = PixelShader.GetPixelShader();
+								SetGraphicsPipelineState(RHICmdList, GraphicsPSOInit, 0);
+								FRHIBatchedShaderParameters& BatchedParameters = RHICmdList.GetScratchShaderParameters();
+								PixelShader->SetParameters(BatchedParameters, SamplerState, SrcTextureRHI, SliceIndex, MipIndex);
+								RHICmdList.SetBatchedShaderParameters(RHICmdList.GetBoundPixelShader(), BatchedParameters);
+							}
+							else
+							{
+
+								TShaderMapRef<FScreenPSMipLevel> PixelShader(ShaderMap);
+								GraphicsPSOInit.BoundShaderState.PixelShaderRHI = PixelShader.GetPixelShader();
+								SetGraphicsPipelineState(RHICmdList, GraphicsPSOInit, 0);
 #if UE_VERSION_OLDER_THAN(5, 3, 0)
-						PixelShader->SetParameters(RHICmdList, SamplerState, SrcTextureRHI, MipIndex);
+								PixelShader->SetParameters(RHICmdList, SamplerState, SrcTextureRHI, MipIndex);
 #else
-						FRHIBatchedShaderParameters& BatchedParameters = RHICmdList.GetScratchShaderParameters();
-						PixelShader->SetParameters(BatchedParameters, SamplerState, SrcTextureRHI, MipIndex);
-						RHICmdList.SetBatchedShaderParameters(RHICmdList.GetBoundPixelShader(), BatchedParameters);
+								FRHIBatchedShaderParameters& BatchedParameters = RHICmdList.GetScratchShaderParameters();
+								PixelShader->SetParameters(BatchedParameters, SamplerState, SrcTextureRHI, MipIndex);
+								RHICmdList.SetBatchedShaderParameters(RHICmdList.GetBoundPixelShader(), BatchedParameters);
 #endif
-					}
-					else
-					{
-						TShaderMapRef<FScreenPSsRGBSourceMipLevel> PixelShader(ShaderMap);
-						GraphicsPSOInit.BoundShaderState.PixelShaderRHI = PixelShader.GetPixelShader();
-						SetGraphicsPipelineState(RHICmdList, GraphicsPSOInit, 0);
+							}
+						}
+						else
+						{
+							if (bUseTexArrayShader)
+							{
+								TShaderMapRef<FScreenPSsRGBSourceMipLevelArray> PixelShader(ShaderMap);
+								GraphicsPSOInit.BoundShaderState.PixelShaderRHI = PixelShader.GetPixelShader();
+								SetGraphicsPipelineState(RHICmdList, GraphicsPSOInit, 0);
+								FRHIBatchedShaderParameters& BatchedParameters = RHICmdList.GetScratchShaderParameters();
+								PixelShader->SetParameters(BatchedParameters, SamplerState, SrcTextureRHI, SliceIndex, MipIndex);
+								RHICmdList.SetBatchedShaderParameters(RHICmdList.GetBoundPixelShader(), BatchedParameters);
+							}
+							else
+							{
+								TShaderMapRef<FScreenPSsRGBSourceMipLevel> PixelShader(ShaderMap);
+								GraphicsPSOInit.BoundShaderState.PixelShaderRHI = PixelShader.GetPixelShader();
+								SetGraphicsPipelineState(RHICmdList, GraphicsPSOInit, 0);
 #if UE_VERSION_OLDER_THAN(5, 3, 0)
-						PixelShader->SetParameters(RHICmdList, SamplerState, SrcTextureRHI, MipIndex);
+								PixelShader->SetParameters(RHICmdList, SamplerState, SrcTextureRHI, MipIndex);
 #else
-						FRHIBatchedShaderParameters& BatchedParameters = RHICmdList.GetScratchShaderParameters();
-						PixelShader->SetParameters(BatchedParameters, SamplerState, SrcTextureRHI, MipIndex);
-						RHICmdList.SetBatchedShaderParameters(RHICmdList.GetBoundPixelShader(), BatchedParameters);
+								FRHIBatchedShaderParameters& BatchedParameters = RHICmdList.GetScratchShaderParameters();
+								PixelShader->SetParameters(BatchedParameters, SamplerState, SrcTextureRHI, MipIndex);
+								RHICmdList.SetBatchedShaderParameters(RHICmdList.GetBoundPixelShader(), BatchedParameters);
 #endif
+							}
+						}
+
+						RHICmdList.SetViewport(DstRect.Min.X, DstRect.Min.Y, 0.0f, DstRect.Min.X + MipViewportWidth, DstRect.Min.Y + MipViewportHeight, 1.0f);
+
+						RendererModule->DrawRectangle(
+							RHICmdList,
+							0, 0, MipViewportWidth, MipViewportHeight,
+							U, V, USize, VSize,
+							MipTargetSize,
+							FIntPoint(1, 1),
+							VertexShader,
+							EDRF_Default);
 					}
-
-					RHICmdList.SetViewport(DstRect.Min.X, DstRect.Min.Y, 0.0f, DstRect.Min.X + MipViewportWidth, DstRect.Min.Y + MipViewportHeight, 1.0f);
-
-					RendererModule->DrawRectangle(
-						RHICmdList,
-						0, 0, MipViewportWidth, MipViewportHeight,
-						U, V, USize, VSize,
-						MipTargetSize,
-						FIntPoint(1, 1),
-						VertexShader,
-						EDRF_Default);
+					RHICmdList.EndRenderPass();
 				}
-				RHICmdList.EndRenderPass();
 			}
 		}
 		else

@@ -94,6 +94,9 @@ namespace OculusXRHMD
 
 				/** Whether tile turn off can be used with the app */
 				uint64 bTileTurnOffEnabled : 1;
+
+				/** Whether iterative cook-on-the-fly is enabled */
+				uint64 bIterativeCookOnTheFly : 1;
 			};
 			uint64 Raw;
 		} Flags;
@@ -152,6 +155,8 @@ namespace OculusXRHMD
 		EOculusXRHMDBodyJointSet BodyTrackingJointSet;
 
 		TSet<EFaceTrackingDataSourceConfig> FaceTrackingDataSource;
+
+		bool bIterativeCookOnTheFly;
 
 	public:
 		FSettings();

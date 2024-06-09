@@ -84,12 +84,23 @@ namespace OculusXRCompatibilityRules
 	{
 		const UAndroidRuntimeSettings* Settings = GetMutableDefault<UAndroidRuntimeSettings>();
 
-		return Settings->bPackageForMetaQuest;
+		return Settings->bPackageForMetaQuest && !Settings->bSupportsVulkanSM5 && !Settings->bBuildForES31 && Settings->ExtraApplicationSettings.Find("com.oculus.supportedDevices") != INDEX_NONE;
 	}
 
 	void FEnablePackageForMetaQuestRule::ApplyImpl(bool& OutShouldRestartEditor)
 	{
 		OCULUSXR_UPDATE_SETTINGS(UAndroidRuntimeSettings, bPackageForMetaQuest, true);
+		OCULUSXR_UPDATE_SETTINGS(UAndroidRuntimeSettings, bSupportsVulkanSM5, false);
+		OCULUSXR_UPDATE_SETTINGS(UAndroidRuntimeSettings, bBuildForES31, false);
+
+		UAndroidRuntimeSettings* Settings = GetMutableDefault<UAndroidRuntimeSettings>();
+		if (Settings->ExtraApplicationSettings.Find("com.oculus.supportedDevices") == INDEX_NONE)
+		{
+			const FString SupportedDevicesValue("quest|quest2|questpro");
+			Settings->ExtraApplicationSettings.Append("<meta-data android:name=\"com.oculus.supportedDevices\" android:value=\"" + SupportedDevicesValue + "\" />");
+			Settings->UpdateSinglePropertyInConfigFile(Settings->GetClass()->FindPropertyByName(GET_MEMBER_NAME_CHECKED(UAndroidRuntimeSettings, ExtraApplicationSettings)), Settings->GetDefaultConfigFilename());
+		}
+
 		OutShouldRestartEditor = false;
 	}
 

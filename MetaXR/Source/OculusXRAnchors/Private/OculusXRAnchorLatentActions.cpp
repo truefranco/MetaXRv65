@@ -540,6 +540,236 @@ void UOculusXRAsyncAction_ShareAnchors::HandleShareAnchorsComplete(EOculusXRAnch
 	SetReadyToDestroy();
 }
 
+//
+// Save Anchors
+//
+void UOculusXRAsyncAction_SaveAnchors::Activate()
+{
+	if (TargetAnchors.Num() == 0)
+	{
+		UE_LOG(LogOculusXRAnchors, Warning, TEXT("Empty Target Actor array passed to SaveSpaces latent action."));
+
+		Failure.Broadcast(EOculusXRAnchorResult::Failure);
+		return;
+	}
+
+	EOculusXRAnchorResult::Type Result;
+	bool bStartedAsync = OculusXRAnchors::FOculusXRAnchors::SaveAnchors(
+		TargetAnchors,
+		FOculusXRSaveAnchorsDelegate::CreateUObject(this, &UOculusXRAsyncAction_SaveAnchors::HandleSaveAnchorsComplete),
+		Result);
+
+	if (!bStartedAsync)
+	{
+		UE_LOG(LogOculusXRAnchors, Warning, TEXT("Failed to start async OVR Plugin call for SaveSpaces latent action."));
+
+		Failure.Broadcast(Result);
+	}
+}
+
+UOculusXRAsyncAction_SaveAnchors* UOculusXRAsyncAction_SaveAnchors::OculusXRAsyncSaveAnchors(const TArray<AActor*>& TargetActors)
+{
+	UOculusXRAsyncAction_SaveAnchors* Action = NewObject<UOculusXRAsyncAction_SaveAnchors>();
+
+	auto ValidActorPtr = TargetActors.FindByPredicate([](AActor* Actor) { return IsValid(Actor); });
+
+	for (auto& it : TargetActors)
+	{
+		if (!IsValid(it))
+		{
+			continue;
+		}
+
+		UOculusXRAnchorComponent* AnchorComponent = it->FindComponentByClass<UOculusXRAnchorComponent>();
+		Action->TargetAnchors.Add(AnchorComponent);
+	}
+
+	if (ValidActorPtr != nullptr)
+	{
+		Action->RegisterWithGameInstance(*ValidActorPtr);
+	}
+
+	return Action;
+}
+
+void UOculusXRAsyncAction_SaveAnchors::HandleSaveAnchorsComplete(EOculusXRAnchorResult::Type SaveResult, const TArray<UOculusXRAnchorComponent*>& SavedSpaces)
+{
+	if (UOculusXRAnchorBPFunctionLibrary::IsAnchorResultSuccess(SaveResult))
+	{
+		Success.Broadcast(SavedSpaces, SaveResult);
+	}
+	else
+	{
+		Failure.Broadcast(SaveResult);
+	}
+
+	SetReadyToDestroy();
+}
+
+//
+// Erase Anchors
+//
+void UOculusXRAsyncAction_EraseAnchors::Activate()
+{
+	if (TargetAnchorHandles.IsEmpty() && TargetUUIDs.IsEmpty())
+	{
+		UE_LOG(LogOculusXRAnchors, Error, TEXT("Empty UUID and Anchor Handles arrays passed to erase anchors. Check that at least one of the anchors, handles, and UUIDs arrays provided have valid elements."));
+		Failure.Broadcast(EOculusXRAnchorResult::Failure);
+		return;
+	}
+
+	EOculusXRAnchorResult::Type Result;
+	bool bStartedAsync = OculusXRAnchors::FOculusXRAnchors::EraseAnchors(
+		TargetAnchorHandles,
+		TargetUUIDs,
+		FOculusXREraseAnchorsDelegate::CreateUObject(this, &UOculusXRAsyncAction_EraseAnchors::HandleEraseAnchorsComplete),
+		Result);
+
+	if (!bStartedAsync)
+	{
+		UE_LOG(LogOculusXRAnchors, Warning, TEXT("Failed to start async OVR Plugin call for EraseSpace latent action."));
+		Failure.Broadcast(Result);
+	}
+}
+
+UOculusXRAsyncAction_EraseAnchors* UOculusXRAsyncAction_EraseAnchors::OculusXRAsyncEraseAnchors(const TArray<AActor*>& TargetActors, const TArray<FOculusXRUInt64>& AnchorHandles, const TArray<FOculusXRUUID>& AnchorUUIDs)
+{
+	UOculusXRAsyncAction_EraseAnchors* Action = NewObject<UOculusXRAsyncAction_EraseAnchors>();
+
+	Action->TargetAnchorHandles = AnchorHandles;
+	Action->TargetUUIDs = AnchorUUIDs;
+
+	auto ValidActorPtr = TargetActors.FindByPredicate([](AActor* Actor) { return IsValid(Actor); });
+
+	for (auto& it : TargetActors)
+	{
+		if (!IsValid(it))
+		{
+			continue;
+		}
+
+		UOculusXRAnchorComponent* AnchorComponent = it->FindComponentByClass<UOculusXRAnchorComponent>();
+		if (!IsValid(it))
+		{
+			continue;
+		}
+
+		Action->TargetAnchors.Add(AnchorComponent);
+
+		auto UUID = AnchorComponent->GetUUID();
+		Action->TargetUUIDs.Add(UUID);
+	}
+
+	if (ValidActorPtr != nullptr)
+	{
+		Action->RegisterWithGameInstance(*ValidActorPtr);
+	}
+	else
+	{
+		Action->RegisterWithGameInstance(GWorld);
+	}
+
+	return Action;
+}
+
+void UOculusXRAsyncAction_EraseAnchors::HandleEraseAnchorsComplete(EOculusXRAnchorResult::Type EraseResult, const TArray<UOculusXRAnchorComponent*>& ErasedAnchorComponents, const TArray<FOculusXRUInt64>& ErasedAnchorHandles, const TArray<FOculusXRUUID>& ErasedAnchorUUIDs)
+{
+	if (UOculusXRAnchorBPFunctionLibrary::IsAnchorResultSuccess(EraseResult))
+	{
+		Success.Broadcast(TargetAnchors, ErasedAnchorHandles, ErasedAnchorUUIDs, EraseResult);
+	}
+	else
+	{
+		Failure.Broadcast(EraseResult);
+	}
+
+	SetReadyToDestroy();
+}
+
+//
+// Anchors Discovery
+//
+void UOculusXRAsyncAction_DiscoverAnchors::Activate()
+{
+	EOculusXRAnchorResult::Type Result;
+	bool bStartedAsync = OculusXRAnchors::FOculusXRAnchors::DiscoverAnchors(
+		DiscoveryInfo,
+		FOculusXRDiscoverAnchorsResultsDelegate::CreateUObject(this, &UOculusXRAsyncAction_DiscoverAnchors::HandleDiscoverResult),
+		FOculusXRDiscoverAnchorsCompleteDelegate::CreateUObject(this, &UOculusXRAsyncAction_DiscoverAnchors::HandleDiscoverComplete),
+		Result);
+
+	if (!bStartedAsync)
+	{
+		UE_LOG(LogOculusXRAnchors, Warning, TEXT("Failed to start async OVR Plugin call for DiscoverAnchors latent action."));
+
+		Failure.Broadcast(Result);
+	}
+}
+
+UOculusXRAsyncAction_DiscoverAnchors* UOculusXRAsyncAction_DiscoverAnchors::OculusXRAsyncDiscoverAnchors(const FOculusXRSpaceDiscoveryInfo& DiscoveryInfo)
+{
+	UOculusXRAsyncAction_DiscoverAnchors* Action = NewObject<UOculusXRAsyncAction_DiscoverAnchors>();
+	Action->DiscoveryInfo = DiscoveryInfo;
+
+	return Action;
+}
+
+void UOculusXRAsyncAction_DiscoverAnchors::HandleDiscoverResult(const TArray<FOculusXRAnchorsDiscoverResult>& DiscoveredAnchors)
+{
+	Discovered.Broadcast(DiscoveredAnchors);
+}
+
+void UOculusXRAsyncAction_DiscoverAnchors::HandleDiscoverComplete(EOculusXRAnchorResult::Type CompleteResult)
+{
+	if (UOculusXRAnchorBPFunctionLibrary::IsAnchorResultSuccess(CompleteResult))
+	{
+		Complete.Broadcast(CompleteResult);
+	}
+	else
+	{
+		Failure.Broadcast(CompleteResult);
+	}
+
+	SetReadyToDestroy();
+}
+
+//
+// Get Shared Anchors
+//
+void UOculusXRAsyncAction_GetSharedAnchors::Activate()
+{
+	EOculusXRAnchorResult::Type Result;
+	bool bStartedAsync = OculusXRAnchors::FOculusXRAnchors::GetSharedAnchors(
+		Anchors,
+		FOculusXRGetSharedAnchorsDelegate::CreateUObject(this, &UOculusXRAsyncAction_GetSharedAnchors::HandleGetSharedAnchorsResult),
+		Result);
+
+	if (!bStartedAsync)
+	{
+		UE_LOG(LogOculusXRAnchors, Warning, TEXT("Failed to start async OVR Plugin call for DiscoverAnchors latent action."));
+		Failure.Broadcast(Result);
+	}
+}
+
+UOculusXRAsyncAction_GetSharedAnchors* UOculusXRAsyncAction_GetSharedAnchors::OculusXRAsyncGetSharedAnchors(const TArray<FOculusXRUUID>& AnchorUUIDs)
+{
+	UOculusXRAsyncAction_GetSharedAnchors* Action = NewObject<UOculusXRAsyncAction_GetSharedAnchors>();
+	Action->Anchors = AnchorUUIDs;
+
+	return Action;
+}
+
+void UOculusXRAsyncAction_GetSharedAnchors::HandleGetSharedAnchorsResult(EOculusXRAnchorResult::Type Result, const TArray<FOculusXRAnchorsDiscoverResult>& SharedAnchors)
+{
+	if (UOculusXRAnchorBPFunctionLibrary::IsAnchorResultSuccess(Result))
+	{
+		Success.Broadcast(SharedAnchors, Result);
+	}
+	else
+	{
+		Failure.Broadcast(Result);
+	}
+}
 
 UOculusXRAnchorLaunchCaptureFlow* UOculusXRAnchorLaunchCaptureFlow::LaunchCaptureFlowAsync(const UObject* WorldContext)
 {

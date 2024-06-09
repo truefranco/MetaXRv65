@@ -6,6 +6,10 @@
 #include "OculusXRAnchorComponent.h"
 #include "OculusXRSceneAnchorComponent.generated.h"
 
+/**
+* DEPRECATED: AOculusXRSceneActor and associated classes are deprecated (v65), please use MR Utility Kit instead
+* (https://developer.oculus.com/documentation/unreal/unreal-mr-utility-kit-overview)
+*/
 UCLASS(meta = (DisplayName = "OculusXR Scene Anchor Component", BlueprintSpawnableComponent))
 class OCULUSXRSCENE_API UOculusXRSceneAnchorComponent : public UOculusXRAnchorComponent
 {

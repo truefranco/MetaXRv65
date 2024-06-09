@@ -49,6 +49,7 @@ namespace UnrealBuildTool.Rules
 					"OpenGLDrv",
 					"VulkanRHI",
 					"HeadMountedDisplay",
+					"KhronosOpenXRHeaders",					
 					"OculusOpenXRLoader",
 					"Projects",
 				});

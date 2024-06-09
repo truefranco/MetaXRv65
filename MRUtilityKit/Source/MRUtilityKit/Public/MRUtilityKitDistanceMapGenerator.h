@@ -7,6 +7,7 @@ LICENSE file in the root directory of this source tree.
 */
 #pragma once
 
+#include "MRUtilityKit.h"
 #include "GameFramework/Actor.h"
 #include "MRUtilityKitDistanceMapGenerator.generated.h"
 
@@ -43,6 +44,9 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "MR Utility Kit")
 	class USceneCaptureComponent2D* SceneCapture2D;
 
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "MR Utility Kit")
+	EMRUKSpawnMode SpawnMode = EMRUKSpawnMode::CurrentRoomOnly;
+
 	/**
 	 * First render target for jump flood algorithm.
 	 */
@@ -75,6 +79,26 @@ public:
 	UTexture* CaptureDistanceMap();
 
 	/**
+	 * Create mask meshes for the given room.
+	 * These mask meshes are needed for the distance map to be rendered. It should only be called once before
+	 * CaptureDistanceMap in case the SpawnMode has been set to None.
+	 * The operation that this function executes is expensive. It only needs to be called after the room has been
+	 * created or updated.
+	 * @param Room The room for which the masked meshes should be created.
+	 */
+	UFUNCTION(BlueprintCallable, Category = "MR Utility Kit")
+	void CreateMaskMeshesForRoom(AMRUKRoom* Room);
+
+	/**
+	 * Remove mask meshes for the given room.
+	 * This function should only be executed when SpawnMode is set to None.
+	 * It only needs to be called after a room has been removed.
+	 * @param Room The room for which the masked meshes should be removed.
+	 */
+	UFUNCTION(BlueprintCallable, Category = "MR Utility Kit")
+	void RemoveMaskMeshesFromRoom(AMRUKRoom* Room);
+
+	/**
 	 * Return the captured distance map. Be sure to call CaptureDistanceMap() before
 	 * @return The captured distance map.
 	 */
@@ -96,6 +120,8 @@ protected:
 	void BeginPlay() override;
 
 private:
+	TMap<AMRUKRoom*, TArray<AActor*>> SpawnedMaskMeshes;
+
 	int32 DistanceMapRT = -1;
 
 	UPROPERTY()
@@ -111,11 +137,11 @@ private:
 	void RenderDistanceMap();
 
 	UFUNCTION()
-	void CreateMaskMeshesForRoom(AMRUKRoom* Room);
+	void OnRoomCreated(AMRUKRoom* Room);
 
 	UFUNCTION()
-	void CreateMaskMeshOfAnchor(AMRUKAnchor* Anchor);
+	AActor* CreateMaskMeshOfAnchor(AMRUKAnchor* Anchor);
 
 	UFUNCTION()
-	void UpdateMaskMeshOfAnchor(AMRUKAnchor* Anchor);
+	AActor* UpdateMaskMeshOfAnchor(AMRUKAnchor* Anchor);
 };

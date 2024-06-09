@@ -7,7 +7,7 @@
 #include "OculusXRAnchorTypes.h"
 #include "OculusXRAnchorComponents.h"
 #include "OculusXRAnchorBPFunctionLibrary.generated.h"
-#pragma warning (disable : 4702 )
+
 //Helper
 UCLASS()
 class OCULUSXRANCHORS_API UOculusXRAnchorBPFunctionLibrary : public UBlueprintFunctionLibrary
@@ -25,6 +25,9 @@ public:
 
 	UFUNCTION(BlueprintCallable, Category = "OculusXR|SpatialAnchor")
 	static bool GetAnchorTransformByHandle(const FOculusXRUInt64& Handle, FTransform& OutTransform);
+
+	UFUNCTION(BlueprintCallable, Category = "OculusXR|SpatialAnchor")
+	static bool TryGetAnchorTransformByHandle(const FOculusXRUInt64& Handle, FTransform& OutTransform, FOculusXRAnchorLocationFlags& OutLocationFlags);
 
 	UFUNCTION(BlueprintPure, meta = (DisplayName = "FOculusXRUInt64 To String", CompactNodeTitle = "->", BlueprintAutocast), Category = "OculusXR|SpatialAnchor")
 	static FString AnchorHandleToString(const FOculusXRUInt64 Value);

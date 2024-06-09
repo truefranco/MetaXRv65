@@ -14,6 +14,8 @@ FOculusXRPassthroughModule::FOculusXRPassthroughModule()
 
 void FOculusXRPassthroughModule::StartupModule()
 {
+	PassthroughXR = MakeShareable(new XRPassthrough::FPassthroughXR());
+	PassthroughXR->RegisterAsOpenXRExtension();
 }
 
 void FOculusXRPassthroughModule::ShutdownModule()

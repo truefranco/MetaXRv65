@@ -9,7 +9,7 @@
 #include "OculusXRSceneSubsystem.generated.h"
 
 UCLASS()
-class UOculusXRSceneSubsystem : public UGameInstanceSubsystem, public FTickableGameObject
+class OCULUSXRSCENE_API UOculusXRSceneSubsystem : public UGameInstanceSubsystem, public FTickableGameObject
 {
 	GENERATED_BODY()
 public:

@@ -19,5 +19,4 @@ class UOculusXRResourceHolder : public UObject
 public:
 	UPROPERTY()
 	UMaterial* PokeAHoleMaterial;
-	UMaterial* PokeAHoleInverseMaterial;
 };

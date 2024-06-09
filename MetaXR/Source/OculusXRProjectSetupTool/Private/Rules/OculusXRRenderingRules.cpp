@@ -3,6 +3,7 @@
 #include "OculusXRRenderingRules.h"
 #include "CoreMinimal.h"
 #include "AndroidRuntimeSettings.h"
+#include "DataDrivenShaderPlatformInfo.h"
 #include "EngineUtils.h"
 #include "OculusXRHMDRuntimeSettings.h"
 #include "OculusXRPSTUtils.h"
@@ -12,6 +13,30 @@
 
 namespace OculusXRRenderingRules
 {
+	namespace
+	{
+		FPreviewPlatformInfo GetAndroidPreviewPlatformInfo()
+		{
+			const FName AndroidPlatformName(TEXT("AndroidVulkan_Preview"));
+
+			const EShaderPlatform ShaderPlatform = FDataDrivenShaderPlatformInfo::GetShaderPlatformFromName(AndroidPlatformName);
+
+			const ERHIFeatureLevel::Type FeatureLevel = GetMaxSupportedFeatureLevel(ShaderPlatform);
+
+			const auto& AllPreviewPlatforms = FDataDrivenPlatformInfoRegistry::GetAllPreviewPlatformMenuItems();
+
+			for (const auto& Platform : AllPreviewPlatforms)
+			{
+				if (Platform.PreviewShaderPlatformName == AndroidPlatformName)
+				{
+					return FPreviewPlatformInfo(FeatureLevel, ShaderPlatform, Platform.PlatformName, Platform.ShaderFormat, Platform.DeviceProfileName,
+						true, Platform.PreviewShaderPlatformName);
+				}
+			}
+
+			return {};
+		}
+	} // namespace
 	bool FUseVulkanRule::IsApplied() const
 	{
 		const UAndroidRuntimeSettings* Settings = GetMutableDefault<UAndroidRuntimeSettings>();
@@ -236,6 +261,38 @@ namespace OculusXRRenderingRules
 	{
 		OCULUSXR_UPDATE_SETTINGS(URendererSettings, bMobileAllowMovableDirectionalLights, false);
 		OutShouldRestartEditor = true;
+	}
+
+	FUseAndroidVulkanPreviewPlatform::FUseAndroidVulkanPreviewPlatform()
+		: ISetupRule("Rendering_UseAndroidVulkanPreviewPlatform",
+			NSLOCTEXT("OculusXRRenderingRules", "UseAndroidVulkanPreviewPlatform_DisplayName", "Use Android Vulkan Preview Platform"),
+			NSLOCTEXT("OculusXRRenderingRules", "UseAndroidVulkanPreviewPlatform_Description", "Android Vulkan Mobile Preview Platform is necessery for correct behaviour of passthrough over Link."),
+			ESetupRuleCategory::Rendering,
+			ESetupRuleSeverity::Warning,
+			ESetupRulePlatform::MetaLink)
+	{
+		AndroidVulkanPreview = GetAndroidPreviewPlatformInfo();
+	}
+
+	bool FUseAndroidVulkanPreviewPlatform::IsApplied() const
+	{
+		FName CurrentPlatformName;
+		if (!GEditor->GetPreviewPlatformName(CurrentPlatformName))
+		{
+			return false;
+		}
+		return CurrentPlatformName == AndroidVulkanPreview.PreviewPlatformName;
+	}
+
+	bool FUseAndroidVulkanPreviewPlatform::IsValid()
+	{
+		const UOculusXRHMDRuntimeSettings* Settings = GetMutableDefault<UOculusXRHMDRuntimeSettings>();
+		return Settings->bInsightPassthroughEnabled;
+	}
+
+	void FUseAndroidVulkanPreviewPlatform::ApplyImpl(bool& OutShouldRestartEditor)
+	{
+		GEditor->SetPreviewPlatform(AndroidVulkanPreview, true);
 	}
 
 	bool FDisableMobileShaderAllowMovableDirectionalLightsRule::IsValid()

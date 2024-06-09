@@ -33,7 +33,9 @@
 #include "AndroidRuntimeSettings.h"
 #include "SourceControlHelpers.h"
 #include "Framework/Notifications/NotificationManager.h"
+#include "Interfaces/IProjectManager.h"
 #include "Widgets/Notifications/SNotificationList.h"
+#include "Editor/EditorPerformanceSettings.h"
 
 #define LOCTEXT_NAMESPACE "OculusXREditor"
 
@@ -80,6 +82,19 @@ void FOculusXREditorModule::StartupModule()
 				return GetMutableDefault<UOculusXRHMDRuntimeSettings>()->bDeploySoToDevice;
 			}));
 		PluginCommands->MapAction(
+			FOculusToolCommands::Get().ToggleIterativeCookOnTheFly,
+			FExecuteAction::CreateLambda([=]() {
+				UOculusXRHMDRuntimeSettings* settings = GetMutableDefault<UOculusXRHMDRuntimeSettings>();
+				settings->bIterativeCookOnTheFly = !settings->bIterativeCookOnTheFly;
+				settings->Modify(true);
+				settings->UpdateSinglePropertyInConfigFile(settings->GetClass()->FindPropertyByName(GET_MEMBER_NAME_CHECKED(UOculusXRHMDRuntimeSettings, bIterativeCookOnTheFly)), settings->GetDefaultConfigFilename());
+			}),
+
+			FCanExecuteAction(),
+			FIsActionChecked::CreateLambda([=]() {
+				return GetMutableDefault<UOculusXRHMDRuntimeSettings>()->bIterativeCookOnTheFly;
+			}));
+		PluginCommands->MapAction(
 			FOculusToolCommands::Get().ToggleMetaXRSim,
 			FExecuteAction::CreateRaw(this, &FOculusXREditorModule::ToggleOpenXRRuntime),
 			FCanExecuteAction(),
@@ -121,7 +136,7 @@ void FOculusXREditorModule::StartupModule()
 		IAssetTools& AssetTools = FModuleManager::LoadModuleChecked<FAssetToolsModule>("AssetTools").Get();
 		AssetTools.RegisterAssetTypeActions(MakeShareable(new FAssetTypeActions_OculusXRPassthroughColorLut));
 
-		OculusXRTelemetry::SetTelemetryConsent(OculusXRTelemetry::IsActive());
+		OculusXRTelemetry::PropagateTelemetryConsent();
 
 		// If needed, open a notification here.
 		OculusXRTelemetry::SpawnNotification();
@@ -129,7 +144,27 @@ void FOculusXREditorModule::StartupModule()
 		const UGeneralProjectSettings& ProjectSettings = *GetDefault<UGeneralProjectSettings>();
 		const FString ProjectIdString = ProjectSettings.ProjectID.ToString();
 		const OculusXRTelemetry::TScopedMarker<OculusXRTelemetry::Events::FEditorStart> StartEvent;
-		const auto& Annotated = StartEvent.AddAnnotation("project_hash", StringCast<ANSICHAR>(*ProjectIdString).Get());
+		bool bProjectCreatedFromMRTemplate = false;
+		FProjectStatus ProjectStatus;
+		if (IProjectManager::Get().QueryStatusForCurrentProject(ProjectStatus))
+		{
+			bProjectCreatedFromMRTemplate = ProjectStatus.Category == "MetaMRTemplate";
+		}
+		const auto& Annotated = StartEvent.AddAnnotation("project_hash", StringCast<ANSICHAR>(*ProjectIdString).Get())
+									.AddAnnotation("created_from_mr_template", bProjectCreatedFromMRTemplate ? "true" : "false");
+
+		UEditorPerformanceSettings* EditorPerformanceSettings = GetMutableDefault<UEditorPerformanceSettings>();
+		if (EditorPerformanceSettings->bOverrideMaxViewportRenderingResolution)
+		{
+			UE_LOG(LogTemp, Warning, TEXT("Existing value for UEditorPerformanceSettings::MaxViewportRenderingResolution will be overriden."));
+		}
+
+		UE_LOG(LogTemp, Log, TEXT("MetaXR ignores max viewport resolution in editor to support full HMD resolutions."));
+		EditorPerformanceSettings->bOverrideMaxViewportRenderingResolution = true;
+		EditorPerformanceSettings->MaxViewportRenderingResolution = 0;
+
+		FPropertyChangedEvent DisabledMaxResolutionEvent(EditorPerformanceSettings->GetClass()->FindPropertyByName(GET_MEMBER_NAME_CHECKED(UEditorPerformanceSettings, MaxViewportRenderingResolution)), EPropertyChangeType::ValueSet);
+		EditorPerformanceSettings->PostEditChangeProperty(DisabledMaxResolutionEvent);
 	}
 }
 
@@ -277,6 +312,7 @@ TSharedRef<SWidget> FOculusXREditorModule::CreateToolbarEntryMenu(TSharedPtr<cla
 	FMenuBuilder MenuBuilder(true, Commands);
 	MenuBuilder.BeginSection("OculusXRBuilds", LOCTEXT("OculusXRBuilds", "Builds"));
 	MenuBuilder.AddMenuEntry(FOculusToolCommands::Get().ToggleDeploySo);
+	MenuBuilder.AddMenuEntry(FOculusToolCommands::Get().ToggleIterativeCookOnTheFly);
 	MenuBuilder.EndSection();
 
 	MenuBuilder.BeginSection("OculusXRTools", LOCTEXT("OculusXRTools", "Tools"));
@@ -316,9 +352,9 @@ void FOculusXREditorModule::CreateSESSubMenus(FMenuBuilder& MenuBuilder)
 }
 
 FOculusXRHMDSettingsDetailsCustomization::FOculusXRHMDSettingsDetailsCustomization()
-	: EngineAndroidPath(FPaths::EngineDir() + TEXT("Build/Android/Java"))
+	: LaunchImageLandscape(FPlatformIconInfo(TEXT("res/drawable/splashscreen_landscape.png"), LOCTEXT("SystemSplashImage", "System Splash Image"), FText::GetEmpty(), 640, 360, FPlatformIconInfo::Required))
+	, EngineAndroidPath(FPaths::EngineDir() + TEXT("Build/Android/Java"))
 	, GameAndroidPath(FPaths::ProjectDir() + TEXT("Build/Android"))
-	, LaunchImageLandscape(FPlatformIconInfo(TEXT("res/drawable/splashscreen_landscape.png"), LOCTEXT("SystemSplashImage", "System Splash Image"), FText::GetEmpty(), 640, 360, FPlatformIconInfo::Required))
 	, VRSplashPath(FPaths::ProjectDir() + TEXT("Build/Android/assets/vr_splash.png"))
 
 {

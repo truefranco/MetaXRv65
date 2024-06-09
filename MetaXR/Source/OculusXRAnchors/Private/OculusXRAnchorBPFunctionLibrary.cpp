@@ -8,6 +8,8 @@
 #include "OculusXRAnchorManager.h"
 #include "Kismet/BlueprintFunctionLibrary.h"
 
+#pragma warning (disable : 4702 )
+
 AActor* UOculusXRAnchorBPFunctionLibrary::SpawnActorWithAnchorHandle(UObject* WorldContextObject, FOculusXRUInt64 Handle, FOculusXRUUID UUID, EOculusXRSpaceStorageLocation Location, UClass* ActorClass,
 	AActor* Owner, APawn* Instigator, ESpawnActorCollisionHandlingMethod CollisionHandlingMethod)
 {
@@ -83,6 +85,12 @@ bool UOculusXRAnchorBPFunctionLibrary::GetAnchorComponentStatus(AActor* TargetAc
 
 bool UOculusXRAnchorBPFunctionLibrary::GetAnchorTransformByHandle(const FOculusXRUInt64& Handle, FTransform& OutTransform)
 {
+	FOculusXRAnchorLocationFlags AnchorFlags(0);
+	return TryGetAnchorTransformByHandle(Handle, OutTransform, AnchorFlags);
+}
+
+bool UOculusXRAnchorBPFunctionLibrary::TryGetAnchorTransformByHandle(const FOculusXRUInt64& Handle, FTransform& OutTransform, FOculusXRAnchorLocationFlags& OutLocationFlags)
+{
 	OculusXRHMD::FOculusXRHMD* OutHMD = OculusXRHMD::FOculusXRHMD::GetOculusXRHMD();
 	if (!OutHMD)
 	{
@@ -98,18 +106,29 @@ bool UOculusXRAnchorBPFunctionLibrary::GetAnchorTransformByHandle(const FOculusX
 		return false;
 	}
 
-	const ovrpUInt64 ovrpSpace = Handle.GetValue();
-	ovrpPosef ovrpPose;
+	OutTransform = FTransform::Identity;
+	OutLocationFlags = FOculusXRAnchorLocationFlags(0);
 
-	const bool bSuccess = FOculusXRHMDModule::GetPluginWrapper().GetInitialized() && OVRP_SUCCESS(FOculusXRHMDModule::GetPluginWrapper().LocateSpace(&ovrpPose, &ovrpSpace, ovrpOrigin));
+	const ovrpUInt64 ovrpSpace = Handle.GetValue();
+	ovrpSpaceLocationf ovrpSpaceLocation{};
+
+	const bool bSuccess = FOculusXRHMDModule::GetPluginWrapper().GetInitialized() && OVRP_SUCCESS(FOculusXRHMDModule::GetPluginWrapper().LocateSpace2(&ovrpSpaceLocation, &ovrpSpace, ovrpOrigin));
 	if (bSuccess)
 	{
-		OculusXRHMD::FPose Pose;
-		OutHMD->ConvertPose(ovrpPose, Pose);
-		const FTransform trackingToWorld = OutHMD->GetLastTrackingToWorld();
+		OutLocationFlags = FOculusXRAnchorLocationFlags(ovrpSpaceLocation.locationFlags);
+		if (OutLocationFlags.IsValid())
+		{
+			OculusXRHMD::FPose Pose;
+			OutHMD->ConvertPose(ovrpSpaceLocation.pose, Pose);
+			const FTransform trackingToWorld = OutHMD->GetLastTrackingToWorld();
 
-		OutTransform.SetLocation(trackingToWorld.TransformPosition(Pose.Position));
-		OutTransform.SetRotation(FRotator(trackingToWorld.TransformRotation(FQuat(Pose.Orientation))).Quaternion());
+			OutTransform.SetLocation(trackingToWorld.TransformPosition(Pose.Position));
+			OutTransform.SetRotation(FRotator(trackingToWorld.TransformRotation(FQuat(Pose.Orientation))).Quaternion());
+		}
+		else
+		{
+			return false;
+		}
 	}
 
 	return bSuccess;

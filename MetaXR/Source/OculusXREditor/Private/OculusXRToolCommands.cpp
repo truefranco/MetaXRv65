@@ -12,6 +12,7 @@ void FOculusToolCommands::RegisterCommands()
 {
 	UI_COMMAND(OpenProjectSetupTool, "Meta XR Project Setup Tool", "Show Meta XR Project Setup Tool", EUserInterfaceActionType::Button, FInputChord());
 	UI_COMMAND(ToggleDeploySo, "Deploy compiled .so directly to device", "Faster deploy when we only have code changes by deploying compiled .so directly to device", EUserInterfaceActionType::ToggleButton, FInputChord());
+	UI_COMMAND(ToggleIterativeCookOnTheFly, "Enable Iterative Cook on the Fly", "Faster deploy for asset changes by keeping previously cooked contents on the device (Uses Cook on the Fly)", EUserInterfaceActionType::ToggleButton, FInputChord());
 	UI_COMMAND(OpenPlatWindow, "Meta XR Platform Window", "Show Meta XR Platform Window", EUserInterfaceActionType::Button, FInputChord());
 
 	UI_COMMAND(ToggleMetaXRSim, "Meta XR Simulator", "Activate/Deactivate Meta XR Simulator", EUserInterfaceActionType::ToggleButton, FInputChord());

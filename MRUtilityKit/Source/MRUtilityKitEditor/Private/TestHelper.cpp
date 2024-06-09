@@ -8,6 +8,33 @@ LICENSE file in the root directory of this source tree.
 
 #include "TestHelper.h"
 
+#include "LevelEditor.h"
+#include "UnrealEdGlobals.h"
+#include "Editor/UnrealEdEngine.h"
+#include "Tests/AutomationEditorCommon.h"
+
+bool StartPIE(bool bSimulateInEditor)
+{
+	FLevelEditorModule& LevelEditorModule = FModuleManager::Get().GetModuleChecked<FLevelEditorModule>(TEXT("LevelEditor"));
+
+	FRequestPlaySessionParams Params;
+	Params.DestinationSlateViewport = LevelEditorModule.GetFirstActiveViewport();
+	if (bSimulateInEditor)
+	{
+		Params.WorldType = EPlaySessionWorldType::SimulateInEditor;
+	}
+
+	// Make sure the player start location is a valid location.
+	if (GUnrealEd->CheckForPlayerStart() == nullptr)
+	{
+		FAutomationEditorCommonUtils::SetPlaySessionStartToActiveViewport(Params);
+	}
+
+	GUnrealEd->RequestPlaySession(Params);
+
+	return true;
+}
+
 const TCHAR* ExampleRoomJson = TEXT(R"(
 {
 	"Rooms": [
@@ -2639,4 +2666,14 @@ void URoomAndAnchorObserver::Clear()
 	RoomsCreated.Empty();
 	RoomsUpdated.Empty();
 	RoomsRemoved.Empty();
+}
+
+AMeshResizer::AMeshResizer()
+{
+	static ConstructorHelpers::FObjectFinder<UStaticMesh> MeshAsset(TEXT("/MRUtilityKit/Meshes/SM_Bevelcube"));
+
+	GridSliceResizerComponent = CreateDefaultSubobject<UMRUKGridSliceResizerComponent>(TEXT("Grid slice resizer"));
+	SetRootComponent(GridSliceResizerComponent);
+
+	GridSliceResizerComponent->Mesh = MeshAsset.Object;
 }

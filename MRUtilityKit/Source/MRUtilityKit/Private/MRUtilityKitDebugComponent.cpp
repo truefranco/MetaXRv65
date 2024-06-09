@@ -145,7 +145,7 @@ void UMRUKDebugComponent::ShowAnchorSpaceAtRayHit(const FVector& Origin, const F
 		ActiveAnchorSpaceActor->GetRootComponent()->SetMobility(EComponentMobility::Movable);
 
 		const auto ProceduralMesh = NewObject<UProceduralMeshComponent>(ActiveAnchorSpaceActor, TEXT("DebugVolumePlane"));
-		Anchor->GenerateProceduralAnchorMesh(*ProceduralMesh, {}, true, false, DebugSpaceOffset);
+		Anchor->GenerateProceduralAnchorMesh(*ProceduralMesh, {}, {}, true, false, DebugSpaceOffset);
 		ActiveAnchorSpaceActor->AddInstanceComponent(ProceduralMesh);
 		ProceduralMesh->SetupAttachment(ActiveAnchorSpaceActor->GetRootComponent());
 		ProceduralMesh->RegisterComponent();

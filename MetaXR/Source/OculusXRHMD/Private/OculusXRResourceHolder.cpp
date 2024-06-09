@@ -24,17 +24,4 @@ UOculusXRResourceHolder::UOculusXRResourceHolder(const FObjectInitializer& Objec
 	{
 		UE_LOG(LogHMD, Log, TEXT("PokeAHoleMaterial loaded successfully"));
 	}
-
-	static ConstructorHelpers::FObjectFinder<UMaterial> StaticPokeAHoleInverseMaterial(TEXT("/OculusXR/Materials/PokeAHoleInverseMaterial"));
-
-	PokeAHoleInverseMaterial = StaticPokeAHoleInverseMaterial.Object;
-
-	if (!PokeAHoleInverseMaterial)
-	{
-		UE_LOG(LogHMD, Error, TEXT("Unable to load PokeAHoleInverseMaterial"));
-	}
-	else
-	{
-		UE_LOG(LogHMD, Log, TEXT("PokeAHoleInverseMaterial loaded successfully"));
-	}
 }

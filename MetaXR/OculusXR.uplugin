@@ -1,7 +1,7 @@
 {
 	"FileVersion": 3,
 	"Version": 1,
-	"VersionName": "1.95.0",
+	"VersionName": "1.97.0",
 	"FriendlyName": "Meta XR",
 	"Description": "Support for Meta Quest headsets and controllers",
 	"Category": "Virtual Reality",
@@ -109,7 +109,7 @@
 		{
 			"Name": "OculusXRPassthrough",
 			"Type": "Runtime",
-			"LoadingPhase": "PostEngineInit",
+			"LoadingPhase": "PostConfigInit",
 			"PlatformAllowList": [
 				"Win64",
 				"Android"

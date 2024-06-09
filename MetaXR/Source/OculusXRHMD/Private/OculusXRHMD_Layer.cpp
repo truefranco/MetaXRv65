@@ -122,8 +122,11 @@ namespace OculusXRHMD
 		HandlePokeAHoleComponent();
 
 #if !PLATFORM_ANDROID
-		// Mark all layers as supporting depth for now, due to artifacts with ovrpLayerSubmitFlag_NoDepth
-		Desc.Flags |= IStereoLayers::LAYER_FLAG_SUPPORT_DEPTH;
+		if (!(Desc.HasShape<FReconstructedLayer>() || Desc.HasShape<FUserDefinedLayer>())) //If not Passthrough Shape
+		{
+			// Mark all layers as supporting depth for now, due to artifacts with ovrpLayerSubmitFlag_NoDepth
+			Desc.Flags |= IStereoLayers::LAYER_FLAG_SUPPORT_DEPTH;
+		}
 #endif
 
 		UpdatePassthroughPokeActors_GameThread();
@@ -151,13 +154,14 @@ namespace OculusXRHMD
 
 	bool FLayer::NeedsPassthroughPokeAHole()
 	{
-		return !bSupportDepthComposite && ((Desc.Flags & IStereoLayers::LAYER_FLAG_SUPPORT_DEPTH) != 0) && Desc.HasShape<FUserDefinedLayer>();
+		return ((Desc.Flags & IStereoLayers::LAYER_FLAG_SUPPORT_DEPTH) != 0) && Desc.HasShape<FUserDefinedLayer>();
 	}
 
 	bool FLayer::NeedsPokeAHole()
 	{
 #if PLATFORM_ANDROID
-		return !bSupportDepthComposite && ((Desc.Flags & IStereoLayers::LAYER_FLAG_SUPPORT_DEPTH) != 0);
+		bool bIsPassthroughShape = (Desc.HasShape<FReconstructedLayer>() || Desc.HasShape<FUserDefinedLayer>());
+		return !bIsPassthroughShape && !bSupportDepthComposite && ((Desc.Flags & IStereoLayers::LAYER_FLAG_SUPPORT_DEPTH) != 0);
 #else
 		return false;
 #endif
@@ -754,14 +758,28 @@ namespace OculusXRHMD
 					if (PropagateAlpha == EAlphaChannelMode::AllowThroughTonemapper)
 					{
 						const ETextureCreateFlags InvTextureCreateFlags = TexCreate_ShaderResource | TexCreate_RenderTargetable;
-						const FRHITextureCreateDesc InvTextureDesc =
-							FRHITextureCreateDesc::Create2D(TEXT("InvAlphaTexture"))
-								.SetExtent(SizeX, SizeY)
-								.SetFormat(ColorFormat)
-								.SetNumMips(NumMips)
-								.SetNumSamples(NumSamples)
-								.SetFlags(InvTextureCreateFlags)
-								.SetClearValue(ColorTextureBinding);
+						FRHITextureCreateDesc InvTextureDesc{};
+						if (OvrpLayerDesc.Layout == ovrpLayout_Array)
+						{
+							InvTextureDesc = FRHITextureCreateDesc::Create2DArray(TEXT("InvAlphaTexture"))
+												 .SetArraySize(2)
+												 .SetExtent(SizeX, SizeY)
+												 .SetFormat(ColorFormat)
+												 .SetNumMips(NumMips)
+												 .SetNumSamples(NumSamples)
+												 .SetFlags(InvTextureCreateFlags | TexCreate_TargetArraySlicesIndependently)
+												 .SetClearValue(ColorTextureBinding);
+						}
+						else
+						{
+							InvTextureDesc = FRHITextureCreateDesc::Create2D(TEXT("InvAlphaTexture"))
+												 .SetExtent(SizeX, SizeY)
+												 .SetFormat(ColorFormat)
+												 .SetNumMips(NumMips)
+												 .SetNumSamples(NumSamples)
+												 .SetFlags(InvTextureCreateFlags)
+												 .SetClearValue(ColorTextureBinding);
+						}
 						InvAlphaTexture = RHICreateTexture(InvTextureDesc);
 					}
 #endif
@@ -1006,6 +1024,13 @@ namespace OculusXRHMD
 			CopyInfo.Size = FIntVector(ViewportRect.Size().X, ViewportRect.Size().Y, 1);
 			CopyInfo.SourcePosition = FIntVector::ZeroValue;
 			CopyInfo.DestPosition = FIntVector(ViewportRect.Min.X, ViewportRect.Min.Y, 0);
+			CopyInfo.SourceSliceIndex = 0;
+			CopyInfo.DestSliceIndex = 0;
+
+			if (Texture->GetDesc().IsTextureArray() && TempTexture->GetDesc().IsTextureArray())
+			{
+				CopyInfo.NumSlices = FMath::Min(Texture->GetDesc().ArraySize, TempTexture->GetDesc().ArraySize);
+			}
 
 			FRHITexture* SrcTexture = TempTexture;
 			FRHITexture* DstTexture = Texture;
@@ -1073,7 +1098,7 @@ namespace OculusXRHMD
 			}
 
 			// Right
-			if (OvrpLayerDesc.Layout != ovrpLayout_Mono)
+			if (OvrpLayerDesc.Layout != ovrpLayout_Mono && OvrpLayerDesc.Layout != ovrpLayout_Array)
 			{
 				FRHITexture* EyeTexture = RightSwapChain.IsValid() ? RightSwapChain->GetTexture() : SwapChain->GetTexture();
 				InvertTextureAlpha_RenderThread(CustomPresent, RHICmdList, EyeTexture, InvAlphaTexture, Settings->EyeRenderViewport[ovrpEye_Right]);

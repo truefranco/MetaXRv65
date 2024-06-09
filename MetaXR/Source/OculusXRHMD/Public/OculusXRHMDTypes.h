@@ -359,3 +359,73 @@ enum class ESystemSplashBackgroundType : int8
 	Black = 0 UMETA(DisplayName = "Black"),
 	Contextual = 1 UMETA(DisplayName = "Passthrough (Contextual)"),
 };
+
+USTRUCT(BlueprintType, meta = (DisplayName = "Oculus Performance Metrics"))
+struct FOculusXRPerformanceMetrics
+{
+	GENERATED_USTRUCT_BODY()
+
+	/** App CPU Time (ms) */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Performance Metrics")
+	float AppCpuTime;
+
+	/** App GPU Time (ms) */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Performance Metrics")
+	float AppGpuTime;
+
+	/** Compositor CPU Time (ms) */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Performance Metrics")
+	float ComCpuTime;
+
+	/** Compositor GPU Time (ms) */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Performance Metrics")
+	float ComGpuTime;
+
+	/** Compositor Dropped Frames */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Performance Metrics")
+	int DroppedFrames;
+
+	/** System GPU Util % */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Performance Metrics")
+	float GpuUtil;
+
+	/** System CPU Util Avg % */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Performance Metrics")
+	float CpuUtilAvg;
+
+	/** System CPU Util Worst % */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Performance Metrics")
+	float CpuUtilWorst;
+
+	/** Compositor SpaceWarp Mode: 0: Disabled; 1: Enabled */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Performance Metrics")
+	int ComSpaceWarpMode;
+
+	/** CPU Core Util % */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Performance Metrics")
+	TArray<float> CpuCoreUtil;
+
+	FOculusXRPerformanceMetrics()
+		: AppCpuTime(0.f)
+		, AppGpuTime(0.f)
+		, ComCpuTime(0.f)
+		, ComGpuTime(0.f)
+		, DroppedFrames(0)
+		, GpuUtil(0.f)
+		, CpuUtilAvg(0.f)
+		, CpuUtilWorst(0.f)
+		, ComSpaceWarpMode(0)
+	{
+	}
+};
+
+UENUM(BlueprintType)
+enum class EOculusXRMPPoseRestoreType : uint8
+{
+	/// DONOT restore head and controller poses
+	Disabled = 0 UMETA(DisplayName = "Disabled"),
+	/// Only restore head and controller position
+	PositionOnly = 1 UMETA(DisplayName = "Restore Position Only"),
+	/// Restore head and controller position and rotation
+	PositionAndRotation = 2 UMETA(DisplayName = "Restore Position And Rotation"),
+};

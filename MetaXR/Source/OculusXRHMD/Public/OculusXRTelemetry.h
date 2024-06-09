@@ -14,7 +14,7 @@ namespace OculusXRTelemetry
 
 	OCULUSXRHMD_API bool IsActive();
 	OCULUSXRHMD_API void IfActiveThen(TUniqueFunction<void()> Function);
-	OCULUSXRHMD_API void SetTelemetryConsent(bool Consent);
+	OCULUSXRHMD_API void PropagateTelemetryConsent();
 
 	template <typename Backend = FTelemetryBackend>
 	class OCULUSXRHMD_API TMarkerPoint : FNoncopyable

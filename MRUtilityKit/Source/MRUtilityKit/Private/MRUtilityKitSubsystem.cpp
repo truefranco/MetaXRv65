@@ -8,12 +8,15 @@ LICENSE file in the root directory of this source tree.
 
 #include "MRUtilityKitSubsystem.h"
 #include "MRUtilityKitAnchor.h"
-#include "OculusXRAnchorBPFunctionLibrary.h"
 #include "Kismet/GameplayStatics.h"
 #include "HeadMountedDisplayFunctionLibrary.h"
+#include "MRUtilityKitPositionGenerator.h"
 #include "Serialization/JsonWriter.h"
 #include "Serialization/JsonSerializer.h"
 #include "GameFramework/Pawn.h"
+#include "OculusXRRoomLayoutManagerComponent.h"
+#include "OculusXRSceneEventDelegates.h"
+#include "OculusXRSceneFunctionLibrary.h"
 
 AMRUKAnchor* UMRUKSubsystem::Raycast(const FVector& Origin, const FVector& Direction, float MaxDist, const FMRUKLabelFilter& LabelFilter, FMRUKHit& OutHit)
 {
@@ -57,11 +60,6 @@ void UMRUKSubsystem::Initialize(FSubsystemCollectionBase& Collection)
 {
 	const UMRUKSettings* Settings = GetMutableDefault<UMRUKSettings>();
 	EnableWorldLock = Settings->EnableWorldLock;
-}
-
-void UMRUKSubsystem::Deinitialize()
-{
-	ClearScene();
 }
 
 TSharedRef<FJsonObject> UMRUKSubsystem::JsonSerialize()
@@ -108,7 +106,7 @@ AMRUKRoom* UMRUKSubsystem::GetCurrentRoom() const
 
 				for (const auto& Room : Rooms)
 				{
-					if (Room->IsPositionInRoom(HeadPosition))
+					if (IsValid(Room) && Room->IsPositionInRoom(HeadPosition))
 					{
 						CachedCurrentRoom = Room;
 						CachedCurrentRoomFrame = GFrameCounter;
@@ -119,14 +117,14 @@ AMRUKRoom* UMRUKSubsystem::GetCurrentRoom() const
 		}
 	}
 
-	if (CachedCurrentRoom != nullptr)
+	if (IsValid(CachedCurrentRoom))
 	{
 		return CachedCurrentRoom;
 	}
 
 	for (const auto& Room : Rooms)
 	{
-		if (Room)
+		if (IsValid(Room))
 		{
 			return Room;
 		}
@@ -169,6 +167,8 @@ void UMRUKSubsystem::LoadSceneFromJsonString(const FString& String)
 
 void UMRUKSubsystem::LoadSceneFromDevice(int MaxQueries)
 {
+	const auto SceneEventDelegates = GEngine->GetEngineSubsystem<UOculusXRSceneEventDelegates>();
+
 	if (SceneData || SceneLoadStatus == EMRUKInitStatus::Busy)
 	{
 		UE_LOG(LogMRUK, Error, TEXT("Can't start loading a scene from device while the scene is already loading"));
@@ -293,9 +293,11 @@ void UMRUKSubsystem::ClearScene()
 		return;
 	}
 	SceneLoadStatus = EMRUKInitStatus::None;
-	for (auto Room : Rooms)
+	// No ranged for loop because rooms may remove themselves from the array during destruction
+	for (int32 I = Rooms.Num() - 1; I >= 0; --I)
 	{
-		if (Room)
+		AMRUKRoom* Room = Rooms[I];
+		if (IsValid(Room))
 		{
 			Room->Destroy();
 		}
@@ -315,7 +317,7 @@ AMRUKAnchor* UMRUKSubsystem::TryGetClosestSurfacePosition(const FVector& WorldPo
 		}
 		double SurfaceDistance{};
 		FVector SurfacePos{};
-		if (const auto& Anchor = Room->TryGetClosestSurfacePosition(WorldPosition, SurfacePos, SurfaceDistance, LabelFilter, MaxDistance))
+		if (const auto Anchor = Room->TryGetClosestSurfacePosition(WorldPosition, SurfacePos, SurfaceDistance, LabelFilter, MaxDistance))
 		{
 			ClosestAnchor = Anchor;
 			OutSurfacePosition = SurfacePos;
@@ -409,7 +411,7 @@ AMRUKAnchor* UMRUKSubsystem::IsPositionInSceneVolume(const FVector& WorldPositio
 		{
 			continue;
 		}
-		if (const auto& Anchor = Room->IsPositionInSceneVolume(WorldPosition, TestVerticalBounds, Tolerance))
+		if (const auto Anchor = Room->IsPositionInSceneVolume(WorldPosition, TestVerticalBounds, Tolerance))
 		{
 			return Anchor;
 		}
@@ -417,12 +419,12 @@ AMRUKAnchor* UMRUKSubsystem::IsPositionInSceneVolume(const FVector& WorldPositio
 	return nullptr;
 }
 
-TArray<AActor*> UMRUKSubsystem::SpawnInterior(const TMap<FString, FMRUKSpawnGroup>& SpawnGroups, UMaterialInterface* ProceduralMaterial, bool ShouldFallbackToProcedural)
+TArray<AActor*> UMRUKSubsystem::SpawnInterior(const TMap<FString, FMRUKSpawnGroup>& SpawnGroups, const TArray<FString>& CutHoleLabels, UMaterialInterface* ProceduralMaterial, bool ShouldFallbackToProcedural)
 {
-	return SpawnInteriorFromStream(SpawnGroups, FRandomStream(NAME_None), ProceduralMaterial, ShouldFallbackToProcedural);
+	return SpawnInteriorFromStream(SpawnGroups, FRandomStream(NAME_None), CutHoleLabels, ProceduralMaterial, ShouldFallbackToProcedural);
 }
 
-TArray<AActor*> UMRUKSubsystem::SpawnInteriorFromStream(const TMap<FString, FMRUKSpawnGroup>& SpawnGroups, const FRandomStream& RandomStream, UMaterialInterface* ProceduralMaterial, bool ShouldFallbackToProcedural)
+TArray<AActor*> UMRUKSubsystem::SpawnInteriorFromStream(const TMap<FString, FMRUKSpawnGroup>& SpawnGroups, const FRandomStream& RandomStream, const TArray<FString>& CutHoleLabels, UMaterialInterface* ProceduralMaterial, bool ShouldFallbackToProcedural)
 {
 	TArray<AActor*> AllInteriorActors;
 
@@ -432,7 +434,7 @@ TArray<AActor*> UMRUKSubsystem::SpawnInteriorFromStream(const TMap<FString, FMRU
 		{
 			continue;
 		}
-		auto InteriorActors = Room->SpawnInteriorFromStream(SpawnGroups, RandomStream, ProceduralMaterial, ShouldFallbackToProcedural);
+		auto InteriorActors = Room->SpawnInteriorFromStream(SpawnGroups, RandomStream, CutHoleLabels, ProceduralMaterial, ShouldFallbackToProcedural);
 		AllInteriorActors.Append(InteriorActors);
 	}
 
@@ -453,11 +455,25 @@ bool UMRUKSubsystem::LaunchSceneCapture()
 	return Success;
 }
 
+FBox UMRUKSubsystem::GetActorClassBounds(TSubclassOf<AActor> Actor)
+{
+	if (const auto Entry = ActorClassBoundsCache.Find(Actor))
+	{
+		return *Entry;
+	}
+	const auto TempActor = GetWorld()->SpawnActor(Actor);
+	const auto Bounds = TempActor->CalculateComponentsBoundingBoxInLocalSpace(true);
+	TempActor->Destroy();
+	ActorClassBoundsCache.Add(Actor, Bounds);
+	return Bounds;
+}
+
 void UMRUKSubsystem::SceneCaptureComplete(FOculusXRUInt64 RequestId, bool bSuccess)
 {
 	UE_LOG(LogMRUK, Log, TEXT("Scene capture complete Success==%d"), bSuccess);
 	OnCaptureComplete.Broadcast(bSuccess);
 }
+
 
 UOculusXRRoomLayoutManagerComponent* UMRUKSubsystem::GetRoomLayoutManager()
 {
@@ -481,6 +497,7 @@ AMRUKRoom* UMRUKSubsystem::SpawnRoom()
 	FActorSpawnParameters ActorSpawnParams;
 	ActorSpawnParams.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AlwaysSpawn;
 	AMRUKRoom* Room = GetWorld()->SpawnActor<AMRUKRoom>(ActorSpawnParams);
+
 
 #if WITH_EDITOR
 	Room->SetActorLabel(TEXT("ROOM"));
@@ -511,19 +528,6 @@ void UMRUKSubsystem::FinishedLoading(bool Success)
 	OnSceneLoaded.Broadcast(Success);
 }
 
-FBox UMRUKSubsystem::GetActorClassBounds(TSubclassOf<AActor> Actor)
-{
-	if (const auto Entry = ActorClassBoundsCache.Find(Actor))
-	{
-		return *Entry;
-	}
-	const auto TempActor = GetWorld()->SpawnActor(Actor);
-	const auto Bounds = TempActor->CalculateComponentsBoundingBoxInLocalSpace(true);
-	TempActor->Destroy();
-	ActorClassBoundsCache.Add(Actor, Bounds);
-	return Bounds;
-}
-
 void UMRUKSubsystem::Tick(float DeltaTime)
 {
 	if (EnableWorldLock)
@@ -549,6 +553,7 @@ void UMRUKSubsystem::Tick(float DeltaTime)
 			}
 		}
 	}
+
 }
 
 bool UMRUKSubsystem::IsTickable() const

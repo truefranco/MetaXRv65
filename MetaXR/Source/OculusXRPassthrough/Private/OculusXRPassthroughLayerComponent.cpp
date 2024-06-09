@@ -91,15 +91,21 @@ void UOculusXRPassthroughLayerComponent::DestroyComponent(bool bPromoteChildren)
 #endif
 }
 
+void UOculusXRPassthroughLayerComponent::OnRegister()
+{
+	Super::OnRegister();
+
+	MarkStereoLayerDirty();
+}
+
 void UOculusXRPassthroughLayerComponent::TickComponent(float DeltaTime, enum ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction)
 {
-#ifndef WITH_OCULUS_BRANCH
 	if (Texture == nullptr && !LayerRequiresTexture())
 	{
 		// UStereoLayerComponent hides components without textures
 		Texture = GEngine->DefaultTexture;
 	}
-#endif
+
 	UpdatePassthroughObjects();
 	Super::TickComponent(DeltaTime, TickType, ThisTickFunction);
 }

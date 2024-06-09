@@ -52,7 +52,7 @@ class MRUTILITYKIT_API UMRUKAnchorData : public UObject
 	GENERATED_BODY()
 
 public:
-	FOculusXRSpaceQueryResult SpaceQuery;
+	FOculusXRAnchorsDiscoverResult SpaceQuery;
 	FTransform Transform;
 
 	FBox2D PlaneBounds;
@@ -63,7 +63,7 @@ public:
 
 	bool NeedAnchorLocalization = false;
 
-	void LoadFromDevice(const FOculusXRSpaceQueryResult& SpaceQueryResult, int32 MaxQueries = 64);
+	void LoadFromDevice(const FOculusXRAnchorsDiscoverResult& AnchorsDiscoverResult, int32 MaxQueries = 64);
 	void LoadFromJson(const FJsonValue& Value);
 };
 
@@ -85,7 +85,7 @@ public:
 	UPROPERTY(BlueprintAssignable, Category = "MR Utility Kit")
 	FOnComplete OnComplete;
 
-	FOculusXRSpaceQueryResult SpaceQuery;
+	FOculusXRAnchorsDiscoverResult SpaceQuery;
 	FOculusXRRoomLayout RoomLayout;
 
 	UPROPERTY()
@@ -94,12 +94,13 @@ public:
 	UPROPERTY()
 	AMRUKLocalizer* LocalizationActor = nullptr;
 
-	void LoadFromDevice(FOculusXRSpaceQueryResult SpaceQuery, int32 MaxQueries = 64);
+	void LoadFromDevice(const FOculusXRAnchorsDiscoverResult& AnchorsDiscoverResult, int32 MaxQueries = 64);
 	void LoadFromJson(const FJsonValue& Value);
 
 private:
 	void FinishQuery(bool Success);
-	void RoomQueryComplete(EOculusXRAnchorResult::Type AnchorResult, const TArray<FOculusXRSpaceQueryResult>& QueryResults, const FOculusXRUInt64 RoomSpaceID);
+	void RoomDataLoadedResult(EOculusXRAnchorResult::Type Result);
+	void RoomDataLoadedComplete(const TArray<FOculusXRAnchorsDiscoverResult>& DiscoverResults);
 	UFUNCTION()
 	void AnchorsInitialized(bool Success);
 };
@@ -133,7 +134,8 @@ private:
 	bool AnyRoomFailed = false;
 
 	void FinishQuery(bool Success);
-	void SceneDataLoadedComplete(EOculusXRAnchorResult::Type AnchorResult, const TArray<FOculusXRSpaceQueryResult>& QueryResults);
+	void SceneDataLoadedResult(EOculusXRAnchorResult::Type Result);
+	void SceneDataLoadedComplete(const TArray<FOculusXRAnchorsDiscoverResult>& DiscoverResults);
 	UFUNCTION()
 	void RoomQueryComplete(bool Success);
 };

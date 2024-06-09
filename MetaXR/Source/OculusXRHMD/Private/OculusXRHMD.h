@@ -120,6 +120,7 @@ namespace OculusXRHMD
 		virtual bool OnStartGameFrame(FWorldContext& WorldContext) override;
 		virtual bool OnEndGameFrame(FWorldContext& WorldContext) override;
 		virtual void OnBeginRendering_RenderThread(FRHICommandListImmediate& RHICmdList, FSceneViewFamily& ViewFamily) override;
+		virtual void OnBeginRendering_GameThread() override;
 		virtual class IXRLoadingScreen* CreateLoadingScreen() override { return GetSplash(); }
 		virtual FVector2D GetPlayAreaBounds(EHMDTrackingOrigin::Type Origin) const override;
 
@@ -167,6 +168,7 @@ namespace OculusXRHMD
 		virtual float GetPixelDenity() const override;
 		virtual void SetPixelDensity(const float NewPixelDensity) override;
 		virtual FIntPoint GetIdealRenderTargetSize() const override;
+		virtual void GetMotionControllerData(UObject* WorldContext, const EControllerHand Hand, FXRMotionControllerData& MotionControllerData) override;
 
 		// IStereoRendering interface
 		virtual bool IsStereoEnabled() const override;
@@ -258,7 +260,11 @@ namespace OculusXRHMD
 #ifdef WITH_OCULUS_BRANCH
 		virtual bool LateLatchingEnabled() const override;
 		virtual void PreLateLatchingViewFamily_RenderThread(FRHICommandListImmediate& RHICmdList, FSceneViewFamily& InViewFamily) override;
+
+		// MultiPlayer
+		virtual void SwitchPrimaryPIE(int PrimaryPIEIndex) override;
 #endif
+		const FOculusXRPerformanceMetrics GetPerformanceMetrics() const;
 
 	public:
 		FOculusXRHMD(const FAutoRegister&);
@@ -482,6 +488,7 @@ namespace OculusXRHMD
 #endif
 
 		void LoadFromSettings();
+		void CheckMultiPlayer();
 		void DoSessionShutdown();
 
 	protected:
@@ -490,8 +497,7 @@ namespace OculusXRHMD
 
 		void UpdateHMDEvents();
 
-		void UpdateInsightPassthrough();
-		void ShutdownInsightPassthrough();
+		void EnableInsightPassthrough_RenderThread(bool bEnablePassthrough);
 
 		void DrawHmdViewMesh(
 			FRHICommandList& RHICmdList,
@@ -507,6 +513,11 @@ namespace OculusXRHMD
 			FIntPoint TextureSize,
 			int32 StereoView,
 			const TShaderRef<class FShader>& VertexShader);
+
+		// MultiPlayer
+		void InitMultiPlayerPoses(const FPose& CurPose);
+		void ResetMultiPlayerPoses();
+		void ReCalcMultiPlayerPoses(FPose& CurHMDHeadPose);
 
 		union
 		{
@@ -620,7 +631,17 @@ namespace OculusXRHMD
 		bool bShutdownRequestQueued;
 		bool bEyeTrackedFoveatedRenderingSupported;
 
+		FOculusXRPerformanceMetrics PerformanceMetrics;
+
 		TArray<FOculusXRHMDEventPollingDelegate> EventPollingDelegates;
+
+		// MultiPlayer
+		bool bMultiPlayer;
+		int CurPlayerIndex;
+		FPose LastFrameHMDHeadPose;
+		TArray<FPose> MultiPlayerPoses;
+		bool bShouldWait_GameThread;
+		bool bIsRendering_RenderThread;
 	};
 
 	typedef TSharedPtr<FOculusXRHMD, ESPMode::ThreadSafe> FOculusXRHMDPtr;

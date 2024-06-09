@@ -130,7 +130,7 @@ namespace OculusXRHMD
 		FXRSwapChainPtr RightDepthSwapChain;
 		FXRSwapChainPtr MotionVectorSwapChain;
 		FXRSwapChainPtr MotionVectorDepthSwapChain;
-		FTexture2DRHIRef InvAlphaTexture;
+		FTextureRHIRef InvAlphaTexture;
 		bool bUpdateTexture;
 		bool bInvertY;
 		bool bHasDepth;

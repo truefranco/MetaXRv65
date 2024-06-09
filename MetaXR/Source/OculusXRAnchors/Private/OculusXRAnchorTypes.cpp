@@ -94,3 +94,46 @@ FString FOculusXRUUID::ToString() const
 	return BytesToHex(UUIDBytes, OCULUSXR_UUID_SIZE);
 }
 
+void ovrpSpaceDiscoveryFilterIdsDelete::operator()(ovrpSpaceDiscoveryFilterIds* ptr) const
+{
+	if (ptr != nullptr)
+	{
+		delete ptr;
+		ptr = nullptr;
+	}
+}
+
+const ovrpSpaceDiscoveryFilterHeader* UOculusXRSpaceDiscoveryIdsFilter::GenerateOVRPFilter()
+{
+	uint32 IdsCount = (uint32)Uuids.Num();
+
+	wrappedUUIDs.SetNumZeroed(IdsCount);
+	OVRPFilterIds.reset(new ovrpSpaceDiscoveryFilterIds{ ovrpSpaceDiscoveryFilterType_Ids, IdsCount });
+	UE_LOG(LogOculusXRAnchors, Display, TEXT("UUID discovery filter:"));
+
+	for (uint32 i = 0; i < IdsCount; ++i)
+	{
+		FMemory::Memcpy(wrappedUUIDs[i].data, Uuids[i].UUIDBytes);
+		UE_LOG(LogOculusXRAnchors, Display, TEXT("\t%s"), *Uuids[i].ToString());
+	}
+
+	OVRPFilterIds->Uuids = reinterpret_cast<ovrpUuid*>(wrappedUUIDs.GetData());
+
+	return (const ovrpSpaceDiscoveryFilterHeader*)OVRPFilterIds.get();
+}
+
+void ovrpSpaceDiscoveryFilterComponentsDelete::operator()(ovrpSpaceDiscoveryFilterComponents* ptr) const
+{
+	if (ptr != nullptr)
+	{
+		delete ptr;
+		ptr = nullptr;
+	}
+}
+
+const ovrpSpaceDiscoveryFilterHeader* UOculusXRSpaceDiscoveryComponentsFilter::GenerateOVRPFilter()
+{
+	OVRPFilterComponent.reset(new ovrpSpaceDiscoveryFilterComponents{ ovrpSpaceDiscoveryFilterType_Components, ConvertToOvrpComponentType(ComponentType) });
+	UE_LOG(LogOculusXRAnchors, Display, TEXT("Component discovery filter %d"), ComponentType);
+	return (const ovrpSpaceDiscoveryFilterHeader*)OVRPFilterComponent.get();
+}

@@ -33,6 +33,18 @@ DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOculusXR_LatentAction_SetAnchorComp
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_ThreeParams(FOculusXR_LatentAction_ShareAnchors_Success, const TArray<UOculusXRAnchorComponent*>&, SharedAnchors, const TArray<FString>&, UserIds, EOculusXRAnchorResult::Type, Result);
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOculusXR_LatentAction_ShareAnchors_Failure, EOculusXRAnchorResult::Type, Result);
 
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(FOculusXR_LatentAction_SaveAnchors_Success, const TArray<UOculusXRAnchorComponent*>&, Anchors, EOculusXRAnchorResult::Type, Result);
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOculusXR_LatentAction_SaveAnchors_Failure, EOculusXRAnchorResult::Type, Result);
+
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_FourParams(FOculusXR_LatentAction_EraseAnchors_Success, const TArray<UOculusXRAnchorComponent*>&, Anchors, const TArray<FOculusXRUInt64>&, AnchorHandles, const TArray<FOculusXRUUID>&, UUIDs, EOculusXRAnchorResult::Type, Result);
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOculusXR_LatentAction_EraseAnchors_Failure, EOculusXRAnchorResult::Type, Result);
+
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOculusXR_LatentAction_DiscoverAnchors_Discovered, const TArray<FOculusXRAnchorsDiscoverResult>&, DiscoveryResult);
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOculusXR_LatentAction_DiscoverAnchors_Complete, EOculusXRAnchorResult::Type, Result);
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOculusXR_LatentAction_DiscoverAnchors_Failure, EOculusXRAnchorResult::Type, Result);
+
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(FOculusXR_LatentAction_GetSharedAnchors_Success, const TArray<FOculusXRAnchorsDiscoverResult>&, SharedAnchors, EOculusXRAnchorResult::Type, Result);
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOculusXR_LatentAction_GetSharedAnchors_Failure, EOculusXRAnchorResult::Type, Result);
 
 //
 // Create Anchor
@@ -271,6 +283,116 @@ private:
 	void HandleShareAnchorsComplete(EOculusXRAnchorResult::Type ShareResult, const TArray<UOculusXRAnchorComponent*>& TargetAnchors, const TArray<uint64>& OculusUserIds);
 };
 
+//
+// Save Anchors
+//
+UCLASS()
+class OCULUSXRANCHORS_API UOculusXRAsyncAction_SaveAnchors : public UBlueprintAsyncActionBase
+{
+	GENERATED_BODY()
+public:
+	virtual void Activate() override;
+
+	UFUNCTION(BlueprintCallable, meta = (BlueprintInternalUseOnly = "true"))
+	static UOculusXRAsyncAction_SaveAnchors* OculusXRAsyncSaveAnchors(const TArray<AActor*>& TargetActors);
+
+	UPROPERTY(BlueprintAssignable)
+	FOculusXR_LatentAction_SaveAnchors_Success Success;
+
+	UPROPERTY(BlueprintAssignable)
+	FOculusXR_LatentAction_SaveAnchors_Failure Failure;
+
+	UPROPERTY(Transient)
+	TArray<UOculusXRAnchorComponent*> TargetAnchors;
+
+private:
+	void HandleSaveAnchorsComplete(EOculusXRAnchorResult::Type SaveResult, const TArray<UOculusXRAnchorComponent*>& SavedSpaces);
+};
+
+//
+// Erase Anchors
+//
+UCLASS()
+class OCULUSXRANCHORS_API UOculusXRAsyncAction_EraseAnchors : public UBlueprintAsyncActionBase
+{
+	GENERATED_BODY()
+public:
+	virtual void Activate() override;
+
+	UFUNCTION(BlueprintCallable, meta = (BlueprintInternalUseOnly = "true", AutoCreateRefTerm = "TargetActors,AnchorHandles,AnchorUUIDs"))
+	static UOculusXRAsyncAction_EraseAnchors* OculusXRAsyncEraseAnchors(const TArray<AActor*>& TargetActors, const TArray<FOculusXRUInt64>& AnchorHandles, const TArray<FOculusXRUUID>& AnchorUUIDs);
+
+	UPROPERTY(BlueprintAssignable)
+	FOculusXR_LatentAction_EraseAnchors_Success Success;
+
+	UPROPERTY(BlueprintAssignable)
+	FOculusXR_LatentAction_EraseAnchors_Failure Failure;
+
+	UPROPERTY(Transient)
+	TArray<UOculusXRAnchorComponent*> TargetAnchors;
+
+	TArray<FOculusXRUInt64> TargetAnchorHandles;
+	TArray<FOculusXRUUID> TargetUUIDs;
+
+private:
+	void HandleEraseAnchorsComplete(EOculusXRAnchorResult::Type EraseResult, const TArray<UOculusXRAnchorComponent*>& ErasedAnchorComponents, const TArray<FOculusXRUInt64>& ErasedAnchorHandles, const TArray<FOculusXRUUID>& ErasedAnchorUUIDs);
+};
+
+//
+// Anchors Discovery
+//
+UCLASS()
+class OCULUSXRANCHORS_API UOculusXRAsyncAction_DiscoverAnchors : public UBlueprintAsyncActionBase
+{
+	GENERATED_BODY()
+public:
+	virtual void Activate() override;
+
+	UFUNCTION(BlueprintCallable, meta = (BlueprintInternalUseOnly = "true"))
+	static UOculusXRAsyncAction_DiscoverAnchors* OculusXRAsyncDiscoverAnchors(const FOculusXRSpaceDiscoveryInfo& DiscoveryInfo);
+
+	UPROPERTY(BlueprintAssignable)
+	FOculusXR_LatentAction_DiscoverAnchors_Discovered Discovered;
+
+	UPROPERTY(BlueprintAssignable)
+	FOculusXR_LatentAction_DiscoverAnchors_Complete Complete;
+
+	UPROPERTY(BlueprintAssignable)
+	FOculusXR_LatentAction_DiscoverAnchors_Failure Failure;
+
+	UPROPERTY(Transient)
+	FOculusXRSpaceDiscoveryInfo DiscoveryInfo;
+
+private:
+	void HandleDiscoverResult(const TArray<FOculusXRAnchorsDiscoverResult>& DiscoveredAnchors);
+	void HandleDiscoverComplete(EOculusXRAnchorResult::Type CompleteResult);
+};
+
+//
+// Get Shared Anchors
+//
+UCLASS()
+class OCULUSXRANCHORS_API UOculusXRAsyncAction_GetSharedAnchors : public UBlueprintAsyncActionBase
+{
+	GENERATED_BODY()
+public:
+	virtual void Activate() override;
+
+	UFUNCTION(BlueprintCallable, meta = (BlueprintInternalUseOnly = "true"))
+	static UOculusXRAsyncAction_GetSharedAnchors* OculusXRAsyncGetSharedAnchors(const TArray<FOculusXRUUID>& AnchorUUIDs);
+
+	UPROPERTY(BlueprintAssignable)
+	FOculusXR_LatentAction_GetSharedAnchors_Success Success;
+
+	UPROPERTY(BlueprintAssignable)
+	FOculusXR_LatentAction_GetSharedAnchors_Failure Failure;
+
+	UPROPERTY(Transient)
+	TArray<FOculusXRUUID> Anchors;
+
+private:
+	void HandleGetSharedAnchorsResult(EOculusXRAnchorResult::Type Result, const TArray<FOculusXRAnchorsDiscoverResult>& SharedAnchors);
+};
 
 UCLASS()
 class OCULUSXRANCHORS_API UOculusXRAnchorLaunchCaptureFlow : public UBlueprintAsyncActionBase

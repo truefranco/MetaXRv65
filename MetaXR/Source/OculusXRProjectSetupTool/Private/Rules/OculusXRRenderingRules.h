@@ -269,6 +269,20 @@ namespace OculusXRRenderingRules
 		virtual void ApplyImpl(bool& OutShouldRestartEditor) override;
 	};
 
+	class FUseAndroidVulkanPreviewPlatform final : public ISetupRule
+	{
+	public:
+		FUseAndroidVulkanPreviewPlatform();
+		virtual bool IsApplied() const override;
+		virtual bool IsValid() override;
+
+	protected:
+		virtual void ApplyImpl(bool& OutShouldRestartEditor) override;
+
+	private:
+		FPreviewPlatformInfo AndroidVulkanPreview;
+	};
+
 	// All defined rendering rules. Add new rules to this table for them to be auto-registered
 	inline TArray<SetupRulePtr> RenderingRules_Table{
 		MakeShared<FUseVulkanRule>(),
@@ -288,6 +302,7 @@ namespace OculusXRRenderingRules
 		MakeShared<FEnableStaticLightingRule>(),
 		MakeShared<FDisableMobileShaderStaticAndCSMShadowReceiversRule>(),
 		MakeShared<FDisableMobileShaderAllowDistanceFieldShadowsRule>(),
-		MakeShared<FDisableMobileShaderAllowMovableDirectionalLightsRule>()
+		MakeShared<FDisableMobileShaderAllowMovableDirectionalLightsRule>(),
+		MakeShared<FUseAndroidVulkanPreviewPlatform>()
 	};
 } // namespace OculusXRRenderingRules

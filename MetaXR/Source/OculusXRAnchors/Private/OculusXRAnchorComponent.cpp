@@ -170,9 +170,8 @@ void UOculusXRAnchorComponent::UpdateAnchorTransform() const
 					UE_LOG(LogOculusXRAnchors, Display, TEXT("UpdateAnchor Rot %s"), *OutTransform.GetRotation().ToString());
 				}
 #endif
+				Parent->SetActorLocationAndRotation(OutTransform.GetLocation(), OutTransform.GetRotation(), false, 0, ETeleportType::ResetPhysics);
 			}
-
-			Parent->SetActorLocationAndRotation(OutTransform.GetLocation(), OutTransform.GetRotation(), false, 0, ETeleportType::ResetPhysics);
 		}
 	}
 }

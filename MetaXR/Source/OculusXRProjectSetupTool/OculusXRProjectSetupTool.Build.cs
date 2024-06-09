@@ -43,7 +43,8 @@ public class OculusXRProjectSetupTool : ModuleRules
 				"ToolWidgets",
 				"WorkspaceMenuStructure",
 				"PluginBrowser",
-				"ToolMenus"
+				"ToolMenus",
+				"RHI",
 			}
 		);
 	}
