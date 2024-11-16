@@ -1,0 +1,13 @@
+{
+	"RemapUnityFiles": 
+	{
+		"Module.PlatformIntegration.cpp.obj": [
+			"PlatformIntegration.init.gen.cpp.obj",
+			"PlatformIntegrationBridge.gen.cpp.obj",
+			"PlatformIntegrationSubsystem.gen.cpp.obj",
+			"PlatformIntegration.cpp.obj",
+			"PlatformIntegrationBridge.cpp.obj",
+			"PlatformIntegrationSubsystem.cpp.obj"
+		]
+	}
+}

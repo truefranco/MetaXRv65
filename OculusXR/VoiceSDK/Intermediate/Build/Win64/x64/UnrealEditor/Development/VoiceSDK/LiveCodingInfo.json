@@ -1,0 +1,14 @@
+{
+	"RemapUnityFiles": 
+	{
+		"Module.VoiceSDK.cpp.obj": [
+			"AppVoiceExperience.gen.cpp.obj",
+			"PlatformVoiceService.gen.cpp.obj",
+			"VoiceSDK.init.gen.cpp.obj",
+			"VoiceSDKLog.cpp.obj",
+			"VoiceSDK.cpp.obj",
+			"AppVoiceExperience.cpp.obj",
+			"PlatformVoiceService.cpp.obj"
+		]
+	}
+}

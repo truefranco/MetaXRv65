@@ -1,0 +1,22 @@
+{
+	"RemapUnityFiles": 
+	{
+		"Module.WitEditor.cpp.obj": [
+			"SWitConfigurationEditorTab.gen.cpp.obj",
+			"SWitSpeechGeneratorTab.gen.cpp.obj",
+			"SWitUnderstandingViewerTab.gen.cpp.obj",
+			"WitEditor.init.gen.cpp.obj",
+			"TtsConfigurationDetailCustomization.cpp.obj",
+			"SWitConfigurationEditorTab.cpp.obj",
+			"WitConfigurationDetailCustomization.cpp.obj",
+			"WitConfigurationEditorTabTool.cpp.obj",
+			"SWitSpeechGeneratorTab.cpp.obj",
+			"WitSpeechGeneratorTabTool.cpp.obj",
+			"WitTabTool.cpp.obj",
+			"SWitUnderstandingViewerTab.cpp.obj",
+			"WitUnderstandingPropertyCustomization.cpp.obj",
+			"WitUnderstandingViewerTabTool.cpp.obj",
+			"WitEditorModule.cpp.obj"
+		]
+	}
+}

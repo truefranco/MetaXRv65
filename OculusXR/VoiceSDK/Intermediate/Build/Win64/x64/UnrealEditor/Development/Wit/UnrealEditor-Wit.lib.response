@@ -1,0 +1,15 @@
+/NOLOGO
+/errorReport:prompt
+/MACHINE:x64
+/SUBSYSTEM:WINDOWS
+/DEF
+/NAME:"UnrealEditor-Wit.dll"
+/IGNORE:4221
+/NODEFAULTLIB
+"..\Intermediate\Build\Win64\x64\UnrealEditor\Development\Engine\SharedPCH.Engine.ShadowErrors.h.obj"
+"..\Plugins\Runtime\OculusXR\VoiceSDK\Intermediate\Build\Win64\x64\UnrealEditor\Development\Wit\Module.Wit.1_of_4.cpp.obj"
+"..\Plugins\Runtime\OculusXR\VoiceSDK\Intermediate\Build\Win64\x64\UnrealEditor\Development\Wit\Module.Wit.2_of_4.cpp.obj"
+"..\Plugins\Runtime\OculusXR\VoiceSDK\Intermediate\Build\Win64\x64\UnrealEditor\Development\Wit\Module.Wit.3_of_4.cpp.obj"
+"..\Plugins\Runtime\OculusXR\VoiceSDK\Intermediate\Build\Win64\x64\UnrealEditor\Development\Wit\Module.Wit.4_of_4.cpp.obj"
+"..\Intermediate\Build\Win64\x64\UnrealEditor\Development\Default.rc2.res"
+/OUT:"..\Plugins\Runtime\OculusXR\VoiceSDK\Intermediate\Build\Win64\x64\UnrealEditor\Development\Wit\UnrealEditor-Wit.lib"
