@@ -10,7 +10,7 @@
 #include "UnrealEdGlobals.h"
 #include "TestHelper.h"
 
-BEGIN_DEFINE_SPEC(FMRUKSpec, TEXT("MR Utility Kit"), EAutomationTestFlags::ProductFilter | EAutomationTestFlags::ApplicationContextMask)
+BEGIN_DEFINE_SPEC(FMRUKSpec, TEXT("MR Utility Kit"), EAutomationTestFlags::ProductFilter | EAutomationTestFlags::CommandletContext)
 UMRUKSubsystem* ToolkitSubsystem;
 
 void SetupMRUKSubsystem();

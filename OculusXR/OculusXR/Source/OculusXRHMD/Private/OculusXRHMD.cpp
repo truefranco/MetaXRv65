@@ -1880,7 +1880,7 @@ namespace OculusXRHMD
 		return CenterPoint;
 	}
 
-	FIntRect FOculusXRHMD::GetFullFlatEyeRect_RenderThread(FTexture2DRHIRef EyeTexture) const
+	FIntRect FOculusXRHMD::GetFullFlatEyeRect_RenderThread(FTextureRHIRef EyeTexture) const
 	{
 		CheckInRenderThread();
 
@@ -1902,7 +1902,7 @@ namespace OculusXRHMD
 		}
 	}
 
-	void FOculusXRHMD::CopyTexture_RenderThread(FRHICommandListImmediate& RHICmdList, FRHITexture2D* SrcTexture, FIntRect SrcRect, FRHITexture2D* DstTexture, FIntRect DstRect, bool bClearBlack, bool bNoAlpha) const
+	void FOculusXRHMD::CopyTexture_RenderThread(FRHICommandListImmediate& RHICmdList, FRHITexture* SrcTexture, FIntRect SrcRect, FRHITexture* DstTexture, FIntRect DstRect, bool bClearBlack, bool bNoAlpha) const
 	{
 		if (bClearBlack)
 		{
@@ -1968,7 +1968,7 @@ namespace OculusXRHMD
 			const FXRSwapChainPtr& SwapChain = EyeLayer_RenderThread->GetSwapChain();
 			if (SwapChain.IsValid())
 			{
-				const FRHITexture2D* const SwapChainTexture = SwapChain->GetTexture2DArray() ? SwapChain->GetTexture2DArray() : SwapChain->GetTexture2D();
+				const FRHITexture* const SwapChainTexture = SwapChain->GetTexture2DArray() ? SwapChain->GetTexture2DArray() : SwapChain->GetTexture2D();
 				UE_LOG(LogHMD, Log, TEXT("Allocating Oculus %d x %d rendertarget swapchain"), SwapChainTexture->GetSizeX(), SwapChainTexture->GetSizeY());
 			}
 		});
@@ -2006,7 +2006,7 @@ namespace OculusXRHMD
 	}
 #endif // WITH_OCULUS_BRANCH
 
-	bool FOculusXRHMD::AllocateRenderTargetTexture(uint32 Index, uint32 SizeX, uint32 SizeY, uint8 Format, uint32 NumMips, ETextureCreateFlags InTexFlags, ETextureCreateFlags InTargetableTextureFlags, FTexture2DRHIRef& OutTargetableTexture, FTexture2DRHIRef& OutShaderResourceTexture, uint32 NumSamples)
+	bool FOculusXRHMD::AllocateRenderTargetTexture(uint32 Index, uint32 SizeX, uint32 SizeY, uint8 Format, uint32 NumMips, ETextureCreateFlags InTexFlags, ETextureCreateFlags InTargetableTextureFlags, FTextureRHIRef& OutTargetableTexture, FTextureRHIRef& OutShaderResourceTexture, uint32 NumSamples)
 	{
 		CheckInRenderThread();
 
@@ -2027,7 +2027,7 @@ namespace OculusXRHMD
 		return false;
 	}
 
-	bool FOculusXRHMD::AllocateDepthTexture(uint32 Index, uint32 SizeX, uint32 SizeY, uint8 Format, uint32 NumMips, ETextureCreateFlags FlagsIn, ETextureCreateFlags TargetableTextureFlags, FTexture2DRHIRef& OutTargetableTexture, FTexture2DRHIRef& OutShaderResourceTexture, uint32 NumSamples)
+	bool FOculusXRHMD::AllocateDepthTexture(uint32 Index, uint32 SizeX, uint32 SizeY, uint8 Format, uint32 NumMips, ETextureCreateFlags FlagsIn, ETextureCreateFlags TargetableTextureFlags, FTextureRHIRef& OutTargetableTexture, FTextureRHIRef& OutShaderResourceTexture, uint32 NumSamples)
 	{
 		CheckInRenderThread();
 
@@ -2039,7 +2039,7 @@ namespace OculusXRHMD
 
 			if (SwapChain.IsValid())
 			{
-				FTexture2DRHIRef Texture = SwapChain->GetTexture2DArray() ? SwapChain->GetTexture2DArray() : SwapChain->GetTexture2D();
+				FTextureRHIRef Texture = SwapChain->GetTexture2DArray() ? SwapChain->GetTexture2DArray() : SwapChain->GetTexture2D();
 				FIntPoint TexSize = Texture->GetSizeXY();
 
 				// Ensure the texture size matches the eye layer. We may get other depth allocations unrelated to the main scene render.
@@ -2061,7 +2061,7 @@ namespace OculusXRHMD
 		return false;
 	}
 
-	bool FOculusXRHMD::AllocateShadingRateTexture(uint32 Index, uint32 RenderSizeX, uint32 RenderSizeY, uint8 Format, uint32 NumMips, ETextureCreateFlags InTexFlags, ETextureCreateFlags InTargetableTextureFlags, FTexture2DRHIRef& OutTexture, FIntPoint& OutTextureSize)
+	bool FOculusXRHMD::AllocateShadingRateTexture(uint32 Index, uint32 RenderSizeX, uint32 RenderSizeY, uint8 Format, uint32 NumMips, ETextureCreateFlags InTexFlags, ETextureCreateFlags InTargetableTextureFlags, FTextureRHIRef& OutTexture, FIntPoint& OutTextureSize)
 	{
 		CheckInRenderThread();
 
@@ -2073,7 +2073,7 @@ namespace OculusXRHMD
 
 			if (SwapChain.IsValid())
 			{
-				FTexture2DRHIRef Texture = SwapChain->GetTexture2DArray() ? SwapChain->GetTexture2DArray() : SwapChain->GetTexture2D();
+				FTextureRHIRef Texture = SwapChain->GetTexture2DArray() ? SwapChain->GetTexture2DArray() : SwapChain->GetTexture2D();
 				FIntPoint TexSize = Texture->GetSizeXY();
 
 				// Only set texture and return true if we have a valid texture of compatible size
@@ -2105,7 +2105,7 @@ namespace OculusXRHMD
 	}
 
 #ifdef WITH_OCULUS_BRANCH
-	bool FOculusXRHMD::AllocateMotionVectorTexture(uint32 Index, uint8 Format, uint32 NumMips, ETextureCreateFlags InTexFlags, ETextureCreateFlags InTargetableTextureFlags, FTexture2DRHIRef& OutTexture, FIntPoint& OutTextureSize, FTexture2DRHIRef& OutDepthTexture, FIntPoint& OutDepthTextureSize)
+	bool FOculusXRHMD::AllocateMotionVectorTexture(uint32 Index, uint8 Format, uint32 NumMips, ETextureCreateFlags InTexFlags, ETextureCreateFlags InTargetableTextureFlags, FTextureRHIRef& OutTexture, FIntPoint& OutTextureSize, FTextureRHIRef& OutDepthTexture, FIntPoint& OutDepthTextureSize)
 	{
 		CheckInRenderThread();
 
@@ -2115,13 +2115,13 @@ namespace OculusXRHMD
 			const FXRSwapChainPtr& SwapChain = EyeLayer_RenderThread->GetMotionVectorSwapChain();
 			if (SwapChain.IsValid())
 			{
-				FTexture2DRHIRef Texture = SwapChain->GetTexture2DArray() ? SwapChain->GetTexture2DArray() : SwapChain->GetTexture2D();
+				FTextureRHIRef Texture = SwapChain->GetTexture2DArray() ? SwapChain->GetTexture2DArray() : SwapChain->GetTexture2D();
 				FIntPoint TexSize = Texture->GetSizeXY();
 
 				const FXRSwapChainPtr& DepthSwapChain = EyeLayer_RenderThread->GetMotionVectorDepthSwapChain();
 				if (DepthSwapChain.IsValid())
 				{
-					FTexture2DRHIRef DepthTexture = DepthSwapChain->GetTexture2DArray() ? DepthSwapChain->GetTexture2DArray() : DepthSwapChain->GetTexture2D();
+					FTextureRHIRef DepthTexture = DepthSwapChain->GetTexture2DArray() ? DepthSwapChain->GetTexture2DArray() : DepthSwapChain->GetTexture2D();
 					FIntPoint DepthTexSize = DepthTexture->GetSizeXY();
 
 					if (DepthTexture->IsValid() && DepthTexSize.X > 0 && DepthTexSize.Y > 0)
@@ -4284,7 +4284,7 @@ namespace OculusXRHMD
 			return;
 		}
 
-		const FRHITexture2D* const SwapChainTexture = SwapChain->GetTexture2DArray() ? SwapChain->GetTexture2DArray() : SwapChain->GetTexture2D();
+		const FRHITexture* const SwapChainTexture = SwapChain->GetTexture2DArray() ? SwapChain->GetTexture2DArray() : SwapChain->GetTexture2D();
 		if (!SwapChainTexture)
 		{
 			return;

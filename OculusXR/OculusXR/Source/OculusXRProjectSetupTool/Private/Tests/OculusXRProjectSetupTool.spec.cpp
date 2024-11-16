@@ -17,7 +17,7 @@ namespace
 	const FText TestRule_Desc = FText::FromString("Test Desc");
 } // namespace
 
-BEGIN_DEFINE_SPEC(FOculusXRProjectSetupToolSpec, TEXT("Project Setup Tool"), EAutomationTestFlags::ProductFilter | EAutomationTestFlags::ApplicationContextMask)
+BEGIN_DEFINE_SPEC(FOculusXRProjectSetupToolSpec, TEXT("Project Setup Tool"), EAutomationTestFlags::ProductFilter | EAutomationTestFlags::CommandletContext)
 UOculusXRRuleProcessorSubsystem* ProcessorSubsystem;
 bool bShouldRestartEditor = false;
 TSet<FName> RulesThatRequireRestart = {

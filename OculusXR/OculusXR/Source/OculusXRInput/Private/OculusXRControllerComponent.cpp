@@ -9,47 +9,13 @@
 #include "OculusXRHandTracking.h"
 #include <OculusXRInputModule.h>
 
-UOculusXRControllerComponent::UOculusXRControllerComponent()
-	: Super(),
+UOculusXRControllerComponent::UOculusXRControllerComponent(const FObjectInitializer& ObjectInitializer)
+	: Super(ObjectInitializer)
 	// These position and rotation offsets are needed to correctly position the controller
 	// when using natural or controller based hand positioning.
 	// Why do these need to be hardcoded and not come from the skeleton etc?
 	// It seems like the offset comes from somewhere in unreal in the first place,
 	// not from a bone position, so there's not a place to load the correct orientation from.
-	PositionOffsets{
-		{
-			FVector(0, 0, 0), // Side:  None, Controller Mapping: None
-			FVector(0, 0, 0), // Side:  None, Controller Mapping: Natural
-			FVector(0, 0, 0), // Side:  None, Controller Mapping: Controller
-		},
-		{
-			FVector(0, 0, 0),			  // Side:  Left, Controller Mapping: None
-			FVector(4.278, 9.969, 4.638), // Side:  Left, Controller Mapping: Natural
-			FVector(4.278, 9.969, 4.638), // Side:  Left, Controller Mapping: Controller
-		},
-		{
-			FVector(0, 0, 0),				 // Side: Right, Controller Mapping: None
-			FVector(-4.104, -9.993, -4.244), // Side: Right, Controller Mapping: Natural
-			FVector(-4.104, -9.993, -4.244), // Side: Right, Controller Mapping: Controller
-		},
-	}
-	, RotationOffsets{
-		{
-			FVector(0, 0, 0), // Side:  None, Controller Mapping: None
-			FVector(0, 0, 0), // Side:  None, Controller Mapping: Natural
-			FVector(0, 0, 0), // Side:  None, Controller Mapping: Controller
-		},
-		{
-			FVector(0, 0, 0),			   // Side:  Left, Controller Mapping: None
-			FVector(90, 166.229, 263.738), // Side:  Left, Controller Mapping: Natural
-			FVector(90, 168.515, 259.149), // Side:  Left, Controller Mapping: Controller
-		},
-		{
-			FVector(0, 0, 0),			  // Side: Right, Controller Mapping: None
-			FVector(90, 194.995, 83.863), // Side: Right, Controller Mapping: Natural
-			FVector(90, 191.485, 79.149), // Side: Right, Controller Mapping: Controller
-		},
-	}
 {
 	_meshLoadingState = MeshLoadingState::None;
 	PrimaryComponentTick.bCanEverTick = true;

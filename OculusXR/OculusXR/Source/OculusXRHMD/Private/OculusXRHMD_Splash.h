@@ -4,7 +4,7 @@
 #pragma once
 #include "OculusXRHMDPrivate.h"
 #include "IXRLoadingScreen.h"
-
+#define USE_ANDROID_OPENGL 0
 #if WITH_EDITOR
 #include "Editor.h"
 #endif

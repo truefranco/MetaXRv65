@@ -45,9 +45,9 @@ namespace OculusXRHMD
 		: FCustomPresent(InOculusXRHMD, ovrpRenderAPI_Vulkan, PF_R8G8B8A8, true)
 	{
 #if PLATFORM_ANDROID
-		if (GRHISupportsRHIThread && GIsThreadedRendering && GUseRHIThread_InternalUseOnly)
+		if (GRHISupportsRHIThread && GIsThreadedRendering && GPendingRHIThreadMode.IsSet())
 		{
-			SetRHIThreadEnabled(false, false);
+			GPendingRHIThreadMode = ERHIThreadMode::Tasks;
 		}
 #endif
 

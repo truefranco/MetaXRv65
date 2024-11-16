@@ -3,7 +3,7 @@
 
 #pragma once
 #include "OculusXRHMDPrivate.h"
-
+#define USE_ANDROID_OPENGL 0
 #if OCULUS_HMD_SUPPORTED_PLATFORMS
 #include "OculusXRHMD_Settings.h"
 #include "OculusXRHMD_GameFrame.h"
@@ -50,7 +50,7 @@ namespace OculusXRHMD
 		void ReleaseResources_RHIThread();
 		void Shutdown();
 
-		FTexture2DRHIRef GetMirrorTexture() { return MirrorTextureRHI; }
+		FTextureRHIRef GetMirrorTexture() { return MirrorTextureRHI; }
 
 		virtual void* GetOvrpInstance() const { return nullptr; }
 		virtual void* GetOvrpPhysicalDevice() const { return nullptr; }
@@ -94,7 +94,7 @@ namespace OculusXRHMD
 		ovrpTextureFormat DefaultOvrpTextureFormat;
 		ovrpTextureFormat DefaultDepthOvrpTextureFormat;
 		IRendererModule* RendererModule;
-		FTexture2DRHIRef MirrorTextureRHI;
+		FTextureRHIRef MirrorTextureRHI;
 		bool bIsStandaloneStereoDevice;
 	};
 

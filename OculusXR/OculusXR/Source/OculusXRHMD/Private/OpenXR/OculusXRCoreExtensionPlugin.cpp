@@ -49,9 +49,9 @@ namespace OculusXR
 		InitOpenXRFunctions(InInstance);
 
 #if PLATFORM_ANDROID
-		if (GRHISupportsRHIThread && GIsThreadedRendering && GUseRHIThread_InternalUseOnly)
+		if (GRHISupportsRHIThread && GIsThreadedRendering && GPendingRHIThreadMode.IsSet())
 		{
-			SetRHIThreadEnabled(false, false);
+			GPendingRHIThreadMode = ERHIThreadMode::Tasks;
 		}
 #endif // PLATFORM_ANDROID
 		return InNext;

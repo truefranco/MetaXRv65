@@ -481,8 +481,8 @@ namespace OculusXRHMD
 
 			if (Desc.Texture.IsValid())
 			{
-				FRHITexture2D* Texture2D = Desc.Texture->GetTexture2D();
-				FRHITextureCube* TextureCube = Desc.Texture->GetTextureCube();
+				FRHITexture* Texture2D = Desc.Texture->GetTexture2D();
+				FRHITexture* TextureCube = Desc.Texture->GetTextureCube();
 
 				if (Texture2D)
 				{
@@ -767,12 +767,13 @@ namespace OculusXRHMD
 					}
 
 					SwapChain = CustomPresent->CreateSwapChain_RenderThread(SizeX, SizeY, ColorFormat, ColorTextureBinding, NumMips, NumSamples, NumSamplesTileMem, ResourceType, ColorTextures, ColorTexCreateFlags, *FString::Printf(TEXT("Oculus Color Swapchain %d"), OvrpLayerId));
-
+PRAGMA_DISABLE_DEPRECATION_WARNINGS
 #if PLATFORM_WINDOWS
-					static const auto CVarPropagateAlpha = IConsoleManager::Get().FindTConsoleVariableDataInt(TEXT("r.PostProcessing.PropagateAlpha"));
-					const EAlphaChannelMode::Type PropagateAlpha = EAlphaChannelMode::FromInt(CVarPropagateAlpha->GetValueOnRenderThread());
+					static const IConsoleVariable* CVarPropagateAlpha = IConsoleManager::Get().FindConsoleVariable(TEXT("r.PostProcessing.PropagateAlpha"));
+					const EAlphaChannelMode::Type PropagateAlpha = EAlphaChannelMode::FromInt(CVarPropagateAlpha->GetInt());
 					if (PropagateAlpha == EAlphaChannelMode::AllowThroughTonemapper)
 					{
+PRAGMA_ENABLE_DEPRECATION_WARNINGS
 						const ETextureCreateFlags InvTextureCreateFlags = TexCreate_ShaderResource | TexCreate_RenderTargetable;
 						FRHITextureCreateDesc InvTextureDesc{};
 						if (OvrpLayerDesc.Layout == ovrpLayout_Array)
@@ -1095,14 +1096,30 @@ namespace OculusXRHMD
 
 				bUpdateTexture = false;
 			}
-
+#if PLATFORM_WINDOWS
 			// Generate mips
-			SwapChain->GenerateMips_RenderThread(RHICmdList);
+			FRDGBuilder GraphBuilder(RHICmdList);
+			if (SwapChain->GetTextureRef()->GetNumMips() > 1 && SwapChain->GetTextureRef()->GetTextureCube() == nullptr)
+			{	
 
+				TRefCountPtr<IPooledRenderTarget> PooledRenderTarget = CreateRenderTarget(SwapChain->GetTextureRef(), TEXT("MipGeneration"));
+				FRDGTextureRef TextureRDG = GraphBuilder.RegisterExternalTexture(PooledRenderTarget);
+				ERHIFeatureLevel::Type FeatureLevel = GMaxRHIFeatureLevel;
+				FGenerateMips::Execute(GraphBuilder, FeatureLevel, TextureRDG, FGenerateMipsParams());
+
+			}
+
+			
+			
 			if (RightSwapChain.IsValid())
 			{
-				RightSwapChain->GenerateMips_RenderThread(RHICmdList);
+				TRefCountPtr<IPooledRenderTarget> PooledRenderTarget = CreateRenderTarget(SwapChain->GetTextureRef(), TEXT("MipGeneration"));
+				FRDGTextureRef TextureRDG = GraphBuilder.RegisterExternalTexture(PooledRenderTarget);
+				ERHIFeatureLevel::Type FeatureLevel = GMaxRHIFeatureLevel;
+				FGenerateMips::Execute(GraphBuilder, FeatureLevel, TextureRDG, FGenerateMipsParams());
 			}
+			GraphBuilder.Execute();
+#endif
 		}
 
 		if (Id == 0 && SwapChain.IsValid() && InvAlphaTexture)
@@ -1330,14 +1347,14 @@ namespace OculusXRHMD
 			if (OVRP_SUCCESS(FOculusXRHMDModule::GetPluginWrapper().GetNativeXrApiType(&NativeXrApi)) && (NativeXrApi == ovrpXrApi_OpenXR))
 			{
 				bool bCTXPTEnabled = Settings->SystemSplashBackground == ESystemSplashBackgroundType::Contextual;
-
+PRAGMA_DISABLE_DEPRECATION_WARNINGS
 #if PLATFORM_WINDOWS
 				// Allow CTXPT over Link only if alpha in post processing is enabled
-				static const auto CVarPropagateAlpha = IConsoleManager::Get().FindTConsoleVariableDataInt(TEXT("r.PostProcessing.PropagateAlpha"));
-				const EAlphaChannelMode::Type PropagateAlpha = EAlphaChannelMode::FromInt(CVarPropagateAlpha->GetValueOnRenderThread());
+				static const IConsoleVariable* CVarPropagateAlpha = IConsoleManager::Get().FindConsoleVariable(TEXT("r.PostProcessing.PropagateAlpha"));
+				const EAlphaChannelMode::Type PropagateAlpha = EAlphaChannelMode::FromInt(CVarPropagateAlpha->GetInt());
 				bCTXPTEnabled &= PropagateAlpha == EAlphaChannelMode::AllowThroughTonemapper;
 #endif
-
+PRAGMA_ENABLE_DEPRECATION_WARNINGS
 				const bool bShouldIgnoreSrcAlpha = (LayerIndex == 0 && !bCTXPTEnabled);
 
 				if (bShouldIgnoreSrcAlpha)

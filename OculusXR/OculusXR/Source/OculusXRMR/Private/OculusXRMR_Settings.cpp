@@ -75,7 +75,7 @@ void UOculusXRMR_Settings::LoadFromIni()
 	bool v;
 	float f;
 	int32 i;
-	FVector vec;
+	//FVector vec;
 	FColor color;
 	if (GConfig->GetInt(OculusXRMRSettings, TEXT("CompositionMethod"), i, GEngineIni))
 	{

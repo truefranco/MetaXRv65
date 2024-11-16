@@ -46,7 +46,7 @@ namespace OculusXRHMD
 			{
 				if (bDeleteImmediately || GOculusXRHMDLayerDeletionFrameNumber > Entry->FrameEnqueued + NUM_FRAMES_TO_WAIT_FOR_LAYER_DELETE)
 				{
-					DeferredDeletionArray.RemoveAtSwap(Index, 1, false);
+					DeferredDeletionArray.RemoveAtSwap(Index, 1, EAllowShrinking::No);
 				}
 			}
 			else if (Entry->EntryType == DeferredDeletionEntry::DeferredDeletionEntryType::OvrpLayer)
@@ -57,7 +57,7 @@ namespace OculusXRHMD
 						UE_LOG(LogHMD, Warning, TEXT("Destroying layer %d"), OvrpLayerId);
 						FOculusXRHMDModule::GetPluginWrapper().DestroyLayer(OvrpLayerId);
 					});
-					DeferredDeletionArray.RemoveAtSwap(Index, 1, false);
+					DeferredDeletionArray.RemoveAtSwap(Index, 1, EAllowShrinking::No);
 				}
 			}
 		}

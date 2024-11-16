@@ -14,7 +14,11 @@
 
 #if PLATFORM_ANDROID
 #include "Android/AndroidJNI.h"
-#include "Android/AndroidEGL.h"
+
+#if USE_ANDROID_OPENGL 
+   #include "Android/AndroidEGL.h"
+#endif
+
 #include "Android/AndroidApplication.h"
 #include "Android/AndroidPlatformMisc.h"
 #endif

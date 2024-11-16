@@ -8,12 +8,13 @@
 #include "RenderingThread.h"
 #include "Misc/ScopeLock.h"
 #include "OculusXRHMDRuntimeSettings.h"
-#include "StereoLayerFunctionLibrary.h"
 #include "TextureResource.h"
 
 #if PLATFORM_ANDROID
 #include "Android/AndroidJNI.h"
+#if USE_ANDROID_OPENGL
 #include "Android/AndroidEGL.h"
+#endif
 #include "Android/AndroidApplication.h"
 #include "OculusXRHMDTypes.h"
 #endif

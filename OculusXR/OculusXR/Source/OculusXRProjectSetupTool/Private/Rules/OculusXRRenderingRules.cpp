@@ -1,4 +1,4 @@
-﻿// Copyright (c) Meta Platforms, Inc. and affiliates.
+// Copyright (c) Meta Platforms, Inc. and affiliates.
 
 #include "OculusXRRenderingRules.h"
 #include "CoreMinimal.h"
@@ -328,13 +328,13 @@ namespace OculusXRRenderingRules
 
 	bool FDisableMobileShaderAllowMovableDirectionalLightsRule::IsApplied() const
 	{
-		return !GetMutableDefault<URendererSettings>()->bMobileAllowMovableDirectionalLights;
+		return false; // !GetMutableDefault<URendererSettings>()->bMobileAllowMovableDirectionalLights;
 	}
 
 	void FDisableMobileShaderAllowMovableDirectionalLightsRule::ApplyImpl(bool& OutShouldRestartEditor)
 	{
-		OCULUSXR_UPDATE_SETTINGS(URendererSettings, bMobileAllowMovableDirectionalLights, false);
-		OutShouldRestartEditor = true;
+		//OCULUSXR_UPDATE_SETTINGS(URendererSettings, bMobileAllowMovableDirectionalLights, false);
+		//OutShouldRestartEditor = true;
 	}
 
 	bool FDisableMobileShaderAllowMovableDirectionalLightsRule::IsValid()

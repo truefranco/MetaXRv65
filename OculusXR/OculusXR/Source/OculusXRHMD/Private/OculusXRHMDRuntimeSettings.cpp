@@ -214,7 +214,7 @@ void UOculusXRHMDRuntimeSettings::LoadFromIni()
 	const TCHAR* OculusSettings = TEXT("Oculus.Settings");
 	bool v;
 	float f;
-	FVector vec;
+	//FVector vec;
 
 	if (GConfig->GetFloat(OculusSettings, TEXT("PixelDensityMax"), f, GEngineIni))
 	{

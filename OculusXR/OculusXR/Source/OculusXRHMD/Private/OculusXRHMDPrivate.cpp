@@ -27,7 +27,7 @@ namespace OculusXRHMD
 
 	bool InRenderThread()
 	{
-		if (GIsThreadedRendering && !GIsRenderingThreadSuspended.Load(EMemoryOrder::Relaxed))
+		if (GIsThreadedRendering)
 		{
 			return IsInParallelRenderingThread();
 		}
@@ -40,7 +40,7 @@ namespace OculusXRHMD
 	// TODO: Change in case of parallel RHI threads
 	bool InRHIThread()
 	{
-		if (GIsThreadedRendering && !GIsRenderingThreadSuspended.Load(EMemoryOrder::Relaxed))
+		if (GIsThreadedRendering)
 		{
 			if (IsRHIThreadRunning())
 			{

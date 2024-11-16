@@ -8,7 +8,7 @@
 #include "UnrealEdGlobals.h"
 #include "Editor/UnrealEdEngine.h"
 
-BEGIN_DEFINE_SPEC(FMRUKGridSliceResizerSpec, TEXT("MR Utility Kit"), EAutomationTestFlags::ProductFilter | EAutomationTestFlags::ApplicationContextMask)
+BEGIN_DEFINE_SPEC(FMRUKGridSliceResizerSpec, TEXT("MR Utility Kit"), EAutomationTestFlags::ProductFilter | EAutomationTestFlags::CommandletContext)
 END_DEFINE_SPEC(FMRUKGridSliceResizerSpec)
 
 void FMRUKGridSliceResizerSpec::Define()

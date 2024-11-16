@@ -27,7 +27,7 @@ namespace
 	}
 } // namespace
 
-BEGIN_DEFINE_SPEC(FMRUKGeometrySpec, TEXT("MR Utility Kit"), EAutomationTestFlags::ProductFilter | EAutomationTestFlags::ApplicationContextMask)
+BEGIN_DEFINE_SPEC(FMRUKGeometrySpec, TEXT("MR Utility Kit"), EAutomationTestFlags::ProductFilter | EAutomationTestFlags::CommandletContext)
 END_DEFINE_SPEC(FMRUKGeometrySpec)
 
 void FMRUKGeometrySpec::Define()

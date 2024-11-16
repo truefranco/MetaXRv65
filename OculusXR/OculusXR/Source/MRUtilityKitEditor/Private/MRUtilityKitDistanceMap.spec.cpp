@@ -84,7 +84,7 @@ static TArray<FColor> ReadTGAFromFile(const FString& FilePath)
 	return ReadTGAFromMemory(Data.GetData(), Data.Num());
 }
 
-BEGIN_DEFINE_SPEC(FMRUKDistanceMapSpec, TEXT("MR Utility Kit"), EAutomationTestFlags::ProductFilter | EAutomationTestFlags::ApplicationContextMask)
+BEGIN_DEFINE_SPEC(FMRUKDistanceMapSpec, TEXT("MR Utility Kit"), EAutomationTestFlags::ProductFilter | EAutomationTestFlags::CommandletContext)
 END_DEFINE_SPEC(FMRUKDistanceMapSpec)
 
 void FMRUKDistanceMapSpec::Define()

@@ -4,6 +4,9 @@
 #pragma once
 #include "OculusXRHMDPrivate.h"
 #include "ProceduralMeshComponent.h"
+#include "GenerateMips.h"
+
+class FGenerateMips;
 
 #if OCULUS_HMD_SUPPORTED_PLATFORMS
 #include "OculusXRHMD_CustomPresent.h"

@@ -248,6 +248,7 @@ namespace OculusXRInput
 	bool FOculusHandTracking::GetHandSkeletalMesh(USkeletalMesh* HandSkeletalMesh, const EOculusXRHandType SkeletonType, const EOculusXRHandType MeshType, const float WorldToMeters)
 	{
 #if OCULUS_INPUT_SUPPORTED_PLATFORMS
+		
 		if (HandSkeletalMesh)
 		{
 			ovrpMesh* OvrMesh = new ovrpMesh();
@@ -279,6 +280,7 @@ namespace OculusXRInput
 #endif
 
 			// Set default LOD Info
+			int32 TestLODIndex = HandSkeletalMesh->GetLODNum();
 			FSkeletalMeshLODInfo& LodInfo = HandSkeletalMesh->AddLODInfo();
 			LodInfo.ScreenSize = 0.3f;
 			LodInfo.LODHysteresis = 0.2f;
@@ -294,7 +296,7 @@ namespace OculusXRInput
 
 			// Set skeletal mesh properties
 			HandSkeletalMesh->SetHasVertexColors(true);
-			HandSkeletalMesh->SetHasBeenSimplified(false);
+			HandSkeletalMesh->GetLODInfo(0)->bHasBeenSimplified = false;
 			HandSkeletalMesh->SetEnablePerPolyCollision(false);
 
 			InitializeHandMesh(HandSkeletalMesh, OvrMesh, WorldToMeters);
@@ -510,7 +512,8 @@ namespace OculusXRInput
 #else
 		FSkeletalMeshLODRenderData* LodRenderData = &SkeletalMesh->GetResourceForRendering()->LODRenderData[0];
 #endif
-		SkeletalMesh->SetHasBeenSimplified(false);
+		
+		SkeletalMesh->GetLODInfo(0)->bHasBeenSimplified = false;
 		SkeletalMesh->SetHasVertexColors(true);
 
 		checkf(OvrSkeleton->NumBones <= static_cast<unsigned int>(TNumericLimits<uint8>::Max()), TEXT("Bone indices are stored as uint8 type."));
