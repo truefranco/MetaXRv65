@@ -36,4 +36,4 @@ void FMRUKEditorModule::ShutdownModule()
 
 #undef LOCTEXT_NAMESPACE
 
-IMPLEMENT_MODULE(FMRUKEditorModule, MRUtilityKit)
+IMPLEMENT_MODULE(FMRUKEditorModule, MRUtilityKitEditor)

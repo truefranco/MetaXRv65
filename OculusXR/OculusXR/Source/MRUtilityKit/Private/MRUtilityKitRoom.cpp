@@ -494,7 +494,7 @@ void AMRUKRoom::ComputeRoomEdges()
 	const auto& FloorBoundary = FloorAnchor->PlaneBoundary2D;
 	const auto& FloorTransform = FloorAnchor->GetActorTransform();
 
-	RoomEdges.SetNum(FloorBoundary.Num(), true);
+	RoomEdges.SetNum(FloorBoundary.Num(), EAllowShrinking::Yes);
 	for (int i = 0; i < RoomEdges.Num(); ++i)
 	{
 		const auto& BoundaryPoint = FloorBoundary[i];

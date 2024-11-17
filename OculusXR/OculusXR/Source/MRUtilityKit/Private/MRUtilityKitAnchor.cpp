@@ -362,7 +362,7 @@ void AMRUKAnchor::GenerateProceduralAnchorMesh(UProceduralMeshComponent* Procedu
 						// when viewed from the outside.
 						// The top face should have UVs that are consistent with planes to avoid Z fighting
 						// in case a plane and volume overlap (e.g. in the case of the desk).
-						FVector2D UV;
+						FVector2D UV(0, 0);
 						switch (i)
 						{
 							case 0:

@@ -40,7 +40,7 @@ FSoftObjectPath FOculusAssetDirectory::AssetListing[OculusAssetTotal] = {
 };
 
 #if WITH_EDITORONLY_DATA
-class FOculusAssetRepo : public FGCObject, public TArray<UObject*>
+class FOculusAssetRepo : public FGCObject, public TArray<TObjectPtr<UObject>>
 {
 public:
 	// made an on-demand singleton rather than a static global, to avoid issues with FGCObject initialization

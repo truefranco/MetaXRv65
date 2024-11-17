@@ -58,7 +58,9 @@ PRAGMA_ENABLE_DEPRECATION_WARNINGS
 
 	void FAllowAlphaToneMapperPassthroughRule::ApplyImpl(bool& OutShouldRestartEditor)
 	{
+PRAGMA_DISABLE_DEPRECATION_WARNINGS
 		OCULUSXR_UPDATE_SETTINGS(URendererSettings, bEnableAlphaChannelInPostProcessing, EAlphaChannelMode::AllowThroughTonemapper);
+PRAGMA_ENABLE_DEPRECATION_WARNINGS
 		OutShouldRestartEditor = true;
 	}
 } // namespace OculusXRPassthroughRules
