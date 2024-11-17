@@ -125,7 +125,7 @@ void FMRUKDistanceMapSpec::Define()
 			ENQUEUE_RENDER_COMMAND(ReadSurfaceCommand)
 			(
 				[RenderTargetResource, &PixelData](FRHICommandListImmediate& RHICmdList) {
-					const FTexture2DRHIRef Texture2DRHI = RenderTargetResource->GetRenderTargetTexture();
+					const FTextureRHIRef Texture2DRHI = RenderTargetResource->GetRenderTargetTexture();
 					RHICmdList.ReadSurfaceData(
 						Texture2DRHI,
 						FIntRect(0, 0, Texture2DRHI->GetSizeX(), Texture2DRHI->GetSizeY()),

@@ -44,7 +44,9 @@ namespace OculusXRPassthroughRules
 	bool FAllowAlphaToneMapperPassthroughRule::IsApplied() const
 	{
 		URendererSettings* Settings = GetMutableDefault<URendererSettings>();
+PRAGMA_DISABLE_DEPRECATION_WARNINGS
 		return Settings->bEnableAlphaChannelInPostProcessing == EAlphaChannelMode::AllowThroughTonemapper;
+PRAGMA_ENABLE_DEPRECATION_WARNINGS
 	}
 
 	bool FAllowAlphaToneMapperPassthroughRule::IsValid()

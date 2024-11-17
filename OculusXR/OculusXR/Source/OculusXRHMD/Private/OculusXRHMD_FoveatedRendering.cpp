@@ -36,7 +36,7 @@ FRDGTextureRef FOculusXRFoveatedRenderingImageGenerator::GetImage(
 		return nullptr;
 	}
 
-	FTexture2DRHIRef SwapchainTexture = FoveationSwapchain->GetTexture2DArray() ? FoveationSwapchain->GetTexture2DArray() : FoveationSwapchain->GetTexture2D();
+	FTextureRHIRef SwapchainTexture = FoveationSwapchain->GetTexture2DArray() ? FoveationSwapchain->GetTexture2DArray() : FoveationSwapchain->GetTexture2D();
 	FIntPoint TexSize = SwapchainTexture->GetSizeXY();
 	// Only set texture and return true if we have a valid texture of compatible size
 	if (SwapchainTexture->IsValid() && TexSize.X > 0 && TexSize.Y > 0)

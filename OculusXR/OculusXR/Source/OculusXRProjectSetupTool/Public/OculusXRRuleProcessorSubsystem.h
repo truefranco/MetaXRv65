@@ -6,6 +6,7 @@
 #include "OculusXRSetupRule.h"
 #include "Developer/LauncherServices/Public/ILauncher.h"
 #include "Subsystems/EngineSubsystem.h"
+#include "LightComponentBase.h"
 #include "OculusXRRuleProcessorSubsystem.generated.h"
 
 /**

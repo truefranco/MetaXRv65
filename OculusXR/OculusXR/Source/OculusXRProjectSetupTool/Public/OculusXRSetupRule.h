@@ -3,7 +3,10 @@
 #pragma once
 
 #include "CoreMinimal.h"
-
+#if WITH_EDITOR
+#include "EditorViewportClient.h"
+#include "Editor/EditorEngine.h"
+#endif
 /**
  * Rule categories
  */
