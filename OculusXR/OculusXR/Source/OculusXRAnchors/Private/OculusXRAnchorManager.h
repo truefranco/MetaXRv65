@@ -22,16 +22,9 @@ namespace OculusXRAnchors
 		static EOculusXRAnchorResult::Type QuerySpaces(const FOculusXRSpaceQueryInfo& QueryInfo, uint64& OutRequestId);
 		static EOculusXRAnchorResult::Type ShareSpaces(const TArray<uint64>& Spaces, const TArray<uint64>& UserIds, uint64& OutRequestId);
 		static EOculusXRAnchorResult::Type GetSpaceContainerUUIDs(uint64 Space, TArray<FOculusXRUUID>& OutUUIDs);
-		static EOculusXRAnchorResult::Type GetSpaceScenePlane(uint64 Space, FVector& OutPos, FVector& OutSize);
-		static EOculusXRAnchorResult::Type GetSpaceSceneVolume(uint64 Space, FVector& OutPos, FVector& OutSize);
-		static EOculusXRAnchorResult::Type GetSpaceSemanticClassification(uint64 Space, TArray<FString>& OutSemanticClassification);
 		static EOculusXRAnchorResult::Type GetSpaceContainer(uint64 Space, TArray<FOculusXRUUID>& OutContainerUuids);
-		static EOculusXRAnchorResult::Type GetSpaceBoundary2D(uint64 Space, TArray<FVector2f>& OutVertices);
 		static EOculusXRAnchorResult::Type DiscoverSpaces(const FOculusXRSpaceDiscoveryInfo& DiscoveryInfo, uint64& OutRequestId);
 		static EOculusXRAnchorResult::Type SaveSpaces(const TArray<uint64>& Spaces, uint64& OutRequestId);
 		static EOculusXRAnchorResult::Type EraseSpaces(const TArray<FOculusXRUInt64>& Handles, const TArray<FOculusXRUUID>& UUIDs, uint64& OutRequestId);
-
-
-		static void OnPollEvent(ovrpEventDataBuffer* EventDataBuffer, bool& EventPollResult);
 	};
 } // namespace OculusXRAnchors

@@ -10,6 +10,7 @@
 #include "Widgets/Layout/SScrollBox.h"
 #include "OculusXRRuleProcessorSubsystem.h"
 
+class STextBlock;
 class FActiveTimerHandle;
 /**
  * Slate widget for the Project Setup Tool main tab

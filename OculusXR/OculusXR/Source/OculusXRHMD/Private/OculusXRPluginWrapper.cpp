@@ -272,12 +272,14 @@ bool OculusPluginWrapper::InitializeOculusPluginWrapper(OculusPluginWrapper* wra
 		OCULUS_BIND_ENTRY_POINT(GetSpaceComponentStatus),
 		OCULUS_BIND_ENTRY_POINT(EnumerateSpaceSupportedComponents),
 		OCULUS_BIND_ENTRY_POINT(QuerySpaces),
+		OCULUS_BIND_ENTRY_POINT(QuerySpaces2),
 		OCULUS_BIND_ENTRY_POINT(RetrieveSpaceQueryResults),
 		OCULUS_BIND_ENTRY_POINT(SaveSpace),
 		OCULUS_BIND_ENTRY_POINT(EraseSpace),
 		OCULUS_BIND_ENTRY_POINT(GetSpaceUuid),
 		OCULUS_BIND_ENTRY_POINT(SaveSpaceList),
 		OCULUS_BIND_ENTRY_POINT(ShareSpaces),
+		OCULUS_BIND_ENTRY_POINT(ShareSpaces2),
 		OCULUS_BIND_ENTRY_POINT(CreateSpaceUser),
 		OCULUS_BIND_ENTRY_POINT(DestroySpaceUser),
 
@@ -298,11 +300,15 @@ bool OculusPluginWrapper::InitializeOculusPluginWrapper(OculusPluginWrapper* wra
 		OCULUS_BIND_ENTRY_POINT(GetSpaceTriangleMesh),
 
 
-
 		// Boundary Visibility
 		OCULUS_BIND_ENTRY_POINT(RequestBoundaryVisibility),
 		OCULUS_BIND_ENTRY_POINT(GetBoundaryVisibility),
 
+		// Colocation Session
+		OCULUS_BIND_ENTRY_POINT(StartColocationDiscovery),
+		OCULUS_BIND_ENTRY_POINT(StopColocationDiscovery),
+		OCULUS_BIND_ENTRY_POINT(StartColocationAdvertisement),
+		OCULUS_BIND_ENTRY_POINT(StopColocationAdvertisement),
 
 		// MovementSDK
 		OCULUS_BIND_ENTRY_POINT(GetBodyTrackingEnabled),

@@ -129,15 +129,15 @@ FVector AMRUKAnchor::GenerateRandomPositionOnPlaneFromStream(const FRandomStream
 	if (!CachedMesh.IsSet())
 	{
 		TriangulatedMeshCache Mesh;
-		const int32 NumVertices = PlaneBoundary2D.Num();
-		Mesh.Vertices.Reserve(NumVertices);
 
-		for (int i = 0; i < PlaneBoundary2D.Num(); ++i)
+		TArray<FVector2f> PlaneBoundary;
+		PlaneBoundary.Reserve(PlaneBoundary2D.Num());
+		for (const auto Point : PlaneBoundary2D)
 		{
-			auto Vertex = PlaneBoundary2D[i];
-			Mesh.Vertices.Push(FVector2D(Vertex.X, Vertex.Y));
+			PlaneBoundary.Push(FVector2f(Point));
 		}
-		Mesh.Triangles = MRUKTriangulatePoints(Mesh.Vertices);
+
+		MRUKTriangulatePolygon({ PlaneBoundary }, Mesh.Vertices, Mesh.Triangles);
 
 		// Compute the area of each triangle and the total surface area of the mesh
 		Mesh.Areas.Reserve(Mesh.Triangles.Num() / 3);
@@ -198,10 +198,10 @@ FVector AMRUKAnchor::GenerateRandomPositionOnPlaneFromStream(const FRandomStream
 	return V0 + U * (V1 - V0) + V * (V2 - V0);
 }
 
-bool AMRUKAnchor::Raycast(const FVector& Origin, const FVector& Direction, float MaxDist, FMRUKHit& OutHit)
+bool AMRUKAnchor::Raycast(const FVector& Origin, const FVector& Direction, float MaxDist, FMRUKHit& OutHit, int32 ComponentTypes)
 {
 	// If this anchor is the global mesh test against it
-	if (this == Room->GlobalMeshAnchor)
+	if ((ComponentTypes & static_cast<int32>(EMRUKComponentType::Mesh)) != 0 && this == Room->GlobalMeshAnchor)
 	{
 		FHitResult GlobalMeshOutHit{};
 		float Dist = MaxDist;
@@ -228,14 +228,14 @@ bool AMRUKAnchor::Raycast(const FVector& Origin, const FVector& Direction, float
 	bool FoundHit = false;
 
 	// If this anchor has a plane, hit test against it
-	if (PlaneBounds.bIsValid && RayCastPlane(LocalRay, MaxDist, OutHit))
+	if ((ComponentTypes & static_cast<int32>(EMRUKComponentType::Plane)) != 0 && PlaneBounds.bIsValid && RayCastPlane(LocalRay, MaxDist, OutHit))
 	{
 		// Update max dist for the volume raycast
 		MaxDist = OutHit.HitDistance;
 		FoundHit = true;
 	}
 	// If this anchor has a volume, hit test against it
-	if (VolumeBounds.IsValid && RayCastVolume(LocalRay, MaxDist, OutHit))
+	if ((ComponentTypes & static_cast<int32>(EMRUKComponentType::Volume)) != 0 && VolumeBounds.IsValid && RayCastVolume(LocalRay, MaxDist, OutHit))
 	{
 		MaxDist = OutHit.HitDistance;
 		FoundHit = true;
@@ -244,9 +244,9 @@ bool AMRUKAnchor::Raycast(const FVector& Origin, const FVector& Direction, float
 	return FoundHit;
 }
 
-bool AMRUKAnchor::RaycastAll(const FVector& Origin, const FVector& Direction, float MaxDist, TArray<FMRUKHit>& OutHits)
+bool AMRUKAnchor::RaycastAll(const FVector& Origin, const FVector& Direction, float MaxDist, TArray<FMRUKHit>& OutHits, int32 ComponentTypes)
 {
-	if (this == Room->GlobalMeshAnchor)
+	if ((ComponentTypes & static_cast<int32>(EMRUKComponentType::Mesh)) != 0 && this == Room->GlobalMeshAnchor)
 	{
 		FHitResult GlobalMeshOutHit{};
 		float Dist = MaxDist;
@@ -275,13 +275,13 @@ bool AMRUKAnchor::RaycastAll(const FVector& Origin, const FVector& Direction, fl
 	bool FoundHit = false;
 	// If this anchor has a plane, hit test against it
 	FMRUKHit Hit;
-	if (PlaneBounds.bIsValid && RayCastPlane(LocalRay, MaxDist, Hit))
+	if ((ComponentTypes & static_cast<int32>(EMRUKComponentType::Plane)) != 0 && PlaneBounds.bIsValid && RayCastPlane(LocalRay, MaxDist, Hit))
 	{
 		OutHits.Push(Hit);
 		FoundHit = true;
 	}
 	// If this anchor has a volume, hit test against it
-	if (VolumeBounds.IsValid && RayCastVolume(LocalRay, MaxDist, Hit))
+	if ((ComponentTypes & static_cast<int32>(EMRUKComponentType::Volume)) != 0 && VolumeBounds.IsValid && RayCastVolume(LocalRay, MaxDist, Hit))
 	{
 		OutHits.Push(Hit);
 		FoundHit = true;
@@ -409,7 +409,15 @@ void AMRUKAnchor::GenerateProceduralAnchorMesh(UProceduralMeshComponent* Procedu
 	}
 	if (PlaneBounds.bIsValid && !(VolumeBounds.IsValid && PreferVolume))
 	{
-		TArray<TArray<FVector2D>> Holes;
+		TArray<TArray<FVector2f>> Polygons;
+
+		TArray<FVector2f> PlaneBoundary;
+		PlaneBoundary.Reserve(PlaneBoundary2D.Num());
+		for (const auto Point : PlaneBoundary2D)
+		{
+			PlaneBoundary.Push(FVector2f(Point));
+		}
+		Polygons.Push(PlaneBoundary);
 
 		if (!CutHoleLabels.IsEmpty())
 		{
@@ -427,18 +435,19 @@ void AMRUKAnchor::GenerateProceduralAnchorMesh(UProceduralMeshComponent* Procedu
 				}
 
 				const FVector ChildPositionLS = GetActorTransform().InverseTransformPosition(ChildAnchor->GetActorLocation());
-				TArray<FVector2D> HoleBoundary;
+				TArray<FVector2f> HoleBoundary;
 				HoleBoundary.Reserve(ChildAnchor->PlaneBoundary2D.Num());
 				for (int32 I = ChildAnchor->PlaneBoundary2D.Num() - 1; I >= 0; --I)
 				{
-					HoleBoundary.Push(FVector2D(ChildPositionLS.Y, ChildPositionLS.Z) + ChildAnchor->PlaneBoundary2D[I]);
+					HoleBoundary.Push(FVector2f(ChildPositionLS.Y, ChildPositionLS.Z) + FVector2f(ChildAnchor->PlaneBoundary2D[I]));
 				}
-				Holes.Push(HoleBoundary);
+				Polygons.Push(HoleBoundary);
 			}
 		}
 
-		const FMRUKOutline Outline = MRUKComputeOutline(PlaneBoundary2D, Holes);
-		const TArray<int32> Triangles = MRUKTriangulateMesh(Outline);
+		TArray<FVector2D> MeshVertices;
+		TArray<int32> MeshIndices;
+		MRUKTriangulatePolygon(Polygons, MeshVertices, MeshIndices);
 
 		TArray<FVector> Vertices;
 		TArray<FVector> Normals;
@@ -448,7 +457,7 @@ void AMRUKAnchor::GenerateProceduralAnchorMesh(UProceduralMeshComponent* Procedu
 		TArray<FVector2D> UV3s;
 		TArray<FLinearColor> Colors; // Currently unused
 		TArray<FProcMeshTangent> Tangents;
-		const int32 NumVertices = Outline.Vertices.Num();
+		const int32 NumVertices = MeshVertices.Num();
 		Normals.Reserve(NumVertices);
 		UV0s.Reserve(NumVertices);
 		UV1s.Reserve(NumVertices);
@@ -459,7 +468,7 @@ void AMRUKAnchor::GenerateProceduralAnchorMesh(UProceduralMeshComponent* Procedu
 		static const FVector Normal = -FVector::XAxisVector;
 		const FVector NormalOffset = Normal * Offset;
 		auto BoundsSize = PlaneBounds.GetSize();
-		for (const auto& PlaneBoundaryVertex : Outline.Vertices)
+		for (const auto& PlaneBoundaryVertex : MeshVertices)
 		{
 			const FVector Vertex = FVector(0, PlaneBoundaryVertex.X, PlaneBoundaryVertex.Y) + NormalOffset;
 			Vertices.Push(Vertex);
@@ -488,7 +497,7 @@ void AMRUKAnchor::GenerateProceduralAnchorMesh(UProceduralMeshComponent* Procedu
 				UV3s.Push(FVector2D(U, V) * PlaneUVAdjustments[3].Scale + PlaneUVAdjustments[3].Offset);
 			}
 		}
-		ProceduralMesh->CreateMeshSection_LinearColor(SectionIndex++, Vertices, Triangles, Normals, UV0s, UV1s, UV2s, UV3s, Colors, Tangents, GenerateCollision);
+		ProceduralMesh->CreateMeshSection_LinearColor(SectionIndex++, Vertices, MeshIndices, Normals, UV0s, UV1s, UV2s, UV3s, Colors, Tangents, GenerateCollision);
 	}
 }
 

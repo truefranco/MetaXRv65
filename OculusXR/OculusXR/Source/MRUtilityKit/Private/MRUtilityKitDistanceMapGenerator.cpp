@@ -249,9 +249,21 @@ void AMRUKDistanceMapGenerator::RenderDistanceMap()
 
 void AMRUKDistanceMapGenerator::OnRoomCreated(AMRUKRoom* Room)
 {
-	if (SpawnMode == EMRUKSpawnMode::CurrentRoomOnly && SpawnedMaskMeshes.Num() > 0 && !SpawnedMaskMeshes.Find(Room))
+	if (SpawnMode == EMRUKSpawnMode::CurrentRoomOnly && GetGameInstance()->GetSubsystem<UMRUKSubsystem>()->GetCurrentRoom() != Room)
 	{
-		// We already spawned a room
+		// Skip this room if it is not the current room
+		return;
+	}
+
+	CreateMaskMeshesForRoom(Room);
+}
+
+void AMRUKDistanceMapGenerator::OnRoomUpdated(AMRUKRoom* Room)
+{
+	if (!SpawnedMaskMeshes.Find(Room))
+	{
+		// A room was updated that we don't care about. If we are in current room only mode
+		// we only want to update the one room we created
 		return;
 	}
 
@@ -299,7 +311,7 @@ void AMRUKDistanceMapGenerator::CreateMaskMeshesForRoom(AMRUKRoom* Room)
 
 	const auto Subsystem = GetGameInstance()->GetSubsystem<UMRUKSubsystem>();
 	Subsystem->OnRoomRemoved.AddUniqueDynamic(this, &AMRUKDistanceMapGenerator::RemoveMaskMeshesFromRoom);
-	Subsystem->OnRoomUpdated.AddUniqueDynamic(this, &AMRUKDistanceMapGenerator::OnRoomCreated);
+	Subsystem->OnRoomUpdated.AddUniqueDynamic(this, &AMRUKDistanceMapGenerator::OnRoomUpdated);
 
 	OnReady.Broadcast();
 }

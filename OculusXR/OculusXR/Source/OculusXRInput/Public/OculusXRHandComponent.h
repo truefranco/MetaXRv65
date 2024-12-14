@@ -20,7 +20,9 @@ enum class EOculusXRSystemGestureBehavior : uint8
 	SwapMaterial
 };
 
-static const FQuat HandRootFixupRotation = FQuat(-0.5f, -0.5f, 0.5f, 0.5f);
+static const FQuat HandRootFixupRotationOVR = FQuat(-0.5f, -0.5f, 0.5f, 0.5f);
+static const FQuat LeftHandRootFixupRotationOpenXR = FQuat({ 1.0f, 0.0f, 0.0f }, FMath::DegreesToRadians(90.0));
+static const FQuat RightHandRootFixupRotationOpenXR = FQuat({ 0.0f, 1.0f, 0.0f }, FMath::DegreesToRadians(180.0)) * FQuat({ 1.0f, 0.0f, 0.0f }, FMath::DegreesToRadians(90.0));
 
 UCLASS(Blueprintable, meta = (BlueprintSpawnableComponent), ClassGroup = OculusHand)
 class OCULUSXRINPUT_API UOculusXRHandComponent : public UPoseableMeshComponent
@@ -96,5 +98,5 @@ private:
 
 	void InitializeSkeletalMesh();
 
-	void UpdateBonePose();
+	void UpdateBonePose(EOculusXRHandType HandType);
 };

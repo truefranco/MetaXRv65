@@ -64,4 +64,6 @@ namespace OculusXR
 		return GEngine->XRSystem.IsValid() && (GEngine->XRSystem->GetSystemName() == SystemName);
 	}
 
+	IXRTrackingSystem* GetOpenXRTrackingSystem();
+
 } // namespace OculusXR

@@ -1,9 +1,12 @@
 // Copyright (c) Meta Platforms, Inc. and affiliates.
 
 #include "OculusXRPassthroughColorLut.h"
+#include "OculusXRPassthroughXR.h"
 #include "OculusXRPassthroughLayerComponent.h"
+#include "OculusXRPassthroughXRFunctions.h"
 #include "OculusXRHMDPrivate.h"
 #include "OculusXRHMDModule.h"
+#include "OpenXR/OculusXROpenXRUtilities.h"
 #include "Math/UnrealMathUtility.h"
 #include "GenericPlatform/GenericPlatformMath.h"
 #include "UObject/ObjectSaveContext.h"
@@ -215,21 +218,64 @@ FLutTextureData UOculusXRPassthroughColorLut::TextureToColorData(class UTexture2
 
 uint64 UOculusXRPassthroughColorLut::CreateLutObject(const TArray<uint8>& InData, uint32 Resolution) const
 {
-	ovrpPassthroughColorLutData OVRPData;
-	OVRPData.Buffer = InData.GetData();
-	OVRPData.BufferSize = InData.Num();
-	const EColorLutChannels Channels = IgnoreAlphaChannel ? EColorLutChannels::ColorLutChannels_RGB : EColorLutChannels::ColorLutChannels_RGBA;
-	ovrpPassthroughColorLut Handle;
-	if (OVRP_FAILURE(FOculusXRHMDModule::GetPluginWrapper().CreatePassthroughColorLut(
-			ToOVRPColorLutChannels(Channels),
-			Resolution,
-			OVRPData,
-			&Handle)))
+	if (OculusXR::IsOpenXRSystem())
 	{
-		UE_LOG(LogTemp, Error, TEXT("Failed creating passthrough color lut."));
-		return 0;
+		TWeakPtr<XRPassthrough::FPassthroughXR> Passthrough = XRPassthrough::FPassthroughXR::GetInstance();
+		if (!Passthrough.IsValid())
+		{
+			UE_LOG(LogTemp, Error, TEXT("Couldn't retrieve passthrough plugin extension."));
+			return 0;
+		}
+
+		if (!Passthrough.Pin()->GetSettings()->bExtColorLutAvailable)
+		{
+			UE_LOG(LogTemp, Warning, TEXT("XR_META_passthrough_color_lut extension is not available."));
+			return 0;
+		}
+
+		XrPassthroughFB PassthroughHandle = Passthrough.Pin()->GetPassthroughInstance();
+		if (PassthroughHandle == XR_NULL_HANDLE)
+		{
+			UE_LOG(LogTemp, Error, TEXT("Passthrough handle is null."));
+			return 0;
+		}
+
+		XrPassthroughColorLutCreateInfoMETA createInfo = { XR_TYPE_PASSTHROUGH_COLOR_LUT_CREATE_INFO_META };
+		createInfo.channels = IgnoreAlphaChannel ? XR_PASSTHROUGH_COLOR_LUT_CHANNELS_RGB_META : XR_PASSTHROUGH_COLOR_LUT_CHANNELS_RGBA_META;
+		createInfo.resolution = Resolution;
+
+		XrPassthroughColorLutDataMETA lutData;
+		lutData.bufferSize = InData.Num();
+		lutData.buffer = InData.GetData();
+		createInfo.data = lutData;
+
+		XrPassthroughColorLutMETA outLut = XR_NULL_HANDLE;
+		if (XR_FAILED(XRPassthrough::xrCreatePassthroughColorLutMETA(PassthroughHandle, &createInfo, &outLut)))
+		{
+			UE_LOG(LogTemp, Error, TEXT("Failed creating passthrough color lut."));
+			return 0;
+		}
+
+		return reinterpret_cast<uint64_t>(outLut);
 	}
-	return Handle;
+	else
+	{
+		ovrpPassthroughColorLutData OVRPData;
+		OVRPData.Buffer = InData.GetData();
+		OVRPData.BufferSize = InData.Num();
+		const EColorLutChannels Channels = IgnoreAlphaChannel ? EColorLutChannels::ColorLutChannels_RGB : EColorLutChannels::ColorLutChannels_RGBA;
+		ovrpPassthroughColorLut Handle;
+		if (OVRP_FAILURE(FOculusXRHMDModule::GetPluginWrapper().CreatePassthroughColorLut(
+				ToOVRPColorLutChannels(Channels),
+				Resolution,
+				OVRPData,
+				&Handle)))
+		{
+			UE_LOG(LogTemp, Error, TEXT("Failed creating passthrough color lut."));
+			return 0;
+		}
+		return Handle;
+	}
 }
 
 void UOculusXRPassthroughColorLut::UpdateLutObject(uint64 Handle, const TArray<uint8>& InData) const
@@ -239,16 +285,35 @@ void UOculusXRPassthroughColorLut::UpdateLutObject(uint64 Handle, const TArray<u
 		return;
 	}
 
-	ovrpPassthroughColorLutData OVRPData;
-	OVRPData.Buffer = InData.GetData();
-	OVRPData.BufferSize = InData.Num();
-
-	if (OVRP_FAILURE(FOculusXRHMDModule::GetPluginWrapper().UpdatePassthroughColorLut(
-			Handle,
-			OVRPData)))
+	if (OculusXR::IsOpenXRSystem())
 	{
-		UE_LOG(LogTemp, Error, TEXT("Failed updating passthrough color lut data."));
-		return;
+		XrPassthroughColorLutUpdateInfoMETA UpdateInfo = { XR_TYPE_PASSTHROUGH_COLOR_LUT_UPDATE_INFO_META };
+
+		XrPassthroughColorLutDataMETA LutData;
+		LutData.bufferSize = InData.Num();
+		LutData.buffer = reinterpret_cast<const uint8_t*>(InData.GetData());
+
+		UpdateInfo.data = LutData;
+
+		if (XR_FAILED(XRPassthrough::xrUpdatePassthroughColorLutMETA(reinterpret_cast<XrPassthroughColorLutMETA>(Handle), &UpdateInfo)))
+		{
+			UE_LOG(LogTemp, Error, TEXT("Failed updating passthrough color lut data."));
+			return;
+		}
+	}
+	else
+	{
+		ovrpPassthroughColorLutData OVRPData;
+		OVRPData.Buffer = InData.GetData();
+		OVRPData.BufferSize = InData.Num();
+
+		if (OVRP_FAILURE(FOculusXRHMDModule::GetPluginWrapper().UpdatePassthroughColorLut(
+				Handle,
+				OVRPData)))
+		{
+			UE_LOG(LogTemp, Error, TEXT("Failed updating passthrough color lut data."));
+			return;
+		}
 	}
 }
 
@@ -258,9 +323,19 @@ void UOculusXRPassthroughColorLut::DestroyLutObject(uint64 Handle) const
 	{
 		return;
 	}
-	if (OVRP_FAILURE(FOculusXRHMDModule::GetPluginWrapper().DestroyPassthroughColorLut(Handle)))
+	if (OculusXR::IsOpenXRSystem())
 	{
-		UE_LOG(LogTemp, Error, TEXT("Failed to destroy passthrough color lut."));
+		if (XR_FAILED(XRPassthrough::xrDestroyPassthroughColorLutMETA(reinterpret_cast<XrPassthroughColorLutMETA>(Handle))))
+		{
+			UE_LOG(LogTemp, Error, TEXT("Failed to destroy passthrough color lut."));
+		}
+	}
+	else
+	{
+		if (OVRP_FAILURE(FOculusXRHMDModule::GetPluginWrapper().DestroyPassthroughColorLut(Handle)))
+		{
+			UE_LOG(LogTemp, Error, TEXT("Failed to destroy passthrough color lut."));
+		}
 	}
 }
 

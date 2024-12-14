@@ -10,7 +10,9 @@
 class OCULUSXRSCENE_API FOculusXRSceneEventDelegates
 {
 public:
-
 	DECLARE_MULTICAST_DELEGATE_OneParam(FOculusXRBoundaryVisibilityChanged, EOculusXRBoundaryVisibility /*Visibility*/);
 	static FOculusXRBoundaryVisibilityChanged OculusBoundaryVisibilityChanged;
+
+	DECLARE_MULTICAST_DELEGATE_TwoParams(FOculusXRSceneCaptureCompleteDelegate, FOculusXRUInt64 /*RequestId*/, bool /*Success*/);
+	static FOculusXRSceneCaptureCompleteDelegate OculusSceneCaptureComplete;
 };

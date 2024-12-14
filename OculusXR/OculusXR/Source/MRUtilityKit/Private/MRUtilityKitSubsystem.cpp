@@ -168,10 +168,8 @@ void UMRUKSubsystem::LoadSceneFromJsonString(const FString& String)
 	SceneData->LoadFromJson(String);
 }
 
-void UMRUKSubsystem::LoadSceneFromDevice(int MaxQueries)
+void UMRUKSubsystem::LoadSceneFromDevice()
 {
-	const auto SceneEventDelegates = GEngine->GetEngineSubsystem<UOculusXRSceneEventDelegates>();
-
 	if (SceneData || SceneLoadStatus == EMRUKInitStatus::Busy)
 	{
 		UE_LOG(LogMRUK, Error, TEXT("Can't start loading a scene from device while the scene is already loading"));
@@ -195,7 +193,17 @@ void UMRUKSubsystem::LoadSceneFromDevice(int MaxQueries)
 		SceneData->OnComplete.AddDynamic(this, &UMRUKSubsystem::SceneDataLoadedComplete);
 	}
 	SceneLoadStatus = EMRUKInitStatus::Busy;
-	SceneData->LoadFromDevice(MaxQueries);
+#if WITH_EDITOR
+	if (GetWorld()->WorldType == EWorldType::PIE && GEditor->IsSimulateInEditorInProgress())
+	{
+		// LoadFromDevice sometimes doesn't broadcast failure when running in simulate mode. We can skip trying and just fail immediately in this case.
+		SceneData->OnComplete.Broadcast(false);
+	}
+	else
+#endif // WITH_EDITOR
+	{
+		SceneData->LoadFromDevice();
+	}
 }
 
 void UMRUKSubsystem::SceneDataLoadedComplete(bool Success)
@@ -477,7 +485,6 @@ void UMRUKSubsystem::SceneCaptureComplete(FOculusXRUInt64 RequestId, bool bSucce
 	OnCaptureComplete.Broadcast(bSuccess);
 }
 
-
 UOculusXRRoomLayoutManagerComponent* UMRUKSubsystem::GetRoomLayoutManager()
 {
 	if (!RoomLayoutManager)
@@ -500,7 +507,6 @@ AMRUKRoom* UMRUKSubsystem::SpawnRoom()
 	FActorSpawnParameters ActorSpawnParams;
 	ActorSpawnParams.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AlwaysSpawn;
 	AMRUKRoom* Room = GetWorld()->SpawnActor<AMRUKRoom>(ActorSpawnParams);
-
 
 #if WITH_EDITOR
 	Room->SetActorLabel(TEXT("ROOM"));
@@ -556,7 +562,6 @@ void UMRUKSubsystem::Tick(float DeltaTime)
 			}
 		}
 	}
-
 }
 
 bool UMRUKSubsystem::IsTickable() const

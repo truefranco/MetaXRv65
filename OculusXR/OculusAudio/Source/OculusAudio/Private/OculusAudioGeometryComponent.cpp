@@ -7,9 +7,9 @@
 #include "IOculusAudioPlugin.h"
 #include "Engine/StaticMeshActor.h"
 #include "Engine/StaticMesh.h"
+#include "Engine/World.h"
 #include "Components/StaticMeshComponent.h"
 #include "StaticMeshResources.h"
-#include "Engine/World.h"
 #include "Runtime/Core/Public/Serialization/CustomVersion.h"
 #include "Materials/MaterialInstanceDynamic.h"
 

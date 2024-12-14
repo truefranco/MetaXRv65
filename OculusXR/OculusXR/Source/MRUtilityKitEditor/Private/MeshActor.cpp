@@ -2,6 +2,8 @@
 
 #include "MeshActor.h"
 #include "UObject/ConstructorHelpers.h"
+#include "Components/StaticMeshComponent.h"
+#include "Engine/StaticMesh.h"
 
 AMeshActor::AMeshActor()
 {

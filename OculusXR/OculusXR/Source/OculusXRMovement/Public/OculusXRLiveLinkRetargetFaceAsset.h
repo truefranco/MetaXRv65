@@ -8,27 +8,9 @@
 #include "Containers/StaticArray.h"
 #include "OculusXRMovementTypes.h"
 #include "Misc/EngineVersionComparison.h"
+#include "OculusXRAnimCurveMapping.h"
 
 #include "OculusXRLiveLinkRetargetFaceAsset.generated.h"
-
-USTRUCT(BlueprintType)
-struct OCULUSXRMOVEMENT_API FOculusXRAnimCurveMapping
-{
-	GENERATED_BODY()
-
-	FOculusXRAnimCurveMapping(){};
-
-	FOculusXRAnimCurveMapping(const std::initializer_list<FName> CurveNamesList)
-		: CurveNames(CurveNamesList)
-	{
-	}
-
-	/**
-	 * Skeleton's animation curve names
-	 */
-	UPROPERTY(EditAnywhere, Category = "OculusXR|Movement")
-	TArray<FName> CurveNames;
-};
 
 UCLASS(Blueprintable, meta = (DisplayName = "MetaXR MovementSDK LiveLink retarget face asset"), ClassGroup = OculusXRHMD)
 class OCULUSXRMOVEMENT_API UOculusXRLiveLinkRetargetFaceAsset : public ULiveLinkRetargetAsset

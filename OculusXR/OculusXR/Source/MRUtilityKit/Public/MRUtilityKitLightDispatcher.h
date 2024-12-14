@@ -7,8 +7,10 @@
 #include "MRUtilityKitLightDispatcher.generated.h"
 
 /**
- * Collects lights and sends them to a highlight material.
- * This can be used to achieve highlights over Passthrough.
+ * If you want to have highlights from lights over passthrough use this actor to collect all point lights in the scene and send them to the M_Highlights material.
+ * It lights and sends them to a highlight material, which can be used to achieve highlights over Passthrough.
+ * The highlight effect is achieved by using a material parameter collection.
+ * See the PTRL Sample Project for an example of how to use this.
  */
 UCLASS(ClassGroup = MRUtilityKit, meta = (DisplayName = "MR Utility Kit Light Dispatcher"))
 class MRUTILITYKIT_API AMRUKLightDispatcher : public AActor

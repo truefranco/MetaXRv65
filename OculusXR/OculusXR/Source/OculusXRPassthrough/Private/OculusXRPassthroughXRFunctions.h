@@ -21,6 +21,9 @@ namespace XRPassthrough
 	extern PFN_xrCreateGeometryInstanceFB xrCreateGeometryInstanceFB;
 	extern PFN_xrDestroyGeometryInstanceFB xrDestroyGeometryInstanceFB;
 	extern PFN_xrGeometryInstanceSetTransformFB xrGeometryInstanceSetTransformFB;
+	extern PFN_xrCreatePassthroughColorLutMETA xrCreatePassthroughColorLutMETA;
+	extern PFN_xrDestroyPassthroughColorLutMETA xrDestroyPassthroughColorLutMETA;
+	extern PFN_xrUpdatePassthroughColorLutMETA xrUpdatePassthroughColorLutMETA;
 
 	void InitOpenXRFunctions(XrInstance InInstance);
 } // namespace XRPassthrough

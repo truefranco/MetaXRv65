@@ -2,11 +2,15 @@
 // Copyright Epic Games, Inc. All Rights Reserved.
 
 #include "OculusXRHMDRuntimeSettings.h"
+#include "Algo/ForEach.h"
 
 //////////////////////////////////////////////////////////////////////////
 // UOculusXRHMDRuntimeSettings
 
 #include "OculusXRHMD_Settings.h"
+
+#include "DeviceProfiles/DeviceProfile.h"
+#include "DeviceProfiles/DeviceProfileManager.h"
 
 UOculusXRHMDRuntimeSettings::UOculusXRHMDRuntimeSettings(const FObjectInitializer& ObjectInitializer)
 	: Super(ObjectInitializer)
@@ -25,8 +29,7 @@ UOculusXRHMDRuntimeSettings::UOculusXRHMDRuntimeSettings(const FObjectInitialize
 	FoveatedRenderingLevel = DefaultSettings.FoveatedRenderingLevel;
 	bDynamicFoveatedRendering = DefaultSettings.bDynamicFoveatedRendering;
 	bSupportEyeTrackedFoveatedRendering = DefaultSettings.bSupportEyeTrackedFoveatedRendering;
-	PixelDensityMin = DefaultSettings.PixelDensityMin;
-	PixelDensityMax = DefaultSettings.PixelDensityMax;
+
 	bFocusAware = DefaultSettings.Flags.bFocusAware;
 	bDynamicResolution = DefaultSettings.Flags.bPixelDensityAdaptive;
 	XrApi = DefaultSettings.XrApi;
@@ -51,6 +54,7 @@ UOculusXRHMDRuntimeSettings::UOculusXRHMDRuntimeSettings(const FObjectInitialize
 	MPPoseRestoreType = DefaultSettings.MPPoseRestoreType;
 	bBoundaryVisibilitySupportEnabled = DefaultSettings.Flags.bBoundaryVisibilitySupportEnabled;
 	bDefaultBoundaryVisibilitySuppressed = DefaultSettings.Flags.bDefaultBoundaryVisibilitySuppressed;
+	bColocationSessionsEnabled = DefaultSettings.Flags.bColocationSessionsEnabled;
 	ProcessorFavor = DefaultSettings.ProcessorFavor;
 	bTileTurnOffEnabled = DefaultSettings.Flags.bTileTurnOffEnabled;
 
@@ -62,6 +66,8 @@ UOculusXRHMDRuntimeSettings::UOculusXRHMDRuntimeSettings(const FObjectInitialize
 
 	// Default this to false, FSettings doesn't have a separate composite depth flag for mobile
 	bCompositeDepthMobile = false;
+
+	bThumbstickDpadEmulationEnabled = true;
 
 #else
 	// Some set of reasonable defaults, since blueprints are still available on non-Oculus platforms.
@@ -75,8 +81,6 @@ UOculusXRHMDRuntimeSettings::UOculusXRHMDRuntimeSettings(const FObjectInitialize
 	FoveatedRenderingLevel = EOculusXRFoveatedRenderingLevel::Off;
 	bDynamicFoveatedRendering = false;
 	bSupportEyeTrackedFoveatedRendering = false;
-	PixelDensityMin = 0.8f;
-	PixelDensityMax = 1.2f;
 	bDynamicResolution = false;
 	bCompositeDepthMobile = false;
 	bFocusAware = true;
@@ -103,8 +107,10 @@ UOculusXRHMDRuntimeSettings::UOculusXRHMDRuntimeSettings(const FObjectInitialize
 	MPPoseRestoreType = EOculusXRMPPoseRestoreType::Disabled;
 	bBoundaryVisibilitySupportEnabled = false;
 	bDefaultBoundaryVisibilitySuppressed = false;
+	bColocationSessionsEnabled = false;
 	ProcessorFavor = EProcessorFavor::FavorEqually;
 	bTileTurnOffEnabled = false;
+	bThumbstickDpadEmulationEnabled = true;
 #endif
 
 	LoadFromIni();
@@ -193,6 +199,7 @@ void UOculusXRHMDRuntimeSettings::PostInitProperties()
 {
 	Super::PostInitProperties();
 	RenameProperties();
+	MigratePixelDensityRange();
 
 	const TCHAR* OculusSettings = TEXT("/Script/OculusXRHMD.OculusXRHMDRuntimeSettings");
 	if (!FModuleManager::Get().IsModuleLoaded("OpenXRHMD"))
@@ -214,17 +221,16 @@ void UOculusXRHMDRuntimeSettings::LoadFromIni()
 	const TCHAR* OculusSettings = TEXT("Oculus.Settings");
 	bool v;
 	float f;
-	//FVector vec;
 
 	if (GConfig->GetFloat(OculusSettings, TEXT("PixelDensityMax"), f, GEngineIni))
 	{
-		check(!FMath::IsNaN(f));
-		PixelDensityMax = f;
+		UE_LOG(LogTemp, Error, TEXT("DONOT manually add setting to Oculus.Settings. PixelDensityMax is ignored."));
+		PixelDensityMax = 0.f;
 	}
 	if (GConfig->GetFloat(OculusSettings, TEXT("PixelDensityMin"), f, GEngineIni))
 	{
-		check(!FMath::IsNaN(f));
-		PixelDensityMin = f;
+		UE_LOG(LogTemp, Error, TEXT("DONOT manually add setting to Oculus.Settings. PixelDensityMin is ignored."));
+		PixelDensityMin = 0.f;
 	}
 	if (GConfig->GetBool(OculusSettings, TEXT("bHQDistortion"), v, GEngineIni))
 	{
@@ -304,8 +310,8 @@ void UOculusXRHMDRuntimeSettings::RenameProperties()
 #endif // WITH_OCULUS_BRANCH
 
 	TArray<FString> DeviceList;
-	const TCHAR* SupportedDevicesKey = *FString("+").Append(GET_MEMBER_NAME_STRING_CHECKED(UOculusXRHMDRuntimeSettings, SupportedDevices));
-	if (GConfig->GetArray(OculusSettings, SupportedDevicesKey, DeviceList, GetDefaultConfigFilename()))
+	const FString SupportedDevicesKey = FString("+").Append(GET_MEMBER_NAME_STRING_CHECKED(UOculusXRHMDRuntimeSettings, SupportedDevices));
+	if (GConfig->GetArray(OculusSettings, *SupportedDevicesKey, DeviceList, GetDefaultConfigFilename()))
 	{
 		const EOculusXRSupportedDevices LastSupportedDevice = EOculusXRSupportedDevices::Quest2;
 		const FString LastSupportedDeviceString = StaticEnum<EOculusXRSupportedDevices>()->GetNameStringByValue((int64)LastSupportedDevice);
@@ -316,7 +322,7 @@ void UOculusXRHMDRuntimeSettings::RenameProperties()
 			{
 				DeviceList.Add(LastSupportedDeviceString);
 			}
-			GConfig->SetArray(OculusSettings, SupportedDevicesKey, DeviceList, GetDefaultConfigFilename());
+			GConfig->SetArray(OculusSettings, *SupportedDevicesKey, DeviceList, GetDefaultConfigFilename());
 
 			// Reflect the config changes in the Project Settings UI
 			SupportedDevices.Remove((EOculusXRSupportedDevices)0); // Enums that don't exist just have a value of 0
@@ -326,4 +332,40 @@ void UOculusXRHMDRuntimeSettings::RenameProperties()
 			}
 		}
 	}
+}
+
+void UOculusXRHMDRuntimeSettings::MigratePixelDensityRange()
+{
+#if WITH_EDITOR
+	if (!FMath::IsNearlyZero(PixelDensityMin))
+	{
+		Algo::ForEach(UDeviceProfileManager::Get().Profiles, [&](UDeviceProfile* Profile) {
+			float ProfilePixelDensityMin = 0.f;
+			if (Profile->GetConsolidatedCVarValue(VAR_PixelDensityMin, ProfilePixelDensityMin))
+			{
+				Profile->ModifyCVarValue(VAR_PixelDensityMin, FString::SanitizeFloat(PixelDensityMin), true);
+				UDeviceProfileManager::Get().SaveProfiles(true);
+			}
+		});
+
+		PixelDensityMin = 0.f;
+		TryUpdateDefaultConfigFile();
+		UE_LOG(LogTemp, Log, TEXT("PixelDensityMin %f is migrated to per device range."), PixelDensityMin);
+	}
+	if (!FMath::IsNearlyZero(PixelDensityMax))
+	{
+		Algo::ForEach(UDeviceProfileManager::Get().Profiles, [&](UDeviceProfile* Profile) {
+			float ProfilePixelDensityMax = 0.f;
+			if (Profile->GetConsolidatedCVarValue(VAR_PixelDensityMax, ProfilePixelDensityMax))
+			{
+				Profile->ModifyCVarValue(VAR_PixelDensityMax, FString::SanitizeFloat(PixelDensityMax), true);
+				UDeviceProfileManager::Get().SaveProfiles(true);
+			}
+		});
+
+		PixelDensityMax = 0.f;
+		TryUpdateDefaultConfigFile();
+		UE_LOG(LogTemp, Log, TEXT("PixelDensityMax %f is migrated to per device range."), PixelDensityMax);
+	}
+#endif
 }

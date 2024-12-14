@@ -2,8 +2,13 @@
 // Copyright Epic Games, Inc. All Rights Reserved.
 
 #pragma once
-#include "IOculusXRInputModule.h"
 #include "IInputDevice.h"
+#include "IOculusXRInputModule.h"
+#include "OculusXRInputExtensionPlugin.h"
+#include "OculusXRInputHapticsExtensionPlugin.h"
+#include "OculusXRInputHandTrackingExtensionPlugin.h"
+#include "OculusXRTouchPlusInputExtensionPlugin.h"
+#include "OculusXRTouchProInputExtensionPlugin.h"
 #include "Templates/SharedPointer.h"
 
 #define LOCTEXT_NAMESPACE "OculusXRInput"
@@ -21,16 +26,34 @@ namespace OculusXRInput
 
 class FOculusXRInputModule : public IOculusXRInputModule
 {
+public:
+	OculusXRInput::FInputExtensionPlugin* GetInputOpenXRExtension() const;
+	OculusXRInput::FHandTrackingExtensionPlugin* GetHandTrackingOpenXRExtension() const;
+	OculusXRInput::FInputHapticsExtensionPlugin* GetHapticsOpenXRExtension() const;
+
 	TWeakPtr<OculusXRInput::FOculusXRInput> OculusXRInputDevice;
 
 	// IInputDeviceModule overrides
 	virtual void StartupModule() override;
+	virtual void ShutdownModule() override;
 	virtual TSharedPtr<class IInputDevice> CreateInputDevice(const TSharedRef<FGenericApplicationMessageHandler>& InMessageHandler) override;
 
 	// IOculusXRInputModule overrides
 	virtual uint32 GetNumberOfTouchControllers() const override;
 	virtual uint32 GetNumberOfHandControllers() const override;
 	virtual TSharedPtr<IInputDevice> GetInputDevice() const override;
+
+private:
+	typedef TSharedPtr<OculusXRInput::FInputHapticsExtensionPlugin, ESPMode::ThreadSafe> FHapticsExtensionPluginPtr;
+	FHapticsExtensionPluginPtr HapticsExtensionPlugin;
+	typedef TSharedPtr<OculusXRInput::FHandTrackingExtensionPlugin, ESPMode::ThreadSafe> FHandTrackingExtensionPluginPtr;
+	FHandTrackingExtensionPluginPtr HandTrackingExtensionPlugin;
+	typedef TSharedPtr<OculusXRInput::FInputExtensionPlugin, ESPMode::ThreadSafe> FInputExtensionPluginPtr;
+	FInputExtensionPluginPtr InputExtensionPlugin;
+	typedef TSharedPtr<OculusXRInput::FTouchProInputExtensionPlugin, ESPMode::ThreadSafe> FTouchProInputExtensionPluginPtr;
+	FTouchProInputExtensionPluginPtr TouchProInputExtensionPlugin;
+	typedef TSharedPtr<OculusXRInput::FTouchPlusInputExtensionPlugin, ESPMode::ThreadSafe> FTouchPlusInputExtensionPluginPtr;
+	FTouchPlusInputExtensionPluginPtr TouchPlusInputExtensionPlugin;
 };
 
 #else //	OCULUS_INPUT_SUPPORTED_PLATFORMS

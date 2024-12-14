@@ -10,8 +10,16 @@
 #include "OculusXRTelemetry.h"
 #include "SWarningOrErrorBox.h"
 #include "Widgets/Layout/SScrollBox.h"
+#include "Widgets/Images/SImage.h"
 #include "Widgets/Input/SButton.h"
+#include "Widgets/Input/SComboButton.h"
+#include "Widgets/Text/STextBlock.h"
 #include "Styling/SlateStyle.h"
+#include "Framework/MultiBox/MultiBoxBuilder.h"
+#include "Framework/Commands/UIAction.h"
+#include "Textures/SlateIcon.h"
+#include "Engine/Engine.h"
+#include "UnrealEdMisc.h"
 
 #define LOCTEXT_NAMESPACE "OculusXRProjectSetupToolWidget"
 

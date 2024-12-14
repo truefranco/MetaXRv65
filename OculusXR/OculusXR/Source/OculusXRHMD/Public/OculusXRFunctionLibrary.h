@@ -426,6 +426,7 @@ class OCULUSXRHMD_API UOculusXRFunctionLibrary : public UBlueprintFunctionLibrar
 	/**
 	 * Returns true if the Guardian Outer Boundary is being displayed
 	 */
+	UE_DEPRECATED(4.27, "UOculusXRFunctionLibrary::IsGuardianDisplayed has been deprecated.")
 	UFUNCTION(BlueprintPure, Category = "OculusLibrary|Guardian")
 	static bool IsGuardianDisplayed();
 
@@ -462,6 +463,7 @@ class OCULUSXRHMD_API UOculusXRFunctionLibrary : public UBlueprintFunctionLibrar
 	 * @param Point					(in) Point in UE space to test against guardian boundaries
 	 * @param BoundaryType			(in) An enum representing the boundary type requested, either Outer Boundary (exact guardian bounds) or PlayArea (rectangle inside the Outer Boundary)
 	 */
+	UE_DEPRECATED(4.27, "UOculusXRFunctionLibrary::GetPointGuardianIntersection has been deprecated.")
 	UFUNCTION(BlueprintCallable, Category = "OculusLibrary|Guardian")
 	static FOculusXRGuardianTestResult GetPointGuardianIntersection(const FVector Point, EOculusXRBoundaryType BoundaryType);
 
@@ -470,6 +472,7 @@ class OCULUSXRHMD_API UOculusXRFunctionLibrary : public UBlueprintFunctionLibrar
 	 * @param DeviceType             (in) Tracked Device type to test against guardian boundaries
 	 * @param BoundaryType			(in) An enum representing the boundary type requested, either Outer Boundary (exact guardian bounds) or PlayArea (rectangle inside the Outer Boundary)
 	 */
+	UE_DEPRECATED(4.27, "UOculusXRFunctionLibrary::GetNodeGuardianIntersection has been deprecated.")
 	UFUNCTION(BlueprintCallable, Category = "OculusLibrary|Guardian")
 	static FOculusXRGuardianTestResult GetNodeGuardianIntersection(EOculusXRTrackedDeviceType DeviceType, EOculusXRBoundaryType BoundaryType);
 
@@ -477,6 +480,7 @@ class OCULUSXRHMD_API UOculusXRFunctionLibrary : public UBlueprintFunctionLibrar
 	 * Forces the runtime to render guardian at all times or not
 	 * @param GuardianVisible			(in) True will display guardian, False will hide it
 	 */
+	UE_DEPRECATED(4.27, "UOculusXRFunctionLibrary::SetGuardianVisibility has been deprecated.")
 	UFUNCTION(BlueprintCallable, Category = "OculusLibrary|Guardian")
 	static void SetGuardianVisibility(bool GuardianVisible);
 

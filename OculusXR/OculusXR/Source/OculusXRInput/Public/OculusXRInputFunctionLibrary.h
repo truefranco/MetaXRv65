@@ -319,7 +319,7 @@ public:
 	 * Set the value of the haptics for the specified hand and location directly, using frequency and amplitude.  NOTE:  If a curve is already
 	 * playing for this hand, it will be cancelled in favour of the specified values.
 	 *
-	 * @param	Frequency				The normalized frequency [0.0, 1.0] to play through the haptics system
+	 * @param	Frequency				The frequency in Hz to play through the haptics system
 	 * @param	Amplitude				The normalized amplitude [0.0, 1.0] to set the haptic feedback to
 	 * @param	Hand					Which hand to play the effect on
 	 * @param	Location				Which hand location to play the effect on

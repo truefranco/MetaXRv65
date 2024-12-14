@@ -35,6 +35,7 @@ protected:
 	virtual void SetDefaults(const TSubclassOf<UObject> GeneratedClass) const override;
 };
 
+
 UCLASS(hidecategories = Object, MinimalAPI)
 class UOculusXRMetahumanBodyRetargetAssetFactory : public UOculusXRMetahumanRetargetAssetFactory
 {

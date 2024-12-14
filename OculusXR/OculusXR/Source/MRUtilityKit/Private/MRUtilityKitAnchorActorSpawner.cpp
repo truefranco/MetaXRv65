@@ -78,9 +78,9 @@ void AMRUKAnchorActorSpawner::BeginPlay()
 
 void AMRUKAnchorActorSpawner::OnRoomCreated(AMRUKRoom* Room)
 {
-	if (SpawnMode == EMRUKSpawnMode::CurrentRoomOnly && SpawnedActors.Num() > 0)
+	if (SpawnMode == EMRUKSpawnMode::CurrentRoomOnly && GetGameInstance()->GetSubsystem<UMRUKSubsystem>()->GetCurrentRoom() != Room)
 	{
-		// We already spawned a room
+		// Skip this room if it is not the current room
 		return;
 	}
 	SpawnActors(Room);

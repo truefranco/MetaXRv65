@@ -7,7 +7,6 @@
 #include "OculusXRHMD.h"
 #include "OculusXRSpatialAnchorComponent.h"
 #include "OculusXRAnchorsPrivate.h"
-#include "OculusXRRoomLayoutManager.h"
 #include "OculusXRAnchorManager.h"
 #include "Kismet/BlueprintFunctionLibrary.h"
 
@@ -166,64 +165,6 @@ bool UOculusXRAnchorBPFunctionLibrary::IsAnchorResultSuccess(EOculusXRAnchorResu
 
 const UOculusXRBaseAnchorComponent* UOculusXRAnchorBPFunctionLibrary::GetAnchorComponent(const FOculusXRSpaceQueryResult& QueryResult, EOculusXRSpaceComponentType ComponentType, UObject* Outer)
 {
-	switch (ComponentType)
-	{
-		case EOculusXRSpaceComponentType::Locatable:
-			return UOculusXRBaseAnchorComponent::FromSpace<UOculusXRLocatableAnchorComponent>(QueryResult.Space.Value, Outer);
-		case EOculusXRSpaceComponentType::ScenePlane:
-			return UOculusXRBaseAnchorComponent::FromSpace<UOculusXRPlaneAnchorComponent>(QueryResult.Space.Value, Outer);
-		case EOculusXRSpaceComponentType::SceneVolume:
-			return UOculusXRBaseAnchorComponent::FromSpace<UOculusXRVolumeAnchorComponent>(QueryResult.Space.Value, Outer);
-		case EOculusXRSpaceComponentType::SemanticClassification:
-			return UOculusXRBaseAnchorComponent::FromSpace<UOculusXRSemanticClassificationAnchorComponent>(QueryResult.Space.Value, Outer);
-		case EOculusXRSpaceComponentType::RoomLayout:
-			return UOculusXRBaseAnchorComponent::FromSpace<UOculusXRRoomLayoutAnchorComponent>(QueryResult.Space.Value, Outer);
-		case EOculusXRSpaceComponentType::SpaceContainer:
-			return UOculusXRBaseAnchorComponent::FromSpace<UOculusXRSpaceContainerAnchorComponent>(QueryResult.Space.Value, Outer);
-		case EOculusXRSpaceComponentType::Sharable:
-			return UOculusXRBaseAnchorComponent::FromSpace<UOculusXRSharableAnchorComponent>(QueryResult.Space.Value, Outer);
-		case EOculusXRSpaceComponentType::Storable:
-			return UOculusXRBaseAnchorComponent::FromSpace<UOculusXRStorableAnchorComponent>(QueryResult.Space.Value, Outer);
-		case EOculusXRSpaceComponentType::TriangleMesh:
-			return UOculusXRBaseAnchorComponent::FromSpace<UOculusXRTriangleMeshAnchorComponent>(QueryResult.Space.Value, Outer);
-		default:
-			return nullptr;
-	}
+	auto& anchorsModule = FModuleManager::GetModuleChecked<IOculusXRAnchorsModule>("OculusXRAnchors");
+	return anchorsModule.CreateAnchorComponent(QueryResult.Space.Value, ComponentType, Outer);
 }
-
-bool UOculusXRAnchorBPFunctionLibrary::GetRoomLayout(FOculusXRUInt64 Space, FOculusXRRoomLayout& RoomLayoutOut, int32 MaxWallsCapacity)
-{
-	if (MaxWallsCapacity <= 0)
-	{
-		return false;
-	}
-
-	FOculusXRUUID OutCeilingUuid;
-	FOculusXRUUID OutFloorUuid;
-	TArray<FOculusXRUUID> OutWallsUuid;
-
-	const bool bSuccess = OculusXRAnchors::FOculusXRRoomLayoutManager::GetSpaceRoomLayout(Space.Value, static_cast<uint32>(MaxWallsCapacity), OutCeilingUuid, OutFloorUuid, OutWallsUuid);
-
-	if (bSuccess)
-	{
-		RoomLayoutOut.CeilingUuid = OutCeilingUuid;
-		RoomLayoutOut.FloorUuid = OutFloorUuid;
-		RoomLayoutOut.WallsUuid.InsertZeroed(0, OutWallsUuid.Num());
-
-		for (int32 i = 0; i < OutWallsUuid.Num(); ++i)
-		{
-			RoomLayoutOut.WallsUuid[i] = OutWallsUuid[i];
-		}
-
-		TArray<FOculusXRUUID> spaceUUIDs;
-		EOculusXRAnchorResult::Type result = OculusXRAnchors::FOculusXRAnchorManager::GetSpaceContainerUUIDs(Space, spaceUUIDs);
-
-		if (UOculusXRAnchorBPFunctionLibrary::IsAnchorResultSuccess(result))
-		{
-			RoomLayoutOut.RoomObjectUUIDs = spaceUUIDs;
-		}
-	}
-
-	return bSuccess;
-}
-

@@ -6,8 +6,9 @@
 #include "OculusXRSetupRule.h"
 #include "Developer/LauncherServices/Public/ILauncher.h"
 #include "Subsystems/EngineSubsystem.h"
-#include "LightComponentBase.h"
 #include "OculusXRRuleProcessorSubsystem.generated.h"
+
+class ULightComponentBase;
 
 /**
  * The rule processor handles registration and querying of rules

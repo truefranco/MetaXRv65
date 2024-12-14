@@ -7,6 +7,11 @@
 #include "GameFramework/Actor.h"
 #include "MRUtilityKitPositionGenerator.generated.h"
 
+/**
+ * Holds the settings which are used for generating random positions. It offers several attributes to be configured, such as
+ * which room to use, what actor to spawn, scene labels to use and much more. This struct is used by the position generator.
+ * @see AMRUtilityKitPositionGenerator
+ */
 USTRUCT(BlueprintType)
 struct FMRUKRandomSpawnSettings
 {
@@ -23,7 +28,7 @@ struct FMRUKRandomSpawnSettings
 	 * If you'd need to spawn new actors, use ActorClass.
 	 */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "MR Utility Kit")
-	AActor* ActorInstance;
+	AActor* ActorInstance = nullptr;
 
 	/**
 	 * Reference the specific actor class for spawning.
@@ -81,6 +86,13 @@ struct FMRUKRandomSpawnSettings
 	float SurfaceClearanceDistance = 0.1f;
 };
 
+/**
+ * Position generator that can be used to generate random positions on the surface in a specific room or any room.
+ *
+ * It contains methods to generate random positions on the surface of a given spawn location,
+ * while ensuring that the generated positions are at least `MinDistanceToEdge` away from any edges,
+ * if it should run on start when MRUK initializes and follow the other settings specified in `SpawnSettings`.
+ */
 UCLASS()
 class MRUTILITYKIT_API AMRUtilityKitPositionGenerator : public AActor
 {

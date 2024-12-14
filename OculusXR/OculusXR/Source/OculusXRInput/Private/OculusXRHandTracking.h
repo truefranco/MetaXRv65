@@ -6,6 +6,7 @@
 #include "OculusXRInput.h"
 #include "Engine/SkeletalMesh.h"
 #include "Components/CapsuleComponent.h"
+#include "OculusXRInputHandTrackingTypes.h"
 
 #include "OculusXRInputFunctionLibrary.h"
 
@@ -38,12 +39,15 @@ namespace OculusXRInput
 
 		// Helper functions
 		static ovrpBoneId ToOvrBone(EOculusXRBone Bone);
+		static EHandBoneId ToHandBone(EOculusXRBone Bone);
 		static FString GetBoneName(uint8 Bone);
 		static bool FindBoneDisplayName(FText& DisplayName, uint8 Bone);
 
 		// Converters for converting from ovr bone space (should match up with ovr avatar)
 		static FVector OvrBoneVectorToFVector(ovrpVector3f ovrpVector, float WorldToMeters);
 		static FQuat OvrBoneQuatToFQuat(ovrpQuatf ovrpQuat);
+		static FVector HandBoneVectorToFVector(XrVector3f XrVector, float WorldToMeters);
+		static FQuat HandBoneQuatToFQuat(XrQuaternionf XrQuat);
 
 		static EOculusXRControllerDrivenHandPoseTypes ControllerDrivenHandType;
 
@@ -51,6 +55,8 @@ namespace OculusXRInput
 		// Initializers for runtime hand assets
 		static void InitializeHandMesh(USkeletalMesh* SkeletalMesh, const ovrpMesh* OvrMesh, const float WorldToMeters);
 		static void InitializeHandSkeleton(USkeletalMesh* SkeletalMesh, const ovrpSkeleton2* OvrSkeleton, const float WorldToMeters);
+		static void InitializeHandMeshOpenXR(USkeletalMesh* SkeletalMesh, const TSharedPtr<FHandMesh> Mesh, const float WorldToMeters);
+		static void InitializeHandSkeletonOpenXR(USkeletalMesh* SkeletalMesh, const TSharedPtr<FHandSkeleton> Skeleton, const float WorldToMeters);
 	};
 
 } // namespace OculusXRInput

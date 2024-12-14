@@ -20,6 +20,8 @@
 class IOculusXRHMDModule : public IHeadMountedDisplayModule
 {
 public:
+	static OCULUSXRHMD_API const FName NAME_OculusXRHMD;
+
 	/**
 	 * Singleton-like access to this module's interface.  This is just for convenience!
 	 * Beware of calling this during the shutdown phase, though.  Your module might have been unloaded already.
@@ -28,7 +30,7 @@ public:
 	 */
 	static inline IOculusXRHMDModule& Get()
 	{
-		return FModuleManager::LoadModuleChecked<IOculusXRHMDModule>("OculusXRHMD");
+		return FModuleManager::LoadModuleChecked<IOculusXRHMDModule>(NAME_OculusXRHMD);
 	}
 
 	/**
@@ -38,7 +40,7 @@ public:
 	 */
 	static inline bool IsAvailable()
 	{
-		return FModuleManager::Get().IsModuleLoaded("OculusXRHMD");
+		return FModuleManager::Get().IsModuleLoaded(NAME_OculusXRHMD);
 	}
 
 	/**

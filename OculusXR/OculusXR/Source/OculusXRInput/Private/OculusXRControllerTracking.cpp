@@ -24,11 +24,11 @@ namespace OculusXRInput
 #endif
 	}
 
-	int FOculusXRControllerTracking::PlayHapticEffect(EControllerHand Hand, TArray<uint8>& Amplitudes, int SampleRate, bool bPCM, bool bAppend)
+	int FOculusXRControllerTracking::PlayAmplitudeEnvelopeHapticEffect(EControllerHand Hand, TArray<uint8>& Amplitudes, int SampleRate)
 	{
 #if OCULUS_INPUT_SUPPORTED_PLATFORMS
 		TSharedPtr<FOculusXRInput> OculusXRInputModule = StaticCastSharedPtr<FOculusXRInput>(IOculusXRInputModule::Get().GetInputDevice());
-		return OculusXRInputModule.Get()->PlayHapticEffect(Hand, Amplitudes.Num(), Amplitudes.GetData(), SampleRate, bPCM, bAppend);
+		return OculusXRInputModule.Get()->PlayAmplitudeEnvelopeHapticEffect(Hand, Amplitudes.Num(), Amplitudes.GetData(), SampleRate);
 #endif
 	}
 

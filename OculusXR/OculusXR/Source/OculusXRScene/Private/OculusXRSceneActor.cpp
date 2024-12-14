@@ -8,6 +8,7 @@
 #include "OculusXRAnchorManager.h"
 #include "OculusXRAnchorTypes.h"
 #include "OculusXRAnchorBPFunctionLibrary.h"
+#include "OculusXRScene.h"
 #include "OculusXRSceneDelegates.h"
 #include "OculusXRDelegates.h"
 #include "Components/StaticMeshComponent.h"
@@ -101,7 +102,6 @@ void AOculusXRSceneActor::BeginPlay()
 	{
 		PopulateScene();
 	}
-
 }
 
 void AOculusXRSceneActor::EndPlay(EEndPlayReason::Type Reason)
@@ -111,7 +111,6 @@ void AOculusXRSceneActor::EndPlay(EEndPlayReason::Type Reason)
 
 	// Calling ResetStates will reset member variables to their default values (including the request IDs).
 	ResetStates();
-
 
 	Super::EndPlay(Reason);
 }
@@ -270,7 +269,6 @@ AActor* AOculusXRSceneActor::SpawnOrUpdateSceneAnchor(AActor* Anchor, const FOcu
 
 	return Anchor;
 }
-
 
 bool AOculusXRSceneActor::IsScenePopulated()
 {
@@ -546,11 +544,10 @@ void AOculusXRSceneActor::ProcessRoomElementsResult(FOculusXRUInt64 AnchorHandle
 
 	if (bIsPlaneResultSuccess && bIsScenePlane)
 	{
-		EOculusXRAnchorResult::Type Result;
 		FVector scenePlanePos;
 		FVector scenePlaneSize;
-		bool ResultSuccess = OculusXRAnchors::FOculusXRAnchors::GetSpaceScenePlane(AnchorHandle.Value, scenePlanePos, scenePlaneSize, Result);
-		if (ResultSuccess)
+		auto getScenePlaneResult = OculusXRScene::FOculusXRScene::GetScenePlane(AnchorHandle.Value, scenePlanePos, scenePlaneSize);
+		if (UOculusXRAnchorBPFunctionLibrary::IsAnchorResultSuccess(getScenePlaneResult))
 		{
 			UE_LOG(LogOculusXRScene, Log, TEXT("SpatialAnchorQueryResult_Handler ScenePlane pos = [%.2f, %.2f, %.2f], size = [%.2f, %.2f, %.2f]."),
 				scenePlanePos.X, scenePlanePos.Y, scenePlanePos.Z,
@@ -575,11 +572,10 @@ void AOculusXRSceneActor::ProcessRoomElementsResult(FOculusXRUInt64 AnchorHandle
 
 	if (bIsVolumeResultSuccess && bIsSceneVolume)
 	{
-		EOculusXRAnchorResult::Type Result;
 		FVector sceneVolumePos;
 		FVector sceneVolumeSize;
-		bool ResultSuccess = OculusXRAnchors::FOculusXRAnchors::GetSpaceSceneVolume(AnchorHandle.Value, sceneVolumePos, sceneVolumeSize, Result);
-		if (ResultSuccess)
+		auto getSceneVolumeResult = OculusXRScene::FOculusXRScene::GetSceneVolume(AnchorHandle.Value, sceneVolumePos, sceneVolumeSize);
+		if (UOculusXRAnchorBPFunctionLibrary::IsAnchorResultSuccess(getSceneVolumeResult))
 		{
 			UE_LOG(LogOculusXRScene, Log, TEXT("SpatialAnchorQueryResult_Handler SceneVolume pos = [%.2f, %.2f, %.2f], size = [%.2f, %.2f, %.2f]."),
 				sceneVolumePos.X, sceneVolumePos.Y, sceneVolumePos.Z,
@@ -658,9 +654,9 @@ bool AOculusXRSceneActor::CheckFloorBounds(FOculusXRUInt64 AnchorHandle, FOculus
 		return false;
 	}
 
-	EOculusXRAnchorResult::Type getBoundaryResult;
 	TArray<FVector2f> boundaryVertices;
-	if (!OculusXRAnchors::FOculusXRAnchors::GetSpaceBoundary2D(AnchorHandle, boundaryVertices, getBoundaryResult))
+	EOculusXRAnchorResult::Type getBoundaryResult = OculusXRScene::FOculusXRScene::GetBoundary2D(AnchorHandle, boundaryVertices);
+	if (!UOculusXRAnchorBPFunctionLibrary::IsAnchorResultSuccess(getBoundaryResult))
 	{
 		UE_LOG(LogOculusXRScene, Error, TEXT("Failed to get space boundary vertices for floor. UUID (%s), Room Space ID (%llu)"), *UUID.ToString(), RoomAnchorHandle.GetValue());
 		return false;
@@ -736,9 +732,8 @@ bool AOculusXRSceneActor::PointInPolygon2D(FVector2f PointToTest, const TArray<F
 
 void AOculusXRSceneActor::GetSemanticClassifications(uint64 Space, TArray<FString>& OutSemanticLabels) const
 {
-	EOculusXRAnchorResult::Type SemanticLabelAnchorResult;
-	bool Result = OculusXRAnchors::FOculusXRAnchors::GetSpaceSemanticClassification(Space, OutSemanticLabels, SemanticLabelAnchorResult);
-	if (Result)
+	EOculusXRAnchorResult::Type semanticLabelAnchorResult = OculusXRScene::FOculusXRScene::GetSemanticClassification(Space, OutSemanticLabels);
+	if (UOculusXRAnchorBPFunctionLibrary::IsAnchorResultSuccess(semanticLabelAnchorResult))
 	{
 		UE_LOG(LogOculusXRScene, Verbose, TEXT("GetSemanticClassifications -- Space (%llu) Classifications:"), Space);
 		for (FString& label : OutSemanticLabels)

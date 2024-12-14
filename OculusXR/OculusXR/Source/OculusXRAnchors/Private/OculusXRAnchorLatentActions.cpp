@@ -4,7 +4,6 @@
 #include "OculusXRAnchorsPrivate.h"
 #include "OculusXRHMD.h"
 #include "OculusXRAnchorBPFunctionLibrary.h"
-#include "OculusXRRoomLayoutManager.h"
 #include "OculusXRAnchorDelegates.h"
 #include "OculusXRAnchorsModule.h"
 
@@ -772,41 +771,74 @@ void UOculusXRAsyncAction_GetSharedAnchors::HandleGetSharedAnchorsResult(EOculus
 	}
 }
 
-UOculusXRAnchorLaunchCaptureFlow* UOculusXRAnchorLaunchCaptureFlow::LaunchCaptureFlowAsync(const UObject* WorldContext)
+//
+// Share with groups
+//
+void UOculusXRAsyncAction_ShareAnchorsWithGroups::Activate()
 {
-	UWorld* World = GEngine->GetWorldFromContextObject(WorldContext, EGetWorldErrorMode::ReturnNull);
-	if (!ensureAlwaysMsgf(IsValid(WorldContext), TEXT("World Context was not valid.")))
-	{
-		return nullptr;
-	}
-
-	// Create a new UMyDelayAsyncAction, and store function arguments in it.
-	auto NewAction = NewObject<UOculusXRAnchorLaunchCaptureFlow>();
-	NewAction->RegisterWithGameInstance(World->GetGameInstance());
-	return NewAction;
+	OculusXRAnchors::FOculusXRAnchors::ShareAnchorsAsync(
+		AnchorHandles,
+		GroupUUIDs,
+		OculusXRAnchors::FShareAnchorsWithGroups::FCompleteDelegate::CreateUObject(
+			this,
+			&UOculusXRAsyncAction_ShareAnchorsWithGroups::HandleShareComplete));
 }
 
-void UOculusXRAnchorLaunchCaptureFlow::Activate()
+UOculusXRAsyncAction_ShareAnchorsWithGroups* UOculusXRAsyncAction_ShareAnchorsWithGroups::OculusXRShareAnchorsWithGroupsAsync(const TArray<FOculusXRUUID>& GroupUUIDs, const TArray<FOculusXRUInt64>& AnchorHandles)
 {
-	Request = 0;
-	FOculusXRAnchorEventDelegates::OculusSceneCaptureComplete.AddUObject(this, &UOculusXRAnchorLaunchCaptureFlow::OnCaptureFinish);
-	bool CaptureStarted = OculusXRAnchors::FOculusXRRoomLayoutManager::RequestSceneCapture(Request);
-	if (!CaptureStarted)
-	{
-		FOculusXRAnchorEventDelegates::OculusSceneCaptureComplete.RemoveAll(this);
-		Failure.Broadcast();
-	}
+	UOculusXRAsyncAction_ShareAnchorsWithGroups* Action = NewObject<UOculusXRAsyncAction_ShareAnchorsWithGroups>();
+	Action->GroupUUIDs = GroupUUIDs;
+	Action->AnchorHandles = AnchorHandles;
+	Action->RegisterWithGameInstance(GWorld);
+
+	return Action;
 }
 
-void UOculusXRAnchorLaunchCaptureFlow::OnCaptureFinish(FOculusXRUInt64 RequestId, bool bSuccess)
+void UOculusXRAsyncAction_ShareAnchorsWithGroups::HandleShareComplete(const OculusXRAnchors::FShareAnchorsWithGroups::FResultType& Result)
 {
-	if (Request != RequestId.GetValue())
+	if (Result.IsSuccess())
 	{
-		UE_LOG(LogOculusXRAnchors, Warning, TEXT("%llu request id doesn't match %llu. Ignoring request."), RequestId.GetValue(), Request);
-		return;
+		Complete.Broadcast(Result.IsSuccess(), GroupUUIDs, AnchorHandles, Result.GetStatus());
+	}
+	else
+	{
+		Complete.Broadcast(Result.IsSuccess(), TArray<FOculusXRUUID>(), TArray<FOculusXRUInt64>(), Result.GetStatus());
 	}
 
-	FOculusXRAnchorEventDelegates::OculusSceneCaptureComplete.RemoveAll(this);
-	Success.Broadcast();
+	SetReadyToDestroy();
+}
+
+//
+// Get shared anchors from group
+//
+void UOculusXRAsyncAction_GetSharedAnchorsFromGroup::Activate()
+{
+	OculusXRAnchors::FOculusXRAnchors::GetSharedAnchorsAsync(
+		GroupUuid,
+		OculusXRAnchors::FGetAnchorsSharedWithGroup::FCompleteDelegate::CreateUObject(
+			this,
+			&UOculusXRAsyncAction_GetSharedAnchorsFromGroup::HandleGetSharedAnchorsComplete));
+}
+
+UOculusXRAsyncAction_GetSharedAnchorsFromGroup* UOculusXRAsyncAction_GetSharedAnchorsFromGroup::OculusXRGetSharedAnchorsFromGroupAsync(const FOculusXRUUID& GroupUuid)
+{
+	UOculusXRAsyncAction_GetSharedAnchorsFromGroup* Action = NewObject<UOculusXRAsyncAction_GetSharedAnchorsFromGroup>();
+	Action->GroupUuid = GroupUuid;
+	Action->RegisterWithGameInstance(GWorld);
+
+	return Action;
+}
+
+void UOculusXRAsyncAction_GetSharedAnchorsFromGroup::HandleGetSharedAnchorsComplete(const OculusXRAnchors::FGetAnchorsSharedWithGroup::FResultType& Result)
+{
+	if (Result.IsSuccess())
+	{
+		Complete.Broadcast(Result.IsSuccess(), Result.GetValue(), Result.GetStatus());
+	}
+	else
+	{
+		Complete.Broadcast(Result.IsSuccess(), OculusXRAnchors::FGetAnchorsSharedWithGroup::FResultValueType(), Result.GetStatus());
+	}
+
 	SetReadyToDestroy();
 }

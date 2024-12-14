@@ -42,7 +42,12 @@ public class MRUtilityKit : ModuleRules
                 "Json",
                 "ProceduralMeshComponent",
                 "HeadMountedDisplay",
-                "MRUtilityKitShared"
+                "MRUtilityKitShared",
             });
+
+        if (Target.bBuildEditor == true)
+        {
+            PrivateDependencyModuleNames.Add("UnrealEd");
+        }
     }
 }

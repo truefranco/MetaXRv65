@@ -81,12 +81,14 @@ namespace OculusXRHMD
 				/** Whether Scene can be used with the app */
 				uint64 bSceneSupportEnabled : 1;
 
-
 				/** Whether the guardian boundary visibility toggles can be used with the app */
 				uint64 bBoundaryVisibilitySupportEnabled : 1;
 
 				/** Whether the guardian boundary visibility should be suppressed by default, this can only be true if passthrough is enabled */
 				uint64 bDefaultBoundaryVisibilitySuppressed : 1;
+
+				/** Whether Colocation Sessions can be used with the app */
+				uint64 bColocationSessionsEnabled : 1;
 
 				/** Whether body tracking functionality can be used with the app */
 				uint64 bBodyTrackingEnabled : 1;
@@ -129,8 +131,6 @@ namespace OculusXRHMD
 
 		FIntPoint RenderTargetSize;
 		float PixelDensity;
-		float PixelDensityMin;
-		float PixelDensityMax;
 
 		ovrpSystemHeadset SystemHeadset;
 
@@ -180,10 +180,10 @@ namespace OculusXRHMD
 
 		bool IsStereoEnabled() const { return Flags.bStereoEnabled && Flags.bHMDEnabled; }
 
+		float GetPixelDensityMin() const;
+		float GetPixelDensityMax() const;
 		void SetPixelDensity(float NewPixelDensity);
 		void SetPixelDensitySmooth(float NewPixelDensity);
-		void SetPixelDensityMin(float NewPixelDensityMin);
-		void SetPixelDensityMax(float NewPixelDensityMax);
 
 		TSharedPtr<FSettings, ESPMode::ThreadSafe> Clone() const;
 	};

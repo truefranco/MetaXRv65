@@ -5,6 +5,7 @@
 #include "CoreMinimal.h"
 #include "OculusXRAnchorComponent.h"
 #include "OculusXRAnchorTypes.h"
+#include "OculusXRAnchorsRequests.h"
 
 DECLARE_DELEGATE_TwoParams(FOculusXRSpatialAnchorCreateDelegate, EOculusXRAnchorResult::Type /*Result*/, UOculusXRAnchorComponent* /*Anchor*/);
 DECLARE_DELEGATE_TwoParams(FOculusXRAnchorEraseDelegate, EOculusXRAnchorResult::Type /*Result*/, FOculusXRUUID /*AnchorUUID*/);
@@ -21,7 +22,6 @@ DECLARE_DELEGATE_TwoParams(FOculusXRGetSharedAnchorsDelegate, EOculusXRAnchorRes
 
 namespace OculusXRAnchors
 {
-
 	struct OCULUSXRANCHORS_API FOculusXRAnchors
 	{
 		void Initialize();
@@ -51,17 +51,15 @@ namespace OculusXRAnchors
 		static bool ShareAnchors(const TArray<uint64>& AnchorHandles, const TArray<uint64>& OculusUserIDs, const FOculusXRAnchorShareDelegate& ResultCallback, EOculusXRAnchorResult::Type& OutResult);
 
 		static bool GetSpaceContainerUUIDs(uint64 Space, TArray<FOculusXRUUID>& OutUUIDs, EOculusXRAnchorResult::Type& OutResult);
-		static bool GetSpaceScenePlane(uint64 Space, FVector& OutPos, FVector& OutSize, EOculusXRAnchorResult::Type& OutResult);
-		static bool GetSpaceSceneVolume(uint64 Space, FVector& OutPos, FVector& OutSize, EOculusXRAnchorResult::Type& OutResult);
-		static bool GetSpaceSemanticClassification(uint64 Space, TArray<FString>& OutSemanticClassifications, EOculusXRAnchorResult::Type& OutResult);
-		static bool GetSpaceBoundary2D(uint64 Space, TArray<FVector2f>& OutVertices, EOculusXRAnchorResult::Type& OutResult);
-
 
 		static bool SaveAnchors(const TArray<UOculusXRAnchorComponent*>& Anchors, const FOculusXRSaveAnchorsDelegate& ResultCallback, EOculusXRAnchorResult::Type& OutResult);
 		static bool EraseAnchors(const TArray<UOculusXRAnchorComponent*>& Anchors, const FOculusXREraseAnchorsDelegate& ResultCallback, EOculusXRAnchorResult::Type& OutResult);
 		static bool EraseAnchors(const TArray<FOculusXRUInt64>& AnchorHandles, const TArray<FOculusXRUUID>& AnchorUUIDs, const FOculusXREraseAnchorsDelegate& ResultCallback, EOculusXRAnchorResult::Type& OutResult);
 		static bool DiscoverAnchors(const FOculusXRSpaceDiscoveryInfo& DiscoveryInfo, const FOculusXRDiscoverAnchorsResultsDelegate& DiscoveryResultsCallback, const FOculusXRDiscoverAnchorsCompleteDelegate& DiscoveryCompleteCallback, EOculusXRAnchorResult::Type& OutResult);
 		static bool GetSharedAnchors(const TArray<FOculusXRUUID>& AnchorUUIDs, const FOculusXRGetSharedAnchorsDelegate& ResultCallback, EOculusXRAnchorResult::Type& OutResult);
+
+		static TSharedPtr<FShareAnchorsWithGroups> ShareAnchorsAsync(const TArray<FOculusXRUInt64>& AnchorHandles, const TArray<FOculusXRUUID>& Groups, const FShareAnchorsWithGroups::FCompleteDelegate& OnComplete);
+		static TSharedPtr<FGetAnchorsSharedWithGroup> GetSharedAnchorsAsync(const FOculusXRUUID& Group, const FGetAnchorsSharedWithGroup::FCompleteDelegate& OnComplete);
 
 	private:
 		struct AnchorQueryBinding;

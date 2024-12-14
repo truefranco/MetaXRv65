@@ -45,8 +45,6 @@ public:
 	DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnRoomCreated, AMRUKRoom*, Room);
 	DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnRoomUpdated, AMRUKRoom*, Room);
 	DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnRoomRemoved, AMRUKRoom*, Room);
-	DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnRoomEntered, AMRUKRoom*, Room);
-	DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnRoomExited, AMRUKRoom*, Room);
 
 	/**
 	 * The status of the scene loading. When loading from device this is an asynchronous process
@@ -79,24 +77,6 @@ public:
 	 */
 	UPROPERTY(BlueprintAssignable, Category = "MR Utility Kit")
 	FOnRoomRemoved OnRoomRemoved;
-
-	/**
-	 * Event that gets fired if the user enters this room.
-	 * This is a system level event that gets only fired when working with room data that was loaded
-	 * from the device. E.g. it will not fire on rooms that were loaded from JSON.
-	 * This means that it may not be in sync with UMRUKSubsystem::GetCurrentRoom().
-	 */
-	UPROPERTY(BlueprintAssignable, Category = "MR Utility Kit")
-	FOnRoomEntered OnRoomEntered;
-
-	/**
-	 * Event that gets fired if the user exit this room.
-	 * This is a system level event that gets only fired when working with room data that was loaded
-	 * from the device. E.g. it will not fire on rooms that were loaded from JSON.
-	 * This means that it may not be in sync with UMRUKSubsystem::GetCurrentRoom().
-	 */
-	UPROPERTY(BlueprintAssignable, Category = "MR Utility Kit")
-	FOnRoomExited OnRoomExited;
 
 	/**
 	 * An event that will trigger when the capture flow completed.
@@ -175,7 +155,7 @@ public:
 	 * If the scene is already loaded the scene will be updated with the changes.
 	 */
 	UFUNCTION(BlueprintCallable, Category = "MR Utility Kit")
-	void LoadSceneFromDevice(int MaxQueries = 64);
+	void LoadSceneFromDevice();
 
 
 	/**
@@ -283,7 +263,6 @@ public:
 	bool LaunchSceneCapture();
 
 public:
-
 	void Initialize(FSubsystemCollectionBase& Collection) override;
 	void Deinitialize() override;
 

@@ -5,6 +5,7 @@
 #include "OculusXRHMDPrivate.h"
 #include "Curves/CurveLinearColor.h"
 #include "OculusXRPluginWrapper.h"
+#include "OpenXR/OculusXROpenXRUtilities.h"
 
 const FName FReconstructedLayer::ShapeName = FName("ReconstructedLayer");
 const FName FUserDefinedLayer::ShapeName = FName("UserDefinedLayer");
@@ -99,13 +100,18 @@ TArray<uint8> FEdgeStyleParameters::GenerateMonoToRGBA(const TArray<FLinearColor
 		InterpCurve.AddPoint(Index, (InColorMapGradient[Index] * ColorScale) + ColorOffset);
 	}
 
-	NewColorMapData.SetNum(TotalEntries * sizeof(ovrpColorf));
+	// XrColor4f and ovrpColorf need to be same size, as either will be sent to the OVR plugin or OpenXR implementation
+	static_assert(sizeof(XrColor4f) == sizeof(ovrpColorf));
+
+	const int32 ColorSize = sizeof(ovrpColorf);
+	NewColorMapData.SetNum(TotalEntries * ColorSize);
+
 	uint8* Dest = NewColorMapData.GetData();
 	for (int32 Index = 0; Index < TotalEntries; ++Index)
 	{
 		const ovrpColorf Color = OculusXRHMD::ToOvrpColorf(InterpCurve.Eval(InColorMapData[Index]));
 		FMemory::Memcpy(Dest, &Color, sizeof(Color));
-		Dest += sizeof(ovrpColorf);
+		Dest += ColorSize;
 	}
 	return NewColorMapData;
 }

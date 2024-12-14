@@ -275,12 +275,14 @@ struct OculusPluginWrapper
 	OCULUS_DECLARE_ENTRY_POINT(GetSpaceComponentStatus);
 	OCULUS_DECLARE_ENTRY_POINT(EnumerateSpaceSupportedComponents);
 	OCULUS_DECLARE_ENTRY_POINT(QuerySpaces);
+	OCULUS_DECLARE_ENTRY_POINT(QuerySpaces2);
 	OCULUS_DECLARE_ENTRY_POINT(RetrieveSpaceQueryResults);
 	OCULUS_DECLARE_ENTRY_POINT(SaveSpace);
 	OCULUS_DECLARE_ENTRY_POINT(EraseSpace);
 	OCULUS_DECLARE_ENTRY_POINT(GetSpaceUuid);
 	OCULUS_DECLARE_ENTRY_POINT(SaveSpaceList);
 	OCULUS_DECLARE_ENTRY_POINT(ShareSpaces);
+	OCULUS_DECLARE_ENTRY_POINT(ShareSpaces2);
 	OCULUS_DECLARE_ENTRY_POINT(CreateSpaceUser);
 	OCULUS_DECLARE_ENTRY_POINT(DestroySpaceUser);
 
@@ -301,12 +303,15 @@ struct OculusPluginWrapper
 	OCULUS_DECLARE_ENTRY_POINT(GetSpaceTriangleMesh);
 
 
-
 	// Boundary Visibility
 	OCULUS_DECLARE_ENTRY_POINT(RequestBoundaryVisibility);
 	OCULUS_DECLARE_ENTRY_POINT(GetBoundaryVisibility);
 
-	// Local Groups
+	// Colocation Session
+	OCULUS_DECLARE_ENTRY_POINT(StartColocationDiscovery);
+	OCULUS_DECLARE_ENTRY_POINT(StopColocationDiscovery);
+	OCULUS_DECLARE_ENTRY_POINT(StartColocationAdvertisement);
+	OCULUS_DECLARE_ENTRY_POINT(StopColocationAdvertisement);
 
 	// MovementSDK
 	OCULUS_DECLARE_ENTRY_POINT(GetBodyTrackingEnabled);

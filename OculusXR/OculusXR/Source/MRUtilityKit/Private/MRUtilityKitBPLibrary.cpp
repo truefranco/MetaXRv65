@@ -3,6 +3,7 @@
 #include "MRUtilityKitBPLibrary.h"
 
 #include "MRUtilityKit.h"
+#include "Generated/MRUtilityKitShared.h"
 #include "MRUtilityKitAnchor.h"
 #include "MRUtilityKitSubsystem.h"
 #include "MRUtilityKitSerializationHelpers.h"
@@ -154,6 +155,35 @@ namespace
 				}
 			}
 		}
+	}
+
+	TArray<FVector> GeneratePoints(const FTransform& Plane, const FBox2D& PlaneBounds, double PointsPerUnitX, double PointsPerUnitY)
+	{
+		const FVector PlaneRight = Plane.GetRotation().GetRightVector();
+		const FVector PlaneUp = Plane.GetRotation().GetUpVector();
+		const FVector PlaneSize = FVector(PlaneBounds.GetSize().X, PlaneBounds.GetSize().Y, 0.0);
+		const FVector PlaneBottomLeft = Plane.GetLocation() - PlaneRight * PlaneSize.X * 0.5f - PlaneUp * PlaneSize.Y * 0.5f;
+
+		const int32 PointsX = FMath::Max(FMathf::Ceil(PointsPerUnitX * PlaneSize.X) / 100, 1);
+		const int32 PointsY = FMath::Max(FMathf::Ceil(PointsPerUnitY * PlaneSize.Y) / 100, 1);
+
+		const FVector2D Stride{ PlaneSize.X / (PointsX + 1), PlaneSize.Y / (PointsY + 1) };
+
+		TArray<FVector> Points;
+		Points.SetNum(PointsX * PointsY);
+
+		for (int Iy = 0; Iy < PointsY; ++Iy)
+		{
+			for (int Ix = 0; Ix < PointsX; ++Ix)
+			{
+				const float Dx = (Ix + 1) * Stride.X;
+				const float Dy = (Iy + 1) * Stride.Y;
+				const FVector Point = PlaneBottomLeft + Dx * PlaneRight + Dy * PlaneUp;
+				Points[Ix + Iy * PointsX] = Point;
+			}
+		}
+
+		return Points;
 	}
 } // namespace
 
@@ -431,4 +461,129 @@ FLinearColor UMRUKBPLibrary::GetMatrixColumn(const FMatrix& Matrix, int32 Index)
 	V.B = Matrix.M[2][Index];
 	V.A = Matrix.M[3][Index];
 	return V;
+}
+
+TArray<FVector> UMRUKBPLibrary::ComputeRoomBoxGrid(const AMRUKRoom* Room, int32 MaxPointsCount, double PointsPerUnitX, double PointsPerUnitY)
+{
+	TArray<FVector> AllPoints;
+
+	for (const AMRUKAnchor* WallAnchor : Room->WallAnchors)
+	{
+		const auto Points = GeneratePoints(WallAnchor->GetTransform(), WallAnchor->PlaneBounds, PointsPerUnitX, PointsPerUnitY);
+		AllPoints.Append(Points);
+	}
+
+	// Generate points between floor and ceiling
+	const float DistFloorCeiling = Room->CeilingAnchor->GetTransform().GetLocation().Z - Room->FloorAnchor->GetTransform().GetLocation().Z;
+	const int32 PlanesCount = FMath::Max(FMathf::Ceil(PointsPerUnitY * DistFloorCeiling) / 100, 1);
+	const int32 SpaceBetweenPlanes = DistFloorCeiling / PlanesCount;
+	for (int i = 1; i < PlanesCount; ++i)
+	{
+		FTransform Transform = Room->CeilingAnchor->GetTransform();
+		Transform.SetLocation(FVector(Transform.GetLocation().X, Transform.GetLocation().Y, Transform.GetLocation().Z - (SpaceBetweenPlanes * i)));
+		const auto Points = GeneratePoints(Transform, Room->CeilingAnchor->PlaneBounds, PointsPerUnitX, PointsPerUnitY);
+		AllPoints.Append(Points);
+	}
+
+	const auto CeilingPoints = GeneratePoints(Room->CeilingAnchor->GetTransform(), Room->CeilingAnchor->PlaneBounds, PointsPerUnitX, PointsPerUnitY);
+	AllPoints.Append(CeilingPoints);
+
+	const auto FloorPoints = GeneratePoints(Room->FloorAnchor->GetTransform(), Room->FloorAnchor->PlaneBounds, PointsPerUnitX, PointsPerUnitY);
+	AllPoints.Append(FloorPoints);
+
+	if (AllPoints.Num() > MaxPointsCount)
+	{
+		// Shuffle the array
+		AllPoints.Sort([](const FVector& /*Item1*/, const FVector& /*Item2*/) {
+			return FMath::FRand() < 0.5f;
+		});
+
+		// Randomly remove some points
+		int32 PointsToRemoveCount = AllPoints.Num() - MaxPointsCount;
+		while (PointsToRemoveCount > 0)
+		{
+			AllPoints.Pop();
+			--PointsToRemoveCount;
+		}
+	}
+	return AllPoints;
+}
+
+void UMRUKBPLibrary::CreateMeshSegmentation(const TArray<FVector>& MeshPositions, const TArray<uint32>& MeshIndices,
+	const TArray<FVector>& SegmentationPoints, const FVector& ReservedMin, const FVector& ReservedMax,
+	TArray<FMRUKMeshSegment>& OutSegments, FMRUKMeshSegment& OutReservedSegment)
+{
+	if (!MRUKShared::GetInstance())
+	{
+		UE_LOG(LogMRUK, Error, TEXT("MRUK shared library is not available. To use this functionality make sure the library is included"));
+		return;
+	}
+
+	TArray<FVector3f> MeshPositionsF;
+	MeshPositionsF.Reserve(MeshPositions.Num());
+	for (const FVector& V : MeshPositions)
+	{
+		MeshPositionsF.Add(FVector3f(V));
+	}
+
+	TArray<FVector3f> SegmentationPointsF;
+	SegmentationPointsF.Reserve(SegmentationPoints.Num());
+	for (const FVector& V : SegmentationPoints)
+	{
+		SegmentationPointsF.Add(FVector3f(V));
+	}
+
+	MRUKShared::MrukMesh3f* MeshSegmentsF = nullptr;
+	uint32_t MeshSegmentsCount = 0;
+
+	MRUKShared::MrukMesh3f ReservedMeshSegmentF{};
+
+	const FVector3f ReservedMinF(ReservedMin);
+	const FVector3f ReservedMaxF(ReservedMax);
+
+	MRUKShared::GetInstance()->ComputeMeshSegmentation(MeshPositionsF.GetData(), MeshPositionsF.Num(), MeshIndices.GetData(),
+		MeshIndices.Num(), SegmentationPointsF.GetData(), SegmentationPointsF.Num(), ReservedMinF, ReservedMaxF, &MeshSegmentsF,
+		&MeshSegmentsCount, &ReservedMeshSegmentF);
+
+	OutSegments.Reserve(MeshSegmentsCount);
+	for (uint32_t i = 0; i < MeshSegmentsCount; ++i)
+	{
+		const MRUKShared::MrukMesh3f& SegmentF = MeshSegmentsF[i];
+		if (SegmentF.numIndices == 0)
+		{
+			continue;
+		}
+
+		FMRUKMeshSegment MeshSegment{};
+		MeshSegment.Indices.Reserve(SegmentF.numIndices);
+		MeshSegment.Positions.Reserve(SegmentF.numVertices);
+		for (uint32_t j = 0; j < SegmentF.numIndices; ++j)
+		{
+			MeshSegment.Indices.Add(SegmentF.indices[j]);
+		}
+		for (uint32_t j = 0; j < SegmentF.numVertices; ++j)
+		{
+			const FVector3f& V = SegmentF.vertices[j];
+			MeshSegment.Positions.Add({ V.X, V.Y, V.Z });
+		}
+
+		OutSegments.Emplace(MoveTemp(MeshSegment));
+	}
+
+	if (ReservedMeshSegmentF.numIndices && ReservedMeshSegmentF.numVertices)
+	{
+		OutReservedSegment.Indices.Reserve(ReservedMeshSegmentF.numIndices);
+		OutReservedSegment.Positions.Reserve(ReservedMeshSegmentF.numVertices);
+		for (uint32_t j = 0; j < ReservedMeshSegmentF.numIndices; ++j)
+		{
+			OutReservedSegment.Indices.Add(ReservedMeshSegmentF.indices[j]);
+		}
+		for (uint32_t j = 0; j < ReservedMeshSegmentF.numVertices; ++j)
+		{
+			const FVector3f& V = ReservedMeshSegmentF.vertices[j];
+			OutReservedSegment.Positions.Add({ V.X, V.Y, V.Z });
+		}
+	}
+
+	MRUKShared::GetInstance()->FreeMeshSegmentation(MeshSegmentsF, MeshSegmentsCount, &ReservedMeshSegmentF);
 }

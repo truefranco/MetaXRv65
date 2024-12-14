@@ -7,6 +7,7 @@
 #include "Editor/GameProjectGeneration/Public/GameProjectGenerationModule.h"
 #include "Interfaces/IPluginManager.h"
 #include "Interfaces/IProjectManager.h"
+#include "Misc/MessageDialog.h"
 
 namespace OculusXRPluginRules
 {

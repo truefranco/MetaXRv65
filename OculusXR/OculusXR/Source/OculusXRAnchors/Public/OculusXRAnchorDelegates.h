@@ -108,17 +108,6 @@ public:
 	DECLARE_MULTICAST_DELEGATE_TwoParams(FOculusXRSpaceShareCompleteDelegate, FOculusXRUInt64 /*requestId*/, int /*result*/);
 	static OCULUSXRANCHORS_API FOculusXRSpaceShareCompleteDelegate OculusSpaceShareComplete;
 
-	/* ovrpEventType_SceneCaptureComplete
-	 *
-	 *        SceneCaptureComplete
-	 * Prefix:
-	 * FOculusXRSceneCaptureComplete
-	 * Suffix:
-	 * FOculusXRSceneCaptureCompleteDelegate
-	 */
-	DECLARE_MULTICAST_DELEGATE_TwoParams(FOculusXRSceneCaptureCompleteDelegate, FOculusXRUInt64 /*requestId*/, bool /*success*/);
-	static OCULUSXRANCHORS_API FOculusXRSceneCaptureCompleteDelegate OculusSceneCaptureComplete;
-
 	/* ovrpEventType_SpaceDiscoveryComplete
 	 *
 	 *        SpaceDiscoveryComplete

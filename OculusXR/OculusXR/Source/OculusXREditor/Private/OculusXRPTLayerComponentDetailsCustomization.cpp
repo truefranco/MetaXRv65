@@ -65,10 +65,10 @@ void FOculusXRPTLayerComponentDetailsCustomization::CustomizeDetails(IDetailLayo
 
 EVisibility FOculusXRPTLayerComponentDetailsCustomization::GetShapeWarningVisibility() const
 {
-	UObject* Shape;
+	UObject* Shape = nullptr;
 	ShapePropertyHandle->GetValue(Shape);
 
-	if (Shape == nullptr || Shape->IsA<UOculusXRStereoLayerShapeUserDefined>())
+	if (!IsValid(Shape) || Shape->IsA<UOculusXRStereoLayerShapeUserDefined>())
 		return EVisibility::Collapsed;
 	else
 		return EVisibility::Visible;
@@ -76,10 +76,10 @@ EVisibility FOculusXRPTLayerComponentDetailsCustomization::GetShapeWarningVisibi
 
 FText FOculusXRPTLayerComponentDetailsCustomization::GetShapeWarningText() const
 {
-	UObject* Shape;
+	UObject* Shape = nullptr;
 	ShapePropertyHandle->GetValue(Shape);
 
-	if (Shape == nullptr || Shape->IsA<UOculusXRStereoLayerShapeUserDefined>())
+	if (!IsValid(Shape) || Shape->IsA<UOculusXRStereoLayerShapeUserDefined>())
 		return FText::GetEmpty();
 	else if (Shape->IsA<UOculusXRStereoLayerShapeReconstructed>())
 		return LOCTEXT("OculusXRPTComponentShapeWarningText_Reconstructed",

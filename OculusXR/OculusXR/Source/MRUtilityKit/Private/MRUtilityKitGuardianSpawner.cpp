@@ -198,9 +198,9 @@ void AMRUKGuardianSpawner::PostEditChangeProperty(FPropertyChangedEvent& Propert
 
 void AMRUKGuardianSpawner::OnRoomCreated(AMRUKRoom* Room)
 {
-	if (SpawnMode == EMRUKSpawnMode::CurrentRoomOnly && SpawnedGuardians.Num() > 0)
+	if (SpawnMode == EMRUKSpawnMode::CurrentRoomOnly && GetGameInstance()->GetSubsystem<UMRUKSubsystem>()->GetCurrentRoom() != Room)
 	{
-		// We already spawned a room
+		// Skip this room if it is not the current room
 		return;
 	}
 

@@ -26,7 +26,8 @@ namespace UnrealBuildTool.Rules
                     "HeadMountedDisplay",
                     "XRBase",
                     "OpenXR",
-                    "OpenXRHMD"
+                    "OpenXRHMD",
+                    "RenderCore",
                 });
 
             PublicIncludePaths.AddRange(new string[] {
@@ -39,7 +40,51 @@ namespace UnrealBuildTool.Rules
                 "OculusXRHMD/Private",
             });
 
+            PrivateIncludePathModuleNames.Add("OpenXRHMD");
+
             AddEngineThirdPartyPrivateStaticDependencies(Target, "OpenXR");
+
+            //Needed for OpenXRHMD_Swapchain include
+            {
+                if (Target.Platform == UnrealTargetPlatform.Win64)
+                {
+                    PublicDependencyModuleNames.AddRange(new string[]
+                    {
+                        "D3D11RHI",
+                        "D3D12RHI"
+                    });
+
+                    if (!bUsePrecompiled || Target.LinkType == TargetLinkType.Monolithic)
+                    {
+                        PublicDependencyModuleNames.AddRange(new string[]
+                        {
+                            "DX11",
+                            "DX12"
+                        });
+                    }
+                }
+
+                if (Target.Platform == UnrealTargetPlatform.Win64 || Target.Platform == UnrealTargetPlatform.Android)
+                {
+                    PublicDependencyModuleNames.Add("OpenGLDrv");
+
+                    if (!bUsePrecompiled || Target.LinkType == TargetLinkType.Monolithic)
+                    {
+                        PublicDependencyModuleNames.Add("OpenGL");
+                    }
+                }
+
+                if (Target.Platform == UnrealTargetPlatform.Win64 || Target.Platform == UnrealTargetPlatform.Android
+                                                                  || Target.IsInPlatformGroup(UnrealPlatformGroup.Linux))
+                {
+                    PublicDependencyModuleNames.Add("VulkanRHI");
+
+                    if (!bUsePrecompiled || Target.LinkType == TargetLinkType.Monolithic)
+                    {
+                        PublicDependencyModuleNames.Add("Vulkan");
+                    }
+                }
+            }
         }
     }
 }

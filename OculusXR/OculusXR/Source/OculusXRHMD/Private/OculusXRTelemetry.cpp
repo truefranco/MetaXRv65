@@ -55,4 +55,15 @@ namespace OculusXRTelemetry
 		const UGeneralProjectSettings& ProjectSettings = *GetDefault<UGeneralProjectSettings>();
 		return ProjectSettings.ProjectID.ToString();
 	}
+
+	bool IsConsentGiven()
+	{
+#ifdef WITH_EDITOR
+		if (const UOculusXRTelemetryPrivacySettings* EditorPrivacySettings = GetDefault<UOculusXRTelemetryPrivacySettings>())
+		{
+			return EditorPrivacySettings->bIsEnabled;
+		}
+#endif
+		return false;
+	}
 } // namespace OculusXRTelemetry

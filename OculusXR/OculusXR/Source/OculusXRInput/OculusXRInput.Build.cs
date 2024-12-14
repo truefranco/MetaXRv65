@@ -26,9 +26,11 @@ namespace UnrealBuildTool.Rules
                     "Engine",
                     "InputCore",
                     "HeadMountedDisplay",
+                    "KhronosOpenXRHeaders",
                     "OculusXRHMD",
                     "OculusXRMR",
                     "OVRPluginXR",
+                    "OpenXRHMD"
                 });
 
             if (Target.Version.MajorVersion > 5 || (Target.Version.MajorVersion == 5 && Target.Version.MinorVersion >= 3))
@@ -56,6 +58,8 @@ namespace UnrealBuildTool.Rules
             {
                 RuntimeDependencies.Add("$(PluginDir)/Source/ThirdParty/OVRPlugin/OVRPlugin/Lib/" + Target.Platform.ToString() + "/OpenXR/OVRPlugin.dll");
             }
+
+            AddEngineThirdPartyPrivateStaticDependencies(Target, "OpenXR");
         }
     }
 }

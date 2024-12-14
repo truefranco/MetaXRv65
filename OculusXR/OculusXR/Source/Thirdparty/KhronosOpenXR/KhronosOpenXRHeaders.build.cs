@@ -9,6 +9,7 @@ public class KhronosOpenXRHeaders : ModuleRules
         string SourceDirectory = "$(PluginDir)/Source/ThirdParty/KhronosOpenXR/";
 
         PublicIncludePaths.Add(SourceDirectory + "include");
-    }
+		PublicIncludePaths.Add(SourceDirectory + "src/common");
+	}
 }
 

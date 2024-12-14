@@ -18,7 +18,7 @@ DEFINE_LOG_CATEGORY(LogOculusOpenXRPlugin);
 namespace OculusXR
 {
 
-	bool FOculusXRCoreExtensionPlugin::IsStandaloneStereoOnlyDevice()
+	bool FCoreExtensionPlugin::IsStandaloneStereoOnlyDevice()
 	{
 #if PLATFORM_ANDROID
 		const bool bIsStandaloneStereoDevice = FAndroidMisc::GetDeviceMake() == FString("Oculus");
@@ -28,12 +28,12 @@ namespace OculusXR
 		return bIsStandaloneStereoDevice;
 	}
 
-	bool FOculusXRCoreExtensionPlugin::GetOptionalExtensions(TArray<const ANSICHAR*>& OutExtensions)
+	bool FCoreExtensionPlugin::GetOptionalExtensions(TArray<const ANSICHAR*>& OutExtensions)
 	{
 		return true;
 	}
 
-	bool FOculusXRCoreExtensionPlugin::GetSpectatorScreenController(FHeadMountedDisplayBase* InHMDBase, TUniquePtr<FDefaultSpectatorScreenController>& OutSpectatorScreenController)
+	bool FCoreExtensionPlugin::GetSpectatorScreenController(FHeadMountedDisplayBase* InHMDBase, TUniquePtr<FDefaultSpectatorScreenController>& OutSpectatorScreenController)
 	{
 #if PLATFORM_ANDROID
 		OutSpectatorScreenController = nullptr;
@@ -44,7 +44,7 @@ namespace OculusXR
 #endif // PLATFORM_ANDROID
 	}
 
-	const void* FOculusXRCoreExtensionPlugin::OnCreateSession(XrInstance InInstance, XrSystemId InSystem, const void* InNext)
+	const void* FCoreExtensionPlugin::OnCreateSession(XrInstance InInstance, XrSystemId InSystem, const void* InNext)
 	{
 		InitOpenXRFunctions(InInstance);
 
@@ -54,16 +54,6 @@ namespace OculusXR
 			GPendingRHIThreadMode = ERHIThreadMode::Tasks;
 		}
 #endif // PLATFORM_ANDROID
-		return InNext;
-	}
-
-	const void* FOculusXRCoreExtensionPlugin::OnEndProjectionLayer(XrSession InSession, int32 InLayerIndex, const void* InNext, XrCompositionLayerFlags& OutFlags)
-	{
-		// XR_COMPOSITION_LAYER_UNPREMULTIPLIED_ALPHA_BIT is required right now because the Oculus mobile runtime blends using alpha otherwise,
-		// and we don't have proper inverse alpha support in OpenXR yet (once OpenXR supports inverse alpha, or we change the runtime behavior, remove this)
-		OutFlags |= XR_COMPOSITION_LAYER_CORRECT_CHROMATIC_ABERRATION_BIT;
-		OutFlags |= XR_COMPOSITION_LAYER_UNPREMULTIPLIED_ALPHA_BIT;
-
 		return InNext;
 	}
 

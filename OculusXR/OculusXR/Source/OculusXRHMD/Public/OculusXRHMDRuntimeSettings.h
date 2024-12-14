@@ -55,6 +55,10 @@ public:
 	UPROPERTY(config, EditAnywhere, Category = General, meta = (EditCondition = "XrApi != EOculusXRXrApi::NativeOpenXR"))
 	EOculusXRControllerPoseAlignment ControllerPoseAlignment;
 
+	/** Whether the app uses emulated thumbstick dpad inputs (ex: thumbstick up) when using Epic's Native OpenXR. */
+	UPROPERTY(config, EditAnywhere, Category = General, meta = (EditCondition = "XrApi == EOculusXRXrApi::NativeOpenXR"))
+	bool bThumbstickDpadEmulationEnabled;
+
 	/** Whether Dash is supported by the app, which will keep the app in foreground when the User presses the oculus button (needs the app to handle input focus loss!) */
 	UPROPERTY(config, EditAnywhere, Category = PC)
 	bool bSupportsDash;
@@ -95,15 +99,15 @@ public:
 	EOculusXRMPPoseRestoreType MPPoseRestoreType;
 
 	/** Maximum allowed pixel density. */
-	UPROPERTY(config, EditAnywhere, Category = "Mobile|Dynamic Resolution", DisplayName = "Enable Dynamic Resolution")
+	UPROPERTY(config, EditAnywhere, Category = "Mobile|Dynamic Resolution", DisplayName = "Enable Dynamic Resolution. (min, max) can be set in device profile.")
 	bool bDynamicResolution;
 
 	/** Minimum allowed pixel density. */
-	UPROPERTY(config, EditAnywhere, Category = "Mobile|Dynamic Resolution")
+	UPROPERTY(config, meta = (DeprecatedProperty, DeprecationMessage = "Use DynamicResolutionSettings instead."))
 	float PixelDensityMin;
 
 	/** Maximum allowed pixel density. */
-	UPROPERTY(config, EditAnywhere, Category = "Mobile|Dynamic Resolution")
+	UPROPERTY(config, meta = (DeprecatedProperty, DeprecationMessage = "Use DynamicResolutionSettings instead."))
 	float PixelDensityMax;
 
 	/** Default CPU level controlling CPU frequency on the mobile device */
@@ -189,7 +193,6 @@ public:
 	UPROPERTY(config, EditAnywhere, Category = Mobile, meta = (DisplayName = "Scene Support"))
 	bool bSceneSupportEnabled;
 
-
 	/** Can boundary visibility be toggled in app */
 	UPROPERTY(config, EditAnywhere, Category = Mobile, meta = (DisplayName = "Boundary Visibility Support"))
 	bool bBoundaryVisibilitySupportEnabled;
@@ -197,6 +200,10 @@ public:
 	/** Should the guardian boundary visibility be suppressed by default */
 	UPROPERTY(config, EditAnywhere, Category = Mobile, meta = (DisplayName = "Default Is Boundary Visibility Suppressed"))
 	bool bDefaultBoundaryVisibilitySuppressed;
+
+	/** Whether Colocation Sessions can be used with the app */
+	UPROPERTY(config, EditAnywhere, Category = Mobile, meta = (DisplayName = "Colocation Sessions"))
+	bool bColocationSessionsEnabled;
 
 	/** Whether body tracking functionality can be used with the app */
 	UPROPERTY(config, EditAnywhere, Category = Mobile, meta = (DisplayName = "Body Tracking Enabled", EditCondition = "XrApi == EOculusXRXrApi::OVRPluginOpenXR"))
@@ -221,6 +228,7 @@ public:
 	/** Select preffered Face Tracking data sources */
 	UPROPERTY(config, EditAnywhere, Category = Mobile, meta = (DisplayName = "Face Tracking Source", EditCondition = "XrApi == EOculusXRXrApi::OVRPluginOpenXR"))
 	TSet<EFaceTrackingDataSourceConfig> FaceTrackingDataSource;
+
 
 	/** On supported Oculus mobile platforms, copy compiled .so directly to device. Allows updating compiled code without rebuilding and installing an APK. */
 	UPROPERTY(config, EditAnywhere, Category = Mobile, meta = (DisplayName = "Deploy compiled .so directly to device"))
@@ -251,4 +259,5 @@ private:
 
 	void LoadFromIni();
 	void RenameProperties();
+	void MigratePixelDensityRange();
 };

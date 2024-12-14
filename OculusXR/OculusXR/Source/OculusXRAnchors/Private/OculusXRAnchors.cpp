@@ -6,6 +6,7 @@
 #include "GameFramework/PlayerController.h"
 #include "OculusXRAnchorsModule.h"
 #include "OculusXRAnchorDelegates.h"
+#include "OculusXRAsyncRequestSystem.h"
 #include "OculusXRHMDModule.h"
 #include "OculusXRAnchorManager.h"
 #include "OculusXRAnchorsModule.h"
@@ -15,7 +16,6 @@
 
 namespace OculusXRAnchors
 {
-
 	void FOculusXRAnchors::Initialize()
 	{
 		DelegateHandleAnchorCreate = FOculusXRAnchorEventDelegates::OculusSpatialAnchorCreateComplete.AddRaw(this, &FOculusXRAnchors::HandleSpatialAnchorCreateComplete);
@@ -657,30 +657,21 @@ namespace OculusXRAnchors
 		return UOculusXRAnchorBPFunctionLibrary::IsAnchorResultSuccess(OutResult);
 	}
 
-	bool FOculusXRAnchors::GetSpaceScenePlane(uint64 Space, FVector& OutPos, FVector& OutSize, EOculusXRAnchorResult::Type& OutResult)
+	TSharedPtr<FShareAnchorsWithGroups> FOculusXRAnchors::ShareAnchorsAsync(const TArray<FOculusXRUInt64>& AnchorHandles, const TArray<FOculusXRUUID>& Groups, const FShareAnchorsWithGroups::FCompleteDelegate& OnComplete)
 	{
-		OutResult = FOculusXRAnchorManager::GetSpaceScenePlane(Space, OutPos, OutSize);
-		return UOculusXRAnchorBPFunctionLibrary::IsAnchorResultSuccess(OutResult);
+		auto request = OculusXR::FAsyncRequestSystem::CreateRequest<FShareAnchorsWithGroups>(Groups, AnchorHandles);
+		request->BindOnComplete(OnComplete);
+		request->Execute();
+		return request;
 	}
 
-	bool FOculusXRAnchors::GetSpaceSceneVolume(uint64 Space, FVector& OutPos, FVector& OutSize, EOculusXRAnchorResult::Type& OutResult)
+	TSharedPtr<FGetAnchorsSharedWithGroup> FOculusXRAnchors::GetSharedAnchorsAsync(const FOculusXRUUID& Group, const FGetAnchorsSharedWithGroup::FCompleteDelegate& OnComplete)
 	{
-		OutResult = FOculusXRAnchorManager::GetSpaceSceneVolume(Space, OutPos, OutSize);
-		return UOculusXRAnchorBPFunctionLibrary::IsAnchorResultSuccess(OutResult);
+		auto request = OculusXR::FAsyncRequestSystem::CreateRequest<FGetAnchorsSharedWithGroup>(Group);
+		request->BindOnComplete(OnComplete);
+		request->Execute();
+		return request;
 	}
-
-	bool FOculusXRAnchors::GetSpaceSemanticClassification(uint64 Space, TArray<FString>& OutSemanticClassifications, EOculusXRAnchorResult::Type& OutResult)
-	{
-		OutResult = FOculusXRAnchorManager::GetSpaceSemanticClassification(Space, OutSemanticClassifications);
-		return UOculusXRAnchorBPFunctionLibrary::IsAnchorResultSuccess(OutResult);
-	}
-
-	bool FOculusXRAnchors::GetSpaceBoundary2D(uint64 Space, TArray<FVector2f>& OutVertices, EOculusXRAnchorResult::Type& OutResult)
-	{
-		OutResult = FOculusXRAnchorManager::GetSpaceBoundary2D(Space, OutVertices);
-		return UOculusXRAnchorBPFunctionLibrary::IsAnchorResultSuccess(OutResult);
-	}
-
 
 	void FOculusXRAnchors::HandleSpatialAnchorCreateComplete(FOculusXRUInt64 RequestId, int Result, FOculusXRUInt64 Space, FOculusXRUUID UUID)
 	{

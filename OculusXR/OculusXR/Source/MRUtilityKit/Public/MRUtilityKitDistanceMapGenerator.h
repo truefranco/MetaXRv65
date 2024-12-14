@@ -187,6 +187,9 @@ private:
 	void OnRoomCreated(AMRUKRoom* Room);
 
 	UFUNCTION()
+	void OnRoomUpdated(AMRUKRoom* Room);
+
+	UFUNCTION()
 	AActor* CreateMaskMeshOfAnchor(AMRUKAnchor* Anchor);
 
 	UFUNCTION()

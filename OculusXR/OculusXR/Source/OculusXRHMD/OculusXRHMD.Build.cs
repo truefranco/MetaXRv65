@@ -10,7 +10,7 @@ namespace UnrealBuildTool.Rules
     {
         public OculusXRHMD(ReadOnlyTargetRules Target) : base(Target)
         {
-            bUseUnity = true;
+            bUseUnity = false;
 
             var EngineDir = Path.GetFullPath(Target.RelativeEnginePath);
 
@@ -54,7 +54,6 @@ namespace UnrealBuildTool.Rules
                     "OculusOpenXRLoader",
                     "ProceduralMeshComponent",
                     "Projects",
-                    "KhronosOpenXRHeaders",
                     "OpenXR",
                     "OpenXRHMD",
                 });
@@ -63,6 +62,7 @@ namespace UnrealBuildTool.Rules
                 new string[]
                 {
                     "HeadMountedDisplay",
+                    "KhronosOpenXRHeaders",
                 });
 
             PublicIncludePaths.AddRange(
@@ -142,6 +142,8 @@ namespace UnrealBuildTool.Rules
                     AdditionalPropertiesForReceipt.Add("AndroidPlugin", Path.Combine(PluginPath, "OculusMobile_APL.xml"));
                 }
             }
+
+            AddEngineThirdPartyPrivateStaticDependencies(Target, "OpenXR");
         }
     }
 }

@@ -27,7 +27,18 @@ namespace OculusXRScene
 
 		switch (buf.EventType)
 		{
+			case ovrpEventType_SceneCaptureComplete:
+			{
+				ovrpEventSceneCaptureComplete sceneCaptureComplete;
+				unsigned char* bufData = buf.EventData;
 
+				memcpy(&sceneCaptureComplete.requestId, bufData, sizeof(sceneCaptureComplete.requestId));
+				bufData += sizeof(ovrpUInt64); // move forward
+				memcpy(&sceneCaptureComplete.result, bufData, sizeof(sceneCaptureComplete.result));
+
+				FOculusXRSceneEventDelegates::OculusSceneCaptureComplete.Broadcast(FOculusXRUInt64(sceneCaptureComplete.requestId), sceneCaptureComplete.result >= 0);
+				break;
+			}
 			case ovrpEventType_BoundaryVisibilityChanged:
 			{
 				ovrpEventDataBoundaryVisibilityChanged visibilityChangedEvent;

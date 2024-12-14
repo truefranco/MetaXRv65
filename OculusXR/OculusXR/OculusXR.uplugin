@@ -1,7 +1,7 @@
 {
 	"FileVersion": 3,
 	"Version": 1,
-	"VersionName": "1.101.0",
+	"VersionName": "1.103.0",
 	"FriendlyName": "Meta XR",
 	"Description": "Support for Meta Quest headsets and controllers",
 	"Category": "Virtual Reality",
@@ -31,7 +31,7 @@
 		{
 			"Name": "OculusXRInput",
 			"Type": "Runtime",
-			"LoadingPhase": "Default",
+			"LoadingPhase": "PostConfigInit",
 			"PlatformAllowList": [
 				"Win64",
 				"Android"
@@ -140,6 +140,15 @@
 			"LoadingPhase": "PostEngineInit",
 			"PlatformAllowList": [
 				"Win64"
+			]
+		},
+		{
+			"Name": "OculusXRColocation",
+			"Type": "Runtime",
+			"LoadingPhase": "PostEngineInit",
+			"PlatformAllowList": [
+				"Win64",
+				"Android"
 			]
 		}
 	],

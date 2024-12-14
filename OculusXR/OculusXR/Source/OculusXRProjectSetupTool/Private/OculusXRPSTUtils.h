@@ -3,6 +3,9 @@
 #pragma once
 #include "CoreMinimal.h"
 #include "OculusXRProjectSetupToolModule.h"
+#include "UObject/UObjectIterator.h"
+#include "Styling/SlateStyle.h"
+#include "Brushes/SlateImageBrush.h"
 
 #define OCULUSXR_UPDATE_SETTINGS(SettingsClass, PropertyName, PropertyValue) \
 	{                                                                        \

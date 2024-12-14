@@ -5,6 +5,7 @@
 #include "MRUtilityKitSerializationHelpers.h"
 #include "MRUtilityKitTelemetry.h"
 #include "OculusXRAnchorBPFunctionLibrary.h"
+#include "OculusXRScene.h"
 #include "Engine/World.h"
 #include "Engine/GameInstance.h"
 #include "GameFramework/WorldSettings.h"
@@ -45,7 +46,7 @@ void AMRUKLocalizer::Tick(float DeltaTime)
 	}
 }
 
-void UMRUKAnchorData::LoadFromDevice(const FOculusXRAnchorsDiscoverResult& AnchorsDiscoverResult, int32 MaxQueries)
+void UMRUKAnchorData::LoadFromDevice(const FOculusXRAnchorsDiscoverResult& AnchorsDiscoverResult)
 {
 	SpaceQuery = AnchorsDiscoverResult;
 
@@ -57,8 +58,8 @@ void UMRUKAnchorData::LoadFromDevice(const FOculusXRAnchorsDiscoverResult& Ancho
 		NeedAnchorLocalization = true;
 	}
 
-	EOculusXRAnchorResult::Type Result;
-	if (!OculusXRAnchors::FOculusXRAnchors::GetSpaceSemanticClassification(SpaceQuery.Space.Value, SemanticClassifications, Result))
+	EOculusXRAnchorResult::Type Result = OculusXRScene::FOculusXRScene::GetSemanticClassification(SpaceQuery.Space.Value, SemanticClassifications);
+	if (!UOculusXRAnchorBPFunctionLibrary::IsAnchorResultSuccess(Result))
 	{
 		UE_LOG(LogMRUK, Error, TEXT("Failed to get semantic classification space for %s."), *SpaceQuery.UUID.ToString());
 	}
@@ -68,13 +69,15 @@ void UMRUKAnchorData::LoadFromDevice(const FOculusXRAnchorsDiscoverResult& Ancho
 
 	FVector ScenePlanePos;
 	FVector ScenePlaneSize;
-	if (OculusXRAnchors::FOculusXRAnchors::GetSpaceScenePlane(SpaceQuery.Space, ScenePlanePos, ScenePlaneSize, Result))
+	Result = OculusXRScene::FOculusXRScene::GetScenePlane(SpaceQuery.Space, ScenePlanePos, ScenePlaneSize);
+	if (UOculusXRAnchorBPFunctionLibrary::IsAnchorResultSuccess(Result))
 	{
 		const FVector2D PlanePos = FVector2D(ScenePlanePos.Y, ScenePlanePos.Z) * WorldToMeters;
 		const FVector2D PlaneSize = FVector2D(ScenePlaneSize.Y, ScenePlaneSize.Z) * WorldToMeters;
 		PlaneBounds = FBox2D(PlanePos, PlanePos + PlaneSize);
 		TArray<FVector2f> SpaceBoundary2D;
-		if (OculusXRAnchors::FOculusXRAnchors::GetSpaceBoundary2D(SpaceQuery.Space, SpaceBoundary2D, Result))
+		Result = OculusXRScene::FOculusXRScene::GetBoundary2D(SpaceQuery.Space, SpaceBoundary2D);
+		if (UOculusXRAnchorBPFunctionLibrary::IsAnchorResultSuccess(Result))
 		{
 			PlaneBoundary2D.Reserve(SpaceBoundary2D.Num());
 			for (int i = 0; i < SpaceBoundary2D.Num(); ++i)
@@ -86,7 +89,8 @@ void UMRUKAnchorData::LoadFromDevice(const FOculusXRAnchorsDiscoverResult& Ancho
 
 	FVector SceneVolumePos;
 	FVector SceneVolumeSize;
-	if (OculusXRAnchors::FOculusXRAnchors::GetSpaceSceneVolume(SpaceQuery.Space, SceneVolumePos, SceneVolumeSize, Result))
+	Result = OculusXRScene::FOculusXRScene::GetSceneVolume(SpaceQuery.Space, SceneVolumePos, SceneVolumeSize);
+	if (UOculusXRAnchorBPFunctionLibrary::IsAnchorResultSuccess(Result))
 	{
 		const FVector VolumePos = SceneVolumePos * WorldToMeters;
 		const FVector VolumeSize = SceneVolumeSize * WorldToMeters;
@@ -115,7 +119,7 @@ void UMRUKAnchorData::LoadFromJson(const FJsonValue& Value)
 	NeedAnchorLocalization = false;
 }
 
-void UMRUKRoomData::LoadFromDevice(const FOculusXRAnchorsDiscoverResult& AnchorsDiscoverResult, int32 MaxQueries)
+void UMRUKRoomData::LoadFromDevice(const FOculusXRAnchorsDiscoverResult& AnchorsDiscoverResult)
 {
 	SpaceQuery = AnchorsDiscoverResult;
 
@@ -223,7 +227,7 @@ void UMRUKRoomData::AnchorsInitialized(bool Success)
 	FinishQuery(Success);
 }
 
-void UMRUKSceneData::LoadFromDevice(int32 MaxQueries)
+void UMRUKSceneData::LoadFromDevice()
 {
 	NumRoomsLeftToInitialize = 0;
 

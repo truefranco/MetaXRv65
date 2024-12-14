@@ -10,6 +10,11 @@ namespace OculusXR
 	TOptional<PFN_xrQueryPerformanceMetricsCounterMETA> xrQueryPerformanceMetricsCounterMETA = nullptr;
 	TOptional<PFN_xrEnumeratePerformanceMetricsCounterPathsMETA> xrEnumeratePerformanceMetricsCounterPathsMETA = nullptr;
 	TOptional<PFN_xrSetPerformanceMetricsStateMETA> xrSetPerformanceMetricsStateMETA = nullptr;
+	TOptional<PFN_xrGetDisplayRefreshRateFB> xrGetDisplayRefreshRateFB = nullptr;
+	TOptional<PFN_xrRequestDisplayRefreshRateFB> xrRequestDisplayRefreshRateFB = nullptr;
+	TOptional<PFN_xrEnumerateDisplayRefreshRatesFB> xrEnumerateDisplayRefreshRatesFB = nullptr;
+	TOptional<PFN_xrSetColorSpaceFB> xrSetColorSpaceFB = nullptr;
+	TOptional<PFN_xrGetPassthroughPreferencesMETA> xrGetPassthroughPreferencesMETA = nullptr;
 
 	void InitOpenXRFunctions(XrInstance InInstance)
 	{
@@ -17,6 +22,11 @@ namespace OculusXR
 		OculusXR::XRGetInstanceProcAddr(InInstance, "xrQueryPerformanceMetricsCounterMETA", &xrQueryPerformanceMetricsCounterMETA);
 		OculusXR::XRGetInstanceProcAddr(InInstance, "xrEnumeratePerformanceMetricsCounterPathsMETA", &xrEnumeratePerformanceMetricsCounterPathsMETA);
 		OculusXR::XRGetInstanceProcAddr(InInstance, "xrSetPerformanceMetricsStateMETA", &xrSetPerformanceMetricsStateMETA);
+		OculusXR::XRGetInstanceProcAddr(InInstance, "xrGetDisplayRefreshRateFB", &xrGetDisplayRefreshRateFB);
+		OculusXR::XRGetInstanceProcAddr(InInstance, "xrRequestDisplayRefreshRateFB", &xrRequestDisplayRefreshRateFB);
+		OculusXR::XRGetInstanceProcAddr(InInstance, "xrEnumerateDisplayRefreshRatesFB", &xrEnumerateDisplayRefreshRatesFB);
+		OculusXR::XRGetInstanceProcAddr(InInstance, "xrSetColorSpaceFB", &xrSetColorSpaceFB);
+		OculusXR::XRGetInstanceProcAddr(InInstance, "xrGetPassthroughPreferencesMETA", &xrGetPassthroughPreferencesMETA);
 	}
 
 } // namespace OculusXR

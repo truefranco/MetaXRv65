@@ -42,6 +42,7 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "OculusXR|Face")
 	static bool TryGetFaceState(FOculusXRFaceState& outFaceState);
 
+
 	UFUNCTION(BlueprintCallable, Category = "OculusXR|Face")
 	static bool IsFaceTrackingEnabled();
 

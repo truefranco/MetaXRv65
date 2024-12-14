@@ -15,6 +15,7 @@
 #include "Rules/OculusXRPassthroughRules.h"
 #include "Rules/OculusXRRenderingRules.h"
 #include "Rules/OculusXRPluginRules.h"
+#include "Editor.h"
 
 /**
  * Initialize the subsystem. USubsystem override

@@ -8,7 +8,7 @@ DEFINE_LOG_CATEGORY(LogOculusXRSimulatorPlugin);
 
 namespace OculusXR
 {
-	bool FOculusXRSimulatorExtensionPlugin::GetCustomLoader(PFN_xrGetInstanceProcAddr* OutGetProcAddr)
+	bool FXRSimulatorExtensionPlugin::GetCustomLoader(PFN_xrGetInstanceProcAddr* OutGetProcAddr)
 	{
 #if PLATFORM_WINDOWS
 		FMetaXRSimulator::TryActivateOnStartup();

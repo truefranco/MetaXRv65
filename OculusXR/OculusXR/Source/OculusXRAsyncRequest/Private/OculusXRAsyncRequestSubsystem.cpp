@@ -5,6 +5,10 @@
 #include <Engine/World.h>
 #include <Engine/GameInstance.h>
 
+#if WITH_EDITOR
+#include <Engine/Engine.h>
+#endif
+
 UOculusXRAsyncRequestSubsystem* UOculusXRAsyncRequestSubsystem::GetSubsystem()
 {
 	if (GWorld != nullptr)

@@ -20,6 +20,9 @@ namespace XRPassthrough
 	PFN_xrCreateGeometryInstanceFB xrCreateGeometryInstanceFB = nullptr;
 	PFN_xrDestroyGeometryInstanceFB xrDestroyGeometryInstanceFB = nullptr;
 	PFN_xrGeometryInstanceSetTransformFB xrGeometryInstanceSetTransformFB = nullptr;
+	PFN_xrCreatePassthroughColorLutMETA xrCreatePassthroughColorLutMETA = nullptr;
+	PFN_xrDestroyPassthroughColorLutMETA xrDestroyPassthroughColorLutMETA = nullptr;
+	PFN_xrUpdatePassthroughColorLutMETA xrUpdatePassthroughColorLutMETA = nullptr;
 
 	void InitOpenXRFunctions(XrInstance InInstance)
 	{
@@ -37,6 +40,9 @@ namespace XRPassthrough
 		OculusXR::XRGetInstanceProcAddr(InInstance, "xrCreateGeometryInstanceFB", &xrCreateGeometryInstanceFB);
 		OculusXR::XRGetInstanceProcAddr(InInstance, "xrDestroyGeometryInstanceFB", &xrDestroyGeometryInstanceFB);
 		OculusXR::XRGetInstanceProcAddr(InInstance, "xrGeometryInstanceSetTransformFB", &xrGeometryInstanceSetTransformFB);
+		OculusXR::XRGetInstanceProcAddr(InInstance, "xrCreatePassthroughColorLutMETA", &xrCreatePassthroughColorLutMETA);
+		OculusXR::XRGetInstanceProcAddr(InInstance, "xrDestroyPassthroughColorLutMETA", &xrDestroyPassthroughColorLutMETA);
+		OculusXR::XRGetInstanceProcAddr(InInstance, "xrUpdatePassthroughColorLutMETA", &xrUpdatePassthroughColorLutMETA);
 	}
 
 } // namespace XRPassthrough

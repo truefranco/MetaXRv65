@@ -12,7 +12,6 @@ class OCULUSXRSCENE_API UOculusXRSceneFunctionLibrary : public UBlueprintFunctio
 {
 	GENERATED_BODY()
 public:
-
 	// Returns the current boundary visibility
 	UFUNCTION(BlueprintPure, Category = "OculusXR|Scene", meta = (WorldContext = "WorldContext"))
 	static bool GetBoundaryVisibility(const UObject* WorldContext, EOculusXRBoundaryVisibility& OutVisibility);
@@ -24,4 +23,9 @@ public:
 	// Requests to change the current boundary visibility
 	UFUNCTION(BlueprintCallable, Category = "OculusXR|Scene", meta = (WorldContext = "WorldContext"))
 	static bool RequestBoundaryVisibility(const UObject* WorldContext, EOculusXRBoundaryVisibility NewVisibilityRequest);
+
+	// Returns the room layout for the specified anchor handle that contains a RoomLayout component
+	UFUNCTION(BlueprintCallable, Category = "OculusXR|Scene")
+	static bool GetRoomLayout(FOculusXRUInt64 AnchorHandle, FOculusXRRoomLayout& RoomLayoutOut, int32 MaxWallsCapacity = 64);
+
 };

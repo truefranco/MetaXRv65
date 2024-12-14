@@ -62,18 +62,36 @@ enum class EMRUKPositioningMethod : uint8
 	Default,
 };
 
+/**
+ * Represents an anchor with its corresponding plane UVs in the Mixed Reality Utility Kit.
+ */
 USTRUCT(BlueprintType)
 struct FMRUKAnchorWithPlaneUVs
 {
 	GENERATED_BODY()
 
+	/**
+	 * A readonly reference to the anchor.
+	 */
 	UPROPERTY(BlueprintReadOnly, Category = "MR Utility Kit")
 	TObjectPtr<AMRUKAnchor> Anchor;
 
+	/**
+	 * An array of plane UVs that correspond to the anchor.
+	 */
 	UPROPERTY(BlueprintReadOnly, Category = "MR Utility Kit")
 	TArray<FMRUKPlaneUV> PlaneUVs;
 };
 
+/**
+ * Represents a room in the MRUK.
+ * A room holds (MRUK)Anchors as children for entities such as Desk, Floor, Ceiling, Walls, etc. Those entities are defined with their label.
+ * It also provides events which will be triggered when an anchor has been added, removed or updated from space setup.
+ *
+ * This room class calculates different helper properties such as Outline, Edges, Bounds
+ * and provides room functions as helpers such as determine if a point in space (XYZ) is inside the room, generating points on surfaces, generate points in room (floating), raycasts and more.
+ * @see https://developer.oculus.com/documentation/unreal/mr-unity-anchors/
+ */
 UCLASS(ClassGroup = MRUtilityKit, meta = (DisplayName = "MR Utility Kit Room Actor"))
 class MRUTILITYKIT_API AMRUKRoom : public AActor
 {
@@ -162,7 +180,6 @@ public:
 	 */
 	UPROPERTY(VisibleInstanceOnly, Transient, BlueprintReadOnly, Category = "MR Utility Kit")
 	TArray<TObjectPtr<AMRUKAnchor>> AllAnchors;
-
 
 	/**
 	 * Check whether the position is inside the room or not.
@@ -453,7 +470,6 @@ private:
 	FOculusXRRoomLayout RoomLayout;
 	UPROPERTY()
 	AMRUKAnchor* KeyWallAnchor = nullptr;
-
 
 	struct Surface
 	{

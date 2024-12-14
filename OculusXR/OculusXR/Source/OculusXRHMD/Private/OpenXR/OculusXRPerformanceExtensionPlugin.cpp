@@ -35,7 +35,7 @@ namespace OculusXR
 
 	} // namespace
 
-	FOculusXRPerformanceExtensionPlugin::FOculusXRPerformanceExtensionPlugin()
+	FPerformanceExtensionPlugin::FPerformanceExtensionPlugin()
 		: Instance(XR_NULL_HANDLE)
 		, bPerfSettingsInitialized(false)
 		, bPerfLevelsChanged(false)
@@ -49,38 +49,38 @@ namespace OculusXR
 		PerformanceMetrics.CpuCoreUtil.Init(0, MaxCPUCores);
 	}
 
-	bool FOculusXRPerformanceExtensionPlugin::GetRequiredExtensions(TArray<const ANSICHAR*>& OutExtensions)
+	bool FPerformanceExtensionPlugin::GetRequiredExtensions(TArray<const ANSICHAR*>& OutExtensions)
 	{
 		return true;
 	}
 
-	bool FOculusXRPerformanceExtensionPlugin::GetOptionalExtensions(TArray<const ANSICHAR*>& OutExtensions)
+	bool FPerformanceExtensionPlugin::GetOptionalExtensions(TArray<const ANSICHAR*>& OutExtensions)
 	{
 		OutExtensions.Add(XR_EXT_PERFORMANCE_SETTINGS_EXTENSION_NAME);
 		OutExtensions.Add(XR_META_PERFORMANCE_METRICS_EXTENSION_NAME);
 		return true;
 	}
 
-	void FOculusXRPerformanceExtensionPlugin::PostCreateSession(XrSession InSession)
+	void FPerformanceExtensionPlugin::PostCreateSession(XrSession InSession)
 	{
 		const UOculusXRHMDRuntimeSettings* HMDSettings = GetDefault<UOculusXRHMDRuntimeSettings>();
 		LoadFromSettings();
 		InitializePerformanceMetrics(InSession);
 	}
 
-	void* FOculusXRPerformanceExtensionPlugin::OnWaitFrame(XrSession InSession, void* InNext)
+	void* FPerformanceExtensionPlugin::OnWaitFrame(XrSession InSession, void* InNext)
 	{
 		UpdatePerformanceLevels(InSession);
 		UpdatePerformanceMetrics(InSession);
 		return InNext;
 	}
 
-	void FOculusXRPerformanceExtensionPlugin::PostCreateInstance(XrInstance InInstance)
+	void FPerformanceExtensionPlugin::PostCreateInstance(XrInstance InInstance)
 	{
 		Instance = InInstance;
 	}
 
-	void FOculusXRPerformanceExtensionPlugin::UpdatePerformanceLevels(XrSession InSession)
+	void FPerformanceExtensionPlugin::UpdatePerformanceLevels(XrSession InSession)
 	{
 		if (bPerfLevelsChanged && xrPerfSettingsSetPerformanceLevelEXT.IsSet() && xrPerfSettingsSetPerformanceLevelEXT.GetValue() != nullptr)
 		{
@@ -91,7 +91,7 @@ namespace OculusXR
 		}
 	}
 
-	void FOculusXRPerformanceExtensionPlugin::GetSuggestedCpuAndGpuPerformanceLevels(EOculusXRProcessorPerformanceLevel& CpuLevel, EOculusXRProcessorPerformanceLevel& GpuLevel)
+	void FPerformanceExtensionPlugin::GetSuggestedCpuAndGpuPerformanceLevels(EOculusXRProcessorPerformanceLevel& CpuLevel, EOculusXRProcessorPerformanceLevel& GpuLevel)
 	{
 		if (!bPerfSettingsInitialized)
 		{
@@ -101,7 +101,7 @@ namespace OculusXR
 		GpuLevel = GpuPerfLevel;
 	}
 
-	void FOculusXRPerformanceExtensionPlugin::SetSuggestedCpuAndGpuPerformanceLevels(EOculusXRProcessorPerformanceLevel CpuLevel, EOculusXRProcessorPerformanceLevel GpuLevel)
+	void FPerformanceExtensionPlugin::SetSuggestedCpuAndGpuPerformanceLevels(EOculusXRProcessorPerformanceLevel CpuLevel, EOculusXRProcessorPerformanceLevel GpuLevel)
 	{
 		if (CpuPerfLevel != CpuLevel || GpuPerfLevel != GpuLevel)
 		{
@@ -112,13 +112,13 @@ namespace OculusXR
 		bPerfSettingsInitialized = true;
 	}
 
-	void FOculusXRPerformanceExtensionPlugin::LoadFromSettings()
+	void FPerformanceExtensionPlugin::LoadFromSettings()
 	{
 		const UOculusXRHMDRuntimeSettings* HMDSettings = GetDefault<UOculusXRHMDRuntimeSettings>();
 		SetSuggestedCpuAndGpuPerformanceLevels(HMDSettings->SuggestedCpuPerfLevel, HMDSettings->SuggestedGpuPerfLevel);
 	}
 
-	void FOculusXRPerformanceExtensionPlugin::InitializePerformanceMetrics(XrSession InSession)
+	void FPerformanceExtensionPlugin::InitializePerformanceMetrics(XrSession InSession)
 	{
 		if (xrEnumeratePerformanceMetricsCounterPathsMETA.GetValue() == 0 || xrSetPerformanceMetricsStateMETA.GetValue() == 0 || xrQueryPerformanceMetricsCounterMETA.GetValue() == 0)
 		{
@@ -169,13 +169,13 @@ namespace OculusXR
 		}
 	}
 
-	bool FOculusXRPerformanceExtensionPlugin::IsPerformanceMetricsSupported(EPerformanceMetricsType Metric) const
+	bool FPerformanceExtensionPlugin::IsPerformanceMetricsSupported(EPerformanceMetricsType Metric) const
 	{
 		const uint64_t Val = static_cast<uint64>(1) << Metric;
 		return ((PerformanceMetricsMask & Val) != 0);
 	}
 
-	void FOculusXRPerformanceExtensionPlugin::UpdatePerformanceMetrics(XrSession InSession)
+	void FPerformanceExtensionPlugin::UpdatePerformanceMetrics(XrSession InSession)
 	{
 		if ((xrQueryPerformanceMetricsCounterMETA.GetValue() == 0) || (PerformanceMetricsMask == 0))
 		{
@@ -236,7 +236,7 @@ namespace OculusXR
 		}
 	}
 
-	const FOculusXRPerformanceMetrics& FOculusXRPerformanceExtensionPlugin::GetPerformanceMetrics() const
+	const FOculusXRPerformanceMetrics& FPerformanceExtensionPlugin::GetPerformanceMetrics() const
 	{
 		return PerformanceMetrics;
 	}

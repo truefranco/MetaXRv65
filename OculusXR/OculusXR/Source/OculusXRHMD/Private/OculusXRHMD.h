@@ -30,11 +30,88 @@
 #include "XRThreadUtils.h"
 #include "ProceduralMeshComponent.h"
 #include "Shader.h"
+#include "GlobalShader.h"
 #include "Misc/EngineVersionComparison.h"
 #include "OculusXRHMD_FoveatedRendering.h"
 
 namespace OculusXRHMD
 {
+	class FHardOcclusionsPS : public FGlobalShader
+	{
+		DECLARE_SHADER_TYPE(FHardOcclusionsPS, Global);
+
+		static void ModifyCompilationEnvironment(const FGlobalShaderPermutationParameters& Parameters, FShaderCompilerEnvironment& OutEnvironment);
+
+		static bool ShouldCompilePermutation(const FGlobalShaderPermutationParameters& Parameters);
+
+		/** Default constructor. */
+		FHardOcclusionsPS();
+
+		/** Initialization constructor. */
+		FHardOcclusionsPS(const ShaderMetaType::CompiledShaderInitializerType& Initializer);
+
+		void SetParameters(
+			FRHIBatchedShaderParameters& BatchedParameters,
+			FRHISamplerState* Sampler,
+			FRHITexture* Texture,
+			const FVector2f& Factors,
+			const FMatrix44f ScreenToDepth[ovrpEye_Count],
+			const int ViewId);
+
+	private:
+		LAYOUT_FIELD(FShaderResourceParameter, EnvironmentDepthTexture);
+		LAYOUT_FIELD(FShaderResourceParameter, EnvironmentDepthSampler);
+		LAYOUT_FIELD(FShaderParameter, DepthFactors);
+		LAYOUT_FIELD(FShaderParameter, ScreenToDepthMatrices);
+		LAYOUT_FIELD(FShaderParameter, DepthViewId);
+	};
+
+	/**
+	 * A pixel shader for rendering occlusions, this is the min/max preprocessing step.
+	 */
+	template <bool bEnableMultiView>
+	class FScreenPSEnvironmentDepthMinMax : public FGlobalShader
+	{
+		DECLARE_SHADER_TYPE(FScreenPSEnvironmentDepthMinMax, Global);
+
+	public:
+		static bool ShouldCompilePermutation(const FGlobalShaderPermutationParameters& Parameters)
+		{
+			return !bEnableMultiView || Parameters.Platform == SP_VULKAN_ES3_1_ANDROID || Parameters.Platform == SP_VULKAN_SM5;
+		}
+
+		static void ModifyCompilationEnvironment(const FPermutationParameters& Parameters, FShaderCompilerEnvironment& OutEnvironment)
+		{
+			OutEnvironment.SetDefine(TEXT("ENABLE_MULTI_VIEW"), bEnableMultiView ? 1 : 0);
+		}
+
+		FScreenPSEnvironmentDepthMinMax(const ShaderMetaType::CompiledShaderInitializerType& Initializer)
+			: FGlobalShader(Initializer)
+		{
+			InTexture.Bind(Initializer.ParameterMap, TEXT("InTexture"), SPF_Mandatory);
+			InTextureSampler.Bind(Initializer.ParameterMap, TEXT("InTextureSampler"));
+			if (!bEnableMultiView)
+			{
+				InArraySliceParameter.Bind(Initializer.ParameterMap, TEXT("ArraySlice"));
+			}
+		}
+
+		FScreenPSEnvironmentDepthMinMax() {}
+
+		void SetParameters(FRHIBatchedShaderParameters& BatchedParameters, FRHISamplerState* SamplerStateRHI, FRHITexture* TextureRHI, int ArraySlice)
+		{
+			SetTextureParameter(BatchedParameters, InTexture, InTextureSampler, SamplerStateRHI, TextureRHI);
+			if (!bEnableMultiView)
+			{
+				SetShaderValue(BatchedParameters, InArraySliceParameter, ArraySlice);
+			}
+		}
+
+	private:
+		LAYOUT_FIELD(FShaderResourceParameter, InTexture);
+		LAYOUT_FIELD(FShaderResourceParameter, InTextureSampler);
+		LAYOUT_FIELD(FShaderParameter, InArraySliceParameter);
+	};
 
 	DECLARE_DELEGATE_TwoParams(FOculusXRHMDEventPollingDelegate, ovrpEventDataBuffer*, bool&);
 
@@ -80,7 +157,6 @@ namespace OculusXRHMD
 		friend class FConsoleCommands;
 
 	public:
-		OCULUSXRHMD_API static const FName OculusSystemName;
 		// IXRSystemIdentifier
 		virtual FName GetSystemName() const override;
 		virtual int32 GetXRSystemFlags() const override;
@@ -372,12 +448,6 @@ namespace OculusXRHMD
 		void ResetControlRotation() const;
 		void UpdateFoveationOffsets_RenderThread();
 		bool ComputeEnvironmentDepthParameters_RenderThread(FVector2f& DepthFactors, FMatrix44f ScreenToDepth[ovrpEye_Count], FMatrix44f DepthViewProj[ovrpEye_Count], int& SwapchainIndex);
-#if UE_VERSION_OLDER_THAN(5, 3, 0)
-		void RenderHardOcclusions_RenderThread(FRHICommandListImmediate& RHICmdList, const FSceneView& InView);
-#else
-		void RenderHardOcclusions_RenderThread(FRHICommandList& RHICmdList, const FSceneView& InView);
-#endif
-		void RenderEnvironmentDepthMinMaxTexture_RenderThread(FRHICommandListImmediate& RHICmdList);
 
 		FSettingsPtr CreateNewSettings() const;
 		FGameFramePtr CreateNewGameFrame() const;
@@ -489,8 +559,6 @@ namespace OculusXRHMD
 	protected:
 		FConsoleCommands ConsoleCommands;
 		void UpdateOnRenderThreadCommandHandler(const TArray<FString>& Args, UWorld* World, FOutputDevice& Ar);
-		void PixelDensityMinCommandHandler(const TArray<FString>& Args, UWorld* World, FOutputDevice& Ar);
-		void PixelDensityMaxCommandHandler(const TArray<FString>& Args, UWorld* World, FOutputDevice& Ar);
 		void HQBufferCommandHandler(const TArray<FString>& Args, UWorld*, FOutputDevice& Ar);
 		void HQDistortionCommandHandler(const TArray<FString>& Args, UWorld*, FOutputDevice& Ar);
 		void ShowGlobalMenuCommandHandler(const TArray<FString>& Args, UWorld* World, FOutputDevice& Ar);
@@ -502,6 +570,7 @@ namespace OculusXRHMD
 #endif
 
 		void LoadFromSettings();
+		void LogEnabledFeatures() const;
 		void DoSessionShutdown();
 
 	protected:
@@ -512,20 +581,7 @@ namespace OculusXRHMD
 
 		void EnableInsightPassthrough_RenderThread(bool bEnablePassthrough);
 
-		void DrawHmdViewMesh(
-			FRHICommandList& RHICmdList,
-			float X,
-			float Y,
-			float SizeX,
-			float SizeY,
-			float U,
-			float V,
-			float SizeU,
-			float SizeV,
-			FIntPoint TargetSize,
-			FIntPoint TextureSize,
-			int32 StereoView,
-			const TShaderRef<class FShader>& VertexShader);
+		void PrepareAndRenderHardOcclusions_RenderThread(FRHICommandList& RHICmdList, FSceneView& InView);
 
 		// MultiPlayer
 		void InitMultiPlayerPoses(const FPose& CurPose);

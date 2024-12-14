@@ -14,4 +14,15 @@ namespace OculusXR
 		}
 		return Result;
 	}
+
+	IXRTrackingSystem* GetOpenXRTrackingSystem()
+	{
+		static FName SystemName(TEXT("OpenXR"));
+		if (GEngine->XRSystem.IsValid() && (GEngine->XRSystem->GetSystemName() == SystemName))
+		{
+			return GEngine->XRSystem.Get();
+		}
+		return nullptr;
+	}
+
 } // namespace OculusXR

@@ -71,7 +71,7 @@ private:
 			FVector(-4.104, -9.993, -4.244), // Side: Right, Controller Mapping: Controller
 		},
 	};
-	const FVector RotationOffsets 
+	const FVector RotationOffsets
 		[EOculusXRSideCount]
 		[EOculusXRControllerDrivenHandPoseTypesCount] = {
 		{

@@ -17,6 +17,11 @@
 #include "Widget/OculusXRStatusBarWidget.h"
 #include "Interfaces/IMainFrameModule.h"
 #include "Widget/OculusXRProjectTutorialWidget.h"
+#include "Framework/Application/SlateApplication.h"
+#include "Framework/Docking/TabManager.h"
+#include "ToolMenus.h"
+#include "Engine/Engine.h"
+#include "Widgets/Docking/SDockTab.h"
 
 DEFINE_LOG_CATEGORY(LogProjectSetupTool);
 #define LOCTEXT_NAMESPACE "OculusXRProjectSetupToolModule"

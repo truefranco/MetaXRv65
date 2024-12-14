@@ -29,14 +29,86 @@ namespace OculusXR
 		{
 			return FMemory::Memcmp(&a, &b, sizeof(XrUuidEXT)) == 0;
 		}
+
+		XrColorSpaceFB ToXrColorSpace(EOculusXRColorSpace ColorSpace)
+		{
+			XrColorSpaceFB XrColorSpace = XR_COLOR_SPACE_UNMANAGED_FB;
+			switch (ColorSpace)
+			{
+				case EOculusXRColorSpace::Unmanaged:
+					XrColorSpace = XR_COLOR_SPACE_UNMANAGED_FB;
+					break;
+				case EOculusXRColorSpace::Rec_2020:
+					XrColorSpace = XR_COLOR_SPACE_REC2020_FB;
+					break;
+				case EOculusXRColorSpace::Rec_709:
+					XrColorSpace = XR_COLOR_SPACE_REC709_FB;
+					break;
+				case EOculusXRColorSpace::Rift_CV1:
+					XrColorSpace = XR_COLOR_SPACE_RIFT_CV1_FB;
+					break;
+				case EOculusXRColorSpace::Rift_S:
+					XrColorSpace = XR_COLOR_SPACE_RIFT_S_FB;
+					break;
+				case EOculusXRColorSpace::Quest:
+					XrColorSpace = XR_COLOR_SPACE_QUEST_FB;
+					break;
+				case EOculusXRColorSpace::P3:
+					XrColorSpace = XR_COLOR_SPACE_P3_FB;
+					break;
+				case EOculusXRColorSpace::Adobe_RGB:
+					XrColorSpace = XR_COLOR_SPACE_ADOBE_RGB_FB;
+					break;
+			}
+			return XrColorSpace;
+		}
+
+		EOculusXRColorSpace ToOculusXRColorSpace(XrColorSpaceFB InXrColorSpace)
+		{
+			EOculusXRColorSpace ColorSpace = EOculusXRColorSpace::Unknown;
+
+			switch (InXrColorSpace)
+			{
+				case XR_COLOR_SPACE_UNMANAGED_FB:
+					ColorSpace = EOculusXRColorSpace::Unmanaged;
+					break;
+				case XR_COLOR_SPACE_REC2020_FB:
+					ColorSpace = EOculusXRColorSpace::Rec_2020;
+					break;
+				case XR_COLOR_SPACE_REC709_FB:
+					ColorSpace = EOculusXRColorSpace::Rec_709;
+					break;
+				case XR_COLOR_SPACE_RIFT_CV1_FB:
+					ColorSpace = EOculusXRColorSpace::Rift_CV1;
+					break;
+				case XR_COLOR_SPACE_RIFT_S_FB:
+					ColorSpace = EOculusXRColorSpace::Rift_S;
+					break;
+				case XR_COLOR_SPACE_QUEST_FB:
+					ColorSpace = EOculusXRColorSpace::Quest;
+					break;
+				case XR_COLOR_SPACE_P3_FB:
+					ColorSpace = EOculusXRColorSpace::P3;
+					break;
+				case XR_COLOR_SPACE_ADOBE_RGB_FB:
+					ColorSpace = EOculusXRColorSpace::Adobe_RGB;
+					break;
+				default:
+					ColorSpace = EOculusXRColorSpace::Unknown;
+			}
+			return ColorSpace;
+		}
 	} // namespace
 
 	FSystemInfoExtensionPlugin::FSystemInfoExtensionPlugin()
 		: Instance(XR_NULL_HANDLE)
+		, Session(XR_NULL_HANDLE)
+		, SystemId(XR_NULL_SYSTEM_ID)
 		, bExtHeadsetIdAvailable(false)
 		, SystemHeadsetId{}
 		, bSystemHeadsetIdValid(false)
 		, SystemProductName{}
+		, bExtDisplayRefreshAvailible(false)
 	{
 	}
 
@@ -48,6 +120,10 @@ namespace OculusXR
 	bool FSystemInfoExtensionPlugin::GetOptionalExtensions(TArray<const ANSICHAR*>& OutExtensions)
 	{
 		OutExtensions.Add(XR_META_HEADSET_ID_EXTENSION_NAME);
+		OutExtensions.Add(XR_FB_DISPLAY_REFRESH_RATE_EXTENSION_NAME);
+		OutExtensions.Add(XR_FB_COLOR_SPACE_EXTENSION_NAME);
+		OutExtensions.Add(XR_META_PASSTHROUGH_PREFERENCES_EXTENSION_NAME);
+
 		return true;
 	}
 
@@ -61,13 +137,17 @@ namespace OculusXR
 		if (InModule != nullptr)
 		{
 			bExtHeadsetIdAvailable = InModule->IsExtensionEnabled(XR_META_HEADSET_ID_EXTENSION_NAME);
+			bExtDisplayRefreshAvailible = InModule->IsExtensionEnabled(XR_FB_DISPLAY_REFRESH_RATE_EXTENSION_NAME);
+			bExtColorspaceAvailable = InModule->IsExtensionEnabled(XR_FB_COLOR_SPACE_EXTENSION_NAME);
+			bExtPassthroughAvailable = InModule->IsExtensionEnabled(XR_FB_PASSTHROUGH_EXTENSION_NAME);
+			bExtPassthroughPreferencesAvailable = InModule->IsExtensionEnabled(XR_META_PASSTHROUGH_PREFERENCES_EXTENSION_NAME);
 		}
 		return IOculusXRExtensionPlugin::OnCreateInstance(InModule, InNext);
 	}
 
 	void FSystemInfoExtensionPlugin::PostCreateSession(XrSession InSession)
 	{
-		XrSystemId SystemId = XR_NULL_SYSTEM_ID;
+		Session = InSession;
 		XrSystemGetInfo SystemGetInfo = { XR_TYPE_SYSTEM_GET_INFO };
 		SystemGetInfo.formFactor = XR_FORM_FACTOR_HEAD_MOUNTED_DISPLAY;
 
@@ -88,18 +168,15 @@ namespace OculusXR
 
 		if (bExtHeadsetIdAvailable)
 		{
-			UE_LOG(LogOculusSystemInfoExtensionPlugin, Log, TEXT("TDH bExtHeadsetIdAvailable"));
-
 			SystemHeadsetId = SystemHeadsetIdProperties.id;
 			bSystemHeadsetIdValid = true;
-		}
-		else
-		{
-			UE_LOG(LogOculusSystemInfoExtensionPlugin, Log, TEXT("TDH !bExtHeadsetIdAvailable"));
 		}
 
 		SystemProductName = SystemProperties.systemName;
 		SystemDeviceType = GetSystemHeadsetType();
+
+		const UOculusXRHMDRuntimeSettings* HMDSettings = GetDefault<UOculusXRHMDRuntimeSettings>();
+		SetColorSpace(HMDSettings->ColorSpace);
 	}
 
 	EOculusXRDeviceType FSystemInfoExtensionPlugin::GetDeviceType()
@@ -287,6 +364,111 @@ namespace OculusXR
 			}
 		}
 #endif // defined(__ANDROID__)
+	}
+
+	TArray<float> FSystemInfoExtensionPlugin::GetSystemDisplayAvailableFrequencies()
+	{
+		TArray<float> DisplayFrequencies;
+
+		if (bExtDisplayRefreshAvailible)
+		{
+			check(xrEnumerateDisplayRefreshRatesFB.GetValue() != nullptr);
+
+			uint32 TotalRates = 0;
+			ENSURE_XRCMD(xrEnumerateDisplayRefreshRatesFB.GetValue()(Session, 0, &TotalRates, nullptr));
+
+			DisplayFrequencies.Init(0, TotalRates);
+
+			ENSURE_XRCMD(xrEnumerateDisplayRefreshRatesFB.GetValue()(Session, TotalRates, &TotalRates, DisplayFrequencies.GetData()));
+		}
+
+		return DisplayFrequencies;
+	}
+
+	float FSystemInfoExtensionPlugin::GetSystemDisplayFrequency()
+	{
+		float Frequency = 0.0f;
+
+		if (bExtDisplayRefreshAvailible)
+		{
+			check(xrGetDisplayRefreshRateFB.GetValue() != nullptr);
+			ENSURE_XRCMD(xrGetDisplayRefreshRateFB.GetValue()(Session, &Frequency));
+		}
+		return Frequency;
+	}
+
+	void FSystemInfoExtensionPlugin::SetSystemDisplayFrequency(float DisplayFrequency)
+	{
+		if (bExtDisplayRefreshAvailible)
+		{
+			check(xrRequestDisplayRefreshRateFB.GetValue() != nullptr);
+			ENSURE_XRCMD(xrRequestDisplayRefreshRateFB.GetValue()(Session, DisplayFrequency));
+		}
+	}
+
+	void FSystemInfoExtensionPlugin::SetColorSpace(EOculusXRColorSpace ColorSpace)
+	{
+		if (bExtColorspaceAvailable)
+		{
+			XrColorSpaceFB XrColorSpace = ToXrColorSpace(ColorSpace);
+			check(xrSetColorSpaceFB.GetValue() != nullptr);
+			ENSURE_XRCMD(xrSetColorSpaceFB.GetValue()(Session, XrColorSpace));
+		}
+	}
+
+	EOculusXRColorSpace FSystemInfoExtensionPlugin::GetColorSpace()
+	{
+		EOculusXRColorSpace ColorSpace = EOculusXRColorSpace::Unknown;
+		if (bExtColorspaceAvailable)
+		{
+			XrSystemColorSpacePropertiesFB ColorSpaceProperties = { XR_TYPE_SYSTEM_COLOR_SPACE_PROPERTIES_FB };
+			XrSystemProperties SystemProperties = { XR_TYPE_SYSTEM_PROPERTIES, &ColorSpaceProperties };
+
+			ENSURE_XRCMD(xrGetSystemProperties(Instance, SystemId, &SystemProperties));
+			ColorSpace = ToOculusXRColorSpace(ColorSpaceProperties.colorSpace);
+		}
+		return ColorSpace;
+	}
+
+	bool FSystemInfoExtensionPlugin::IsPassthroughSupported()
+	{
+		if (bExtPassthroughAvailable)
+		{
+			XrSystemPassthroughProperties2FB PassthroughProperties = { XR_TYPE_SYSTEM_PASSTHROUGH_PROPERTIES2_FB };
+			XrSystemProperties SystemProperties = { XR_TYPE_SYSTEM_PROPERTIES, &PassthroughProperties };
+
+			XR_ENSURE(xrGetSystemProperties(Instance, SystemId, &SystemProperties));
+
+			return (PassthroughProperties.capabilities & XR_PASSTHROUGH_CAPABILITY_BIT_FB) == XR_PASSTHROUGH_CAPABILITY_BIT_FB;
+		}
+		return false;
+	}
+
+	bool FSystemInfoExtensionPlugin::IsColorPassthroughSupported()
+	{
+		if (bExtPassthroughAvailable)
+		{
+			XrSystemPassthroughProperties2FB PassthroughProperties = { XR_TYPE_SYSTEM_PASSTHROUGH_PROPERTIES2_FB };
+			XrSystemProperties SystemProperties = { XR_TYPE_SYSTEM_PROPERTIES, &PassthroughProperties };
+
+			XR_ENSURE(xrGetSystemProperties(Instance, SystemId, &SystemProperties));
+
+			return (PassthroughProperties.capabilities & XR_PASSTHROUGH_CAPABILITY_COLOR_BIT_FB) == XR_PASSTHROUGH_CAPABILITY_COLOR_BIT_FB;
+		}
+		return false;
+	}
+
+	bool FSystemInfoExtensionPlugin::IsPassthroughRecommended()
+	{
+		if (bExtPassthroughPreferencesAvailable)
+		{
+			XrPassthroughPreferencesMETA PassthroughPreferences = { XR_TYPE_PASSTHROUGH_PREFERENCES_META };
+
+			ENSURE_XRCMD(OculusXR::xrGetPassthroughPreferencesMETA.GetValue()(Session, &PassthroughPreferences));
+
+			return (PassthroughPreferences.flags & XR_PASSTHROUGH_PREFERENCE_DEFAULT_TO_ACTIVE_BIT_META) == XR_PASSTHROUGH_PREFERENCE_DEFAULT_TO_ACTIVE_BIT_META;
+		}
+		return false;
 	}
 
 } // namespace OculusXR

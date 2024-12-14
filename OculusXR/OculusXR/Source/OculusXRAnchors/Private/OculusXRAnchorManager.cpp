@@ -34,12 +34,12 @@ namespace OculusXRAnchors
 		return Result;
 	}
 
-	ovrpSpaceQueryInfo ConvertToOVRPSpaceQueryInfo(const FOculusXRSpaceQueryInfo& UEQueryInfo)
+	ovrpSpaceQueryInfo2 ConvertToOVRPSpaceQueryInfo(const FOculusXRSpaceQueryInfo& UEQueryInfo)
 	{
 		static const int32 MaxIdsInFilter = 1024;
 		static const int32 MaxComponentTypesInFilter = 16;
 
-		ovrpSpaceQueryInfo Result;
+		ovrpSpaceQueryInfo2 Result;
 
 		Result.queryType = ovrpSpaceQueryType_Action;
 		Result.actionType = ovrpSpaceQueryActionType_Load;
@@ -71,8 +71,10 @@ namespace OculusXRAnchors
 			case EOculusXRSpaceQueryFilterType::FilterByComponentType:
 				Result.filterType = ovrpSpaceQueryFilterType_Components;
 				break;
+			case EOculusXRSpaceQueryFilterType::FilterByGroup:
+				Result.filterType = ovrpSpaceQueryFilterType_GroupUuid;
+				break;
 		}
-
 
 		Result.IdInfo.numIds = FMath::Min(MaxIdsInFilter, UEQueryInfo.IDFilter.Num());
 		for (int i = 0; i < Result.IdInfo.numIds; ++i)
@@ -87,265 +89,9 @@ namespace OculusXRAnchors
 			Result.componentsInfo.components[i] = ConvertToOvrpComponentType(UEQueryInfo.ComponentFilter[i]);
 		}
 
+		Result.groupUuidInfo.groupUuid = ConvertFOculusXRUUIDtoOvrpUuid(UEQueryInfo.GroupUUIDFilter);
+
 		return Result;
-	}
-
-	template <typename T>
-	void GetEventData(ovrpEventDataBuffer& Buffer, T& OutEventData)
-	{
-		unsigned char* BufData = Buffer.EventData;
-		BufData -= sizeof(uint64); // correct offset
-
-		memcpy(&OutEventData, BufData, sizeof(T));
-	}
-
-	void FOculusXRAnchorManager::OnPollEvent(ovrpEventDataBuffer* EventDataBuffer, bool& EventPollResult)
-	{
-		ovrpEventDataBuffer& buf = *EventDataBuffer;
-		EventPollResult = true;
-
-		switch (buf.EventType)
-		{
-			case ovrpEventType_SpatialAnchorCreateComplete:
-			{
-				ovrpEventDataSpatialAnchorCreateComplete AnchorCreateEvent;
-				GetEventData(buf, AnchorCreateEvent);
-
-				const FOculusXRUInt64 RequestId(AnchorCreateEvent.requestId);
-				const FOculusXRUInt64 Space(AnchorCreateEvent.space);
-				const FOculusXRUUID BPUUID(AnchorCreateEvent.uuid.data);
-
-				FOculusXRAnchorEventDelegates::OculusSpatialAnchorCreateComplete.Broadcast(RequestId, AnchorCreateEvent.result, Space, BPUUID);
-
-				UE_LOG(LogOculusXRAnchors, Verbose, TEXT("ovrpEventType_SpatialAnchorCreateComplete Request ID: %llu  --  Space: %llu  --  UUID: %s  --  Result: %d"),
-					RequestId.GetValue(),
-					Space.GetValue(),
-					*BPUUID.ToString(),
-					AnchorCreateEvent.result);
-
-				break;
-			}
-			case ovrpEventType_SpaceSetComponentStatusComplete:
-			{
-				ovrpEventDataSpaceSetStatusComplete SetStatusEvent;
-				GetEventData(buf, SetStatusEvent);
-
-				// translate to BP types
-				const FOculusXRUInt64 RequestId(SetStatusEvent.requestId);
-				const FOculusXRUInt64 Space(SetStatusEvent.space);
-				EOculusXRSpaceComponentType BPSpaceComponentType = ConvertToUEComponentType(SetStatusEvent.componentType);
-				const FOculusXRUUID BPUUID(SetStatusEvent.uuid.data);
-				const bool bEnabled = (SetStatusEvent.enabled == ovrpBool_True);
-
-				FOculusXRAnchorEventDelegates::OculusSpaceSetComponentStatusComplete.Broadcast(
-					RequestId,
-					SetStatusEvent.result,
-					Space,
-					BPUUID,
-					BPSpaceComponentType,
-					bEnabled);
-
-				UE_LOG(LogOculusXRAnchors, Verbose, TEXT("ovrpEventType_SpaceSetComponentStatusComplete Request ID: %llu  --  Type: %d  --  Enabled: %d  --  Space: %llu  --  Result: %d"),
-					SetStatusEvent.requestId,
-					SetStatusEvent.componentType,
-					SetStatusEvent.enabled,
-					SetStatusEvent.space,
-					SetStatusEvent.result);
-
-				break;
-			}
-			case ovrpEventType_SpaceQueryResults:
-			{
-				ovrpEventSpaceQueryResults QueryEvent;
-				GetEventData(buf, QueryEvent);
-
-				const FOculusXRUInt64 RequestId(QueryEvent.requestId);
-
-				FOculusXRAnchorEventDelegates::OculusSpaceQueryResults.Broadcast(RequestId);
-
-				ovrpUInt32 ovrpOutCapacity = 0;
-
-				// First get capacity
-				const bool bGetCapacityResult = FOculusXRHMDModule::GetPluginWrapper().GetInitialized() && OVRP_SUCCESS(FOculusXRHMDModule::GetPluginWrapper().RetrieveSpaceQueryResults(&QueryEvent.requestId, 0, &ovrpOutCapacity, nullptr));
-
-				UE_LOG(LogOculusXRAnchors, Log, TEXT("ovrpEventType_SpaceQueryResults Request ID: %llu  --  Capacity: %d  --  Result: %d"), QueryEvent.requestId, ovrpOutCapacity, bGetCapacityResult);
-
-				std::vector<ovrpSpaceQueryResult> ovrpResults(ovrpOutCapacity);
-
-				// Get Query Data
-				const bool bGetQueryDataResult = FOculusXRHMDModule::GetPluginWrapper().GetInitialized() && OVRP_SUCCESS(FOculusXRHMDModule::GetPluginWrapper().RetrieveSpaceQueryResults(&QueryEvent.requestId, ovrpResults.size(), &ovrpOutCapacity, ovrpResults.data()));
-
-				for (auto queryResultElement : ovrpResults)
-				{
-					UE_LOG(LogOculusXRAnchors, Verbose, TEXT("ovrpEventType_SpaceQueryResult Space: %llu  --  Result: %d"), queryResultElement.space, bGetQueryDataResult);
-
-					// translate types
-					FOculusXRUInt64 Space(queryResultElement.space);
-					FOculusXRUUID BPUUID(queryResultElement.uuid.data);
-					FOculusXRAnchorEventDelegates::OculusSpaceQueryResult.Broadcast(RequestId, Space, BPUUID);
-				}
-
-				break;
-			}
-			case ovrpEventType_SpaceQueryComplete:
-			{
-				ovrpEventSpaceQueryComplete QueryCompleteEvent;
-				GetEventData(buf, QueryCompleteEvent);
-
-				// translate to BP types
-				const FOculusXRUInt64 RequestId(QueryCompleteEvent.requestId);
-				const bool bSucceeded = QueryCompleteEvent.result >= 0;
-
-				FOculusXRAnchorEventDelegates::OculusSpaceQueryComplete.Broadcast(RequestId, QueryCompleteEvent.result);
-
-				UE_LOG(LogOculusXRAnchors, Verbose, TEXT("ovrpEventType_SpaceQueryComplete Request ID: %llu  --  Result: %d"), QueryCompleteEvent.requestId, QueryCompleteEvent.result);
-
-				break;
-			}
-			case ovrpEventType_SpaceSaveComplete:
-			{
-				ovrpEventSpaceStorageSaveResult StorageResult;
-				GetEventData(buf, StorageResult);
-
-				// translate to BP types
-				const FOculusXRUUID uuid(StorageResult.uuid.data);
-				const FOculusXRUInt64 FSpace(StorageResult.space);
-				const FOculusXRUInt64 FRequest(StorageResult.requestId);
-				const bool bResult = StorageResult.result >= 0;
-
-				FOculusXRAnchorEventDelegates::OculusSpaceSaveComplete.Broadcast(FRequest, FSpace, bResult, StorageResult.result, uuid);
-
-				UE_LOG(LogOculusXRAnchors, Verbose, TEXT("ovrpEventType_SpaceSaveComplete  Request ID: %llu  --  Space: %llu  --  Result: %d"), StorageResult.requestId, StorageResult.space, StorageResult.result);
-
-				break;
-			}
-			case ovrpEventType_SpaceListSaveResult:
-			{
-				ovrpEventSpaceListSaveResult SpaceListSaveResult;
-				GetEventData(buf, SpaceListSaveResult);
-
-				FOculusXRUInt64 RequestId(SpaceListSaveResult.requestId);
-
-				UE_LOG(LogOculusXRAnchors, Verbose, TEXT("ovrpEventType_SpaceListSaveResult  Request ID: %llu  --  Result: %d"), SpaceListSaveResult.requestId, SpaceListSaveResult.result);
-				FOculusXRAnchorEventDelegates::OculusSpaceListSaveComplete.Broadcast(RequestId, SpaceListSaveResult.result);
-
-				break;
-			}
-			case ovrpEventType_SpaceEraseComplete:
-			{
-				ovrpEventSpaceStorageEraseResult SpaceEraseEvent;
-				GetEventData(buf, SpaceEraseEvent);
-
-				// translate to BP types
-				const FOculusXRUUID uuid(SpaceEraseEvent.uuid.data);
-				const FOculusXRUInt64 FRequestId(SpaceEraseEvent.requestId);
-				const FOculusXRUInt64 FResult(SpaceEraseEvent.result);
-				const EOculusXRSpaceStorageLocation BPLocation = (SpaceEraseEvent.location == ovrpSpaceStorageLocation_Local) ? EOculusXRSpaceStorageLocation::Local : EOculusXRSpaceStorageLocation::Invalid;
-
-				UE_LOG(LogOculusXRAnchors, Verbose, TEXT("ovrpEventType_SpaceEraseComplete  Request ID: %llu  --  Result: %d  -- UUID: %s"), SpaceEraseEvent.requestId, SpaceEraseEvent.result, *UOculusXRAnchorBPFunctionLibrary::AnchorUUIDToString(SpaceEraseEvent.uuid.data));
-
-				FOculusXRAnchorEventDelegates::OculusSpaceEraseComplete.Broadcast(FRequestId, FResult.Value, uuid, BPLocation);
-				break;
-			}
-			case ovrpEventType_SpaceShareResult:
-			{
-				unsigned char* BufData = buf.EventData;
-				ovrpUInt64 OvrpRequestId = 0;
-				memcpy(&OvrpRequestId, BufData, sizeof(OvrpRequestId));
-
-				ovrpEventSpaceShareResult SpaceShareSpaceResult;
-				GetEventData(buf, SpaceShareSpaceResult);
-
-				FOculusXRUInt64 RequestId(SpaceShareSpaceResult.requestId);
-
-				UE_LOG(LogOculusXRAnchors, Verbose, TEXT("ovrpEventType_SpaceShareSpaceResult  Request ID: %llu  --  Result: %d"),
-					SpaceShareSpaceResult.requestId,
-					SpaceShareSpaceResult.result);
-
-				FOculusXRAnchorEventDelegates::OculusSpaceShareComplete.Broadcast(RequestId, SpaceShareSpaceResult.result);
-
-				break;
-			}
-			case ovrpEventType_SpaceDiscoveryComplete:
-			{
-				ovrpEventDataSpaceDiscoveryComplete SpaceDiscoveryCompleteEvent;
-				GetEventData(buf, SpaceDiscoveryCompleteEvent);
-
-				FOculusXRUInt64 RequestId(SpaceDiscoveryCompleteEvent.requestId);
-				FOculusXRUInt64 Result(SpaceDiscoveryCompleteEvent.result);
-
-				UE_LOG(LogOculusXRAnchors, Verbose, TEXT("ovrpEventType_SpaceDiscoveryComplete  Request ID: %llu  --  Result: %llu"), RequestId.GetValue(), Result.GetValue());
-				FOculusXRAnchorEventDelegates::OculusAnchorsDiscoverComplete.Broadcast(RequestId, Result);
-
-				break;
-			}
-			case ovrpEventType_SpaceDiscoveryResultsAvailable:
-			{
-				ovrpEventSpaceDiscoveryResults SpaceDiscoveryResultsEvent;
-				GetEventData(buf, SpaceDiscoveryResultsEvent);
-
-				FOculusXRUInt64 RequestId(SpaceDiscoveryResultsEvent.requestId);
-
-				ovrpSpaceDiscoveryResults OVRPResults = { 0, 0, nullptr };
-
-				// get capacity
-				bool GetCapacityResult = FOculusXRHMDModule::GetPluginWrapper().GetInitialized() && OVRP_SUCCESS(FOculusXRHMDModule::GetPluginWrapper().RetrieveSpaceDiscoveryResults(RequestId, &OVRPResults));
-
-				UE_LOG(LogOculusXRAnchors, Log, TEXT("ovrpEventType_SpaceDiscoveryResultsAvailable Request ID: %llu  --  Capacity: %d  --  Result: %d"),
-					uint64(RequestId), OVRPResults.ResultCountOutput, GetCapacityResult);
-
-				// get data
-				OVRPResults.ResultCapacityInput = OVRPResults.ResultCountOutput;
-				std::vector<ovrpSpaceDiscoveryResult> ResultsData(OVRPResults.ResultCountOutput);
-				OVRPResults.Results = ResultsData.data();
-				bool GetDiscoveryResult = FOculusXRHMDModule::GetPluginWrapper().GetInitialized() && OVRP_SUCCESS(FOculusXRHMDModule::GetPluginWrapper().RetrieveSpaceDiscoveryResults(RequestId, &OVRPResults));
-				TArray<FOculusXRAnchorsDiscoverResult> SpaceDiscoveryResults;
-
-				for (auto& Element : ResultsData)
-				{
-					UE_LOG(LogOculusXRAnchors, Verbose, TEXT("ovrpEventType_SpaceDiscoveryResultsAvailable Space: %llu  --  Result: %d"),
-						Element.Space, GetDiscoveryResult);
-
-					SpaceDiscoveryResults.Add(FOculusXRAnchorsDiscoverResult(Element.Space, Element.Uuid.data));
-				}
-
-				FOculusXRAnchorEventDelegates::OculusAnchorsDiscoverResults.Broadcast(RequestId, SpaceDiscoveryResults);
-
-				break;
-			}
-			case ovrpEventType_SpacesSaveResult:
-			{
-				ovrpEventSpacesSaveResult SpacesSaveEvent;
-				GetEventData(buf, SpacesSaveEvent);
-
-				FOculusXRUInt64 RequestId(SpacesSaveEvent.requestId);
-				FOculusXRUInt64 Result(SpacesSaveEvent.result);
-
-				UE_LOG(LogOculusXRAnchors, Verbose, TEXT("ovrpEventType_SpacesSaveResult  Request ID: %llu  --  Result: %llu"), RequestId.GetValue(), Result.GetValue());
-				FOculusXRAnchorEventDelegates::OculusAnchorsSaveComplete.Broadcast(RequestId, Result);
-
-				break;
-			}
-			case ovrpEventType_SpacesEraseResult:
-			{
-				ovrpEventSpacesEraseResult SpacesEraseEvent;
-				GetEventData(buf, SpacesEraseEvent);
-
-				FOculusXRUInt64 RequestId(SpacesEraseEvent.requestId);
-				FOculusXRUInt64 Result(SpacesEraseEvent.result);
-
-				UE_LOG(LogOculusXRAnchors, Verbose, TEXT("ovrpEventType_SpacesEraseResult  Request ID: %llu  --  Result: %llu"), RequestId.GetValue(), Result.GetValue());
-				FOculusXRAnchorEventDelegates::OculusAnchorsEraseComplete.Broadcast(RequestId, Result);
-
-				break;
-			}
-			case ovrpEventType_None:
-			default:
-			{
-				EventPollResult = false;
-				break;
-			}
-		}
 	}
 
 	EOculusXRAnchorResult::Type FOculusXRAnchorManager::CreateAnchor(const FTransform& InTransform, uint64& OutRequestId, const FTransform& CameraTransform)
@@ -631,8 +377,9 @@ namespace OculusXRAnchors
 	{
 		ovrpUInt64 OvrpOutRequestId = 0;
 		ovrpResult QuerySpacesResult = ovrpFailure;
-		ovrpSpaceQueryInfo ovrQueryInfo = ConvertToOVRPSpaceQueryInfo(QueryInfo);
-		QuerySpacesResult = FOculusXRHMDModule::GetPluginWrapper().QuerySpaces(&ovrQueryInfo, &OvrpOutRequestId);
+
+		ovrpSpaceQueryInfo2 ovrQueryInfo = ConvertToOVRPSpaceQueryInfo(QueryInfo);
+		QuerySpacesResult = FOculusXRHMDModule::GetPluginWrapper().QuerySpaces2(&ovrQueryInfo, &OvrpOutRequestId);
 
 		memcpy(&OutRequestId, &OvrpOutRequestId, sizeof(uint64));
 
@@ -654,6 +401,10 @@ namespace OculusXRAnchors
 			{
 				UE_LOG(LogOculusXRAnchors, Verbose, TEXT("ComponentType: %s"), *UEnum::GetValueAsString(it));
 			}
+		}
+		else if (QueryInfo.FilterType == EOculusXRSpaceQueryFilterType::FilterByGroup)
+		{
+			UE_LOG(LogOculusXRAnchors, Verbose, TEXT("Query contains group filter  -  UUID: %s"), *QueryInfo.GroupUUIDFilter.ToString());
 		}
 
 		return static_cast<EOculusXRAnchorResult::Type>(QuerySpacesResult);
@@ -739,84 +490,6 @@ namespace OculusXRAnchors
 		return EOculusXRAnchorResult::Success;
 	}
 
-	EOculusXRAnchorResult::Type FOculusXRAnchorManager::GetSpaceScenePlane(uint64 Space, FVector& OutPos, FVector& OutSize)
-	{
-		OutPos.X = OutPos.Y = OutPos.Z = 0.f;
-		OutSize.X = OutSize.Y = OutSize.Z = 0.f;
-
-		ovrpRectf rect;
-		const ovrpResult Result = FOculusXRHMDModule::GetPluginWrapper().GetSpaceBoundingBox2D(&Space, &rect);
-
-		if (OVRP_SUCCESS(Result))
-		{
-			// Convert to UE4's coordinates system
-			OutPos.Y = rect.Pos.x;
-			OutPos.Z = rect.Pos.y;
-			OutSize.Y = rect.Size.w;
-			OutSize.Z = rect.Size.h;
-		}
-
-		return static_cast<EOculusXRAnchorResult::Type>(Result);
-	}
-
-	EOculusXRAnchorResult::Type FOculusXRAnchorManager::GetSpaceSceneVolume(uint64 Space, FVector& OutPos, FVector& OutSize)
-	{
-		OutPos.X = OutPos.Y = OutPos.Z = 0.f;
-		OutSize.X = OutSize.Y = OutSize.Z = 0.f;
-
-		ovrpBoundsf bounds;
-		const ovrpResult Result = FOculusXRHMDModule::GetPluginWrapper().GetSpaceBoundingBox3D(&Space, &bounds);
-
-		if (OVRP_SUCCESS(Result))
-		{
-			// Convert from OpenXR's right-handed to Unreal's left-handed coordinate system.
-			//    OpenXR             Unreal
-			//       | y            | z
-			//       |              |
-			// z <----+              +----> x
-			//      /              /
-			//    x/             y/
-			//
-			OutPos.X = -bounds.Pos.z;
-			OutPos.Y = bounds.Pos.x;
-			OutPos.Z = bounds.Pos.y;
-
-			// The position represents the corner of the volume which has the lowest value
-			// of each axis. Since we flipped the sign of one of the axes we need to adjust
-			// the position to the other side of the volume
-			OutPos.X -= bounds.Size.d;
-
-			// We keep the size positive for all dimensions
-			OutSize.X = bounds.Size.d;
-			OutSize.Y = bounds.Size.w;
-			OutSize.Z = bounds.Size.h;
-		}
-
-		return static_cast<EOculusXRAnchorResult::Type>(Result);
-	}
-
-	EOculusXRAnchorResult::Type FOculusXRAnchorManager::GetSpaceSemanticClassification(uint64 Space, TArray<FString>& OutSemanticClassifications)
-	{
-		OutSemanticClassifications.Empty();
-
-		const int32 maxByteSize = 1024;
-		char labelsChars[maxByteSize];
-
-		ovrpSemanticLabels labels;
-		labels.byteCapacityInput = maxByteSize;
-		labels.labels = labelsChars;
-
-		const ovrpResult Result = FOculusXRHMDModule::GetPluginWrapper().GetSpaceSemanticLabels(&Space, &labels);
-
-		if (OVRP_SUCCESS(Result))
-		{
-			FString labelsStr(labels.byteCountOutput, labels.labels);
-			labelsStr.ParseIntoArray(OutSemanticClassifications, TEXT(","));
-		}
-
-		return static_cast<EOculusXRAnchorResult::Type>(Result);
-	}
-
 	EOculusXRAnchorResult::Type FOculusXRAnchorManager::GetSpaceContainer(uint64 Space, TArray<FOculusXRUUID>& OutContainerUuids)
 	{
 		OutContainerUuids.Empty();
@@ -844,45 +517,6 @@ namespace OculusXRAnchors
 		}
 
 		return static_cast<EOculusXRAnchorResult::Type>(Result);
-	}
-
-	EOculusXRAnchorResult::Type FOculusXRAnchorManager::GetSpaceBoundary2D(uint64 Space, TArray<FVector2f>& OutVertices)
-	{
-		TArray<ovrpVector2f> vertices;
-
-		// Get the number of elements in the container
-		ovrpBoundary2D boundary;
-		boundary.vertexCapacityInput = 0;
-		boundary.vertexCountOutput = 0;
-		boundary.vertices = nullptr;
-
-		ovrpResult result = FOculusXRHMDModule::GetPluginWrapper().GetSpaceBoundary2D(&Space, &boundary);
-		if (OVRP_FAILURE(result))
-		{
-			UE_LOG(LogOculusXRAnchors, Warning, TEXT("Failed to get space boundary 2d %d"), result);
-			return static_cast<EOculusXRAnchorResult::Type>(result);
-		}
-
-		// Retrieve the actual array of vertices
-		vertices.SetNum(boundary.vertexCountOutput);
-		boundary.vertexCapacityInput = boundary.vertexCountOutput;
-		boundary.vertices = vertices.GetData();
-
-		result = FOculusXRHMDModule::GetPluginWrapper().GetSpaceBoundary2D(&Space, &boundary);
-		if (OVRP_FAILURE(result))
-		{
-			UE_LOG(LogOculusXRAnchors, Warning, TEXT("Failed to get space boundary 2d %d"), result);
-			return static_cast<EOculusXRAnchorResult::Type>(result);
-		}
-
-		// Write out the vertices
-		OutVertices.Reserve(vertices.Num());
-		for (const auto& it : vertices)
-		{
-			OutVertices.Add(FVector2f(it.x, it.y));
-		}
-
-		return EOculusXRAnchorResult::Success;
 	}
 
 	EOculusXRAnchorResult::Type FOculusXRAnchorManager::DiscoverSpaces(const FOculusXRSpaceDiscoveryInfo& DiscoveryInfo, uint64& OutRequestId)
@@ -959,5 +593,4 @@ namespace OculusXRAnchors
 
 		return static_cast<EOculusXRAnchorResult::Type>(Result);
 	}
-
 } // namespace OculusXRAnchors

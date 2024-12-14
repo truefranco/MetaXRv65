@@ -2,6 +2,8 @@
 // Copyright Epic Games, Inc. All Rights Reserved.
 
 #include "OculusXRInput.h"
+#include "OculusXRInputOpenXR.h"
+#include "OculusXRInputOVR.h"
 
 #if OCULUS_INPUT_SUPPORTED_PLATFORMS
 #include "OculusXRHMD.h"
@@ -14,7 +16,6 @@
 #include "GenericPlatform/GenericPlatformInputDeviceMapper.h"
 
 #define OVR_DEBUG_LOGGING 0
-#define OVR_HAP_LOGGING 0
 
 #define LOCTEXT_NAMESPACE "OculusXRInput"
 
@@ -1089,6 +1090,11 @@ namespace OculusXRInput
 		return DefaultName;
 	}
 
+	void FOculusXRInput::ShutdownXRFunctionLibrary()
+	{
+		FunctionLibraryImpl = nullptr;
+	}
+
 	struct MotionSourceInfo
 	{
 		ovrpNode Primary;
@@ -1603,99 +1609,20 @@ namespace OculusXRInput
 		float Scale,
 		bool bLoop)
 	{
-		if (HapticEffect)
-		{
-			switch (Hand)
-			{
-				case EControllerHand::Left:
-					ActiveHapticEffect_Left.Reset();
-					HapticsDesc_Left.Reset();
-					ActiveHapticEffect_Left = MakeShareable(new FActiveHapticFeedbackEffect(HapticEffect, Scale, bLoop));
-					HapticsDesc_Left = MakeShareable(new FOculusXRHapticsDesc(Location, bAppend));
-					break;
-				case EControllerHand::Right:
-					ActiveHapticEffect_Right.Reset();
-					HapticsDesc_Right.Reset();
-					ActiveHapticEffect_Right = MakeShareable(new FActiveHapticFeedbackEffect(HapticEffect, Scale, bLoop));
-					HapticsDesc_Right = MakeShareable(new FOculusXRHapticsDesc(Location, bAppend));
-					break;
-				default:
-					UE_LOG(LogOcInput, Warning, TEXT("Invalid hand specified (%d) for haptic feedback effect %s"), (int32)Hand, *HapticEffect->GetName());
-					break;
-			}
-		}
+		TSharedPtr<IOculusXRInputBase> Impl = GetOculusXRInputBaseImpl();
+		return Impl->PlayHapticEffect(HapticEffect, Hand, Location, bAppend, Scale, bLoop);
 	}
 
-	int FOculusXRInput::PlayHapticEffect(EControllerHand Hand, int SamplesCount, void* Samples, int InSampleRate, bool bPCM, bool bAppend)
+	int FOculusXRInput::PlayAmplitudeEnvelopeHapticEffect(EControllerHand Hand, int SamplesCount, void* Samples, int InSampleRate)
 	{
-		int TimeToSend = GetMaxHapticDuration(Hand);
-		if (TimeToSend == 0)
-			return 0;
-
-		const ovrpController OvrpController = (EControllerHand(Hand) == EControllerHand::Left) ? ovrpController_LTouch : ovrpController_RTouch;
-		int SampleRate = (InSampleRate > 0 ? InSampleRate : OvrpHapticsDesc.SampleRateHz);
-		int MaxSamplesCount = TimeToSend * SampleRate;
-		if (SamplesCount > MaxSamplesCount || SamplesCount < OvrpHapticsDesc.MinimumBufferSamplesCount)
-		{
-			UE_LOG(LogOcInput, Error, TEXT("Sample count should be between %d and %d which last %d time."),
-				OvrpHapticsDesc.MinimumBufferSamplesCount, MaxSamplesCount, TimeToSend);
-		}
-		int WantToSend = FMath::Min(SamplesCount, MaxSamplesCount);
-		WantToSend = FMath::Max(WantToSend, OvrpHapticsDesc.MinimumBufferSamplesCount);
-
-		float* BufferToSend = (float*)FMemory::Malloc(WantToSend * sizeof(*BufferToSend));
-		for (int i = 0; i < WantToSend; i++)
-		{
-			float Amplitude = ((uint8_t*)Samples)[i] / 255.0f;
-			Amplitude = FMath::Min(1.0f, Amplitude);
-			Amplitude = FMath::Max((bPCM ? -1.f : 0.0f), Amplitude);
-			BufferToSend[i] = Amplitude;
-			UE_CLOG(OVR_HAP_LOGGING, LogOcInput, Log, TEXT("amplitude, %.3f"), Amplitude);
-		}
-
-		ovrpUInt32 SamplesSent = 0;
-		if (bPCM)
-		{ // PCM
-			ovrpHapticsPcmVibration HapticsVibration;
-			HapticsVibration.Buffer = BufferToSend;
-			HapticsVibration.BufferSize = (ovrpUInt32)WantToSend;
-			HapticsVibration.SampleRateHz = SampleRate;
-			HapticsVibration.SamplesConsumed = &SamplesSent;
-			FOculusXRHMDModule::GetPluginWrapper().SetControllerHapticsPcm(
-				OvrpController,
-				HapticsVibration);
-			UE_CLOG(OVR_HAP_LOGGING, LogOcInput, Log, TEXT("PCMHaptics  is finished: bAppend: %d, BufferSize: %d, SampleRate: %.3f, SamplesConsumed: %d"),
-				(int)(HapticsVibration.Append),
-				HapticsVibration.BufferSize,
-				HapticsVibration.SampleRateHz,
-				SamplesSent);
-		}
-		else
-		{ // HAE
-			ovrpHapticsAmplitudeEnvelopeVibration HapticsVibration;
-			HapticsVibration.Duration = WantToSend / SampleRate;
-			HapticsVibration.AmplitudeCount = WantToSend;
-			HapticsVibration.Amplitudes = BufferToSend;
-
-			FOculusXRHMDModule::GetPluginWrapper().SetControllerHapticsAmplitudeEnvelope(
-				OvrpController,
-				HapticsVibration);
-			UE_CLOG(OVR_HAP_LOGGING, LogOcInput, Log, TEXT("HAEHaptics is finished: AmplitudeCount: %d, SampleRate: %d"),
-				HapticsVibration.AmplitudeCount,
-				SampleRate);
-		}
-		if (BufferToSend)
-		{
-			FMemory::Free(BufferToSend);
-		}
-		return (int)SamplesSent;
+		TSharedPtr<IOculusXRInputBase> Impl = GetOculusXRInputBaseImpl();
+		return Impl->PlayAmplitudeEnvelopeHapticEffect(Hand, SamplesCount, Samples, InSampleRate);
 	}
 
 	void FOculusXRInput::SetHapticsByValue(float Frequency, float Amplitude, EControllerHand Hand, EOculusXRHandHapticsLocation Location)
 	{
-		const ovrpController OvrpController = (EControllerHand(Hand) == EControllerHand::Left) ? ovrpController_LTouch : ovrpController_RTouch;
-		FOculusXRHMDModule::GetPluginWrapper().SetControllerLocalizedVibration(OvrpController, GetOVRPHapticsLocation(Location), Frequency, Amplitude);
-		UE_CLOG(OVR_HAP_LOGGING, LogOcInput, Log, TEXT("LocalizedVibration is finished: Location: %d, Frequency: %f, Amplitude: %f"), (int)(Location), Frequency, Amplitude);
+		TSharedPtr<IOculusXRInputBase> Impl = GetOculusXRInputBaseImpl();
+		return Impl->SetHapticsByValue(Frequency, Amplitude, Hand, Location);
 	}
 
 	void FOculusXRInput::ProcessHaptics(const float DeltaTime)
@@ -1874,24 +1801,37 @@ namespace OculusXRInput
 		return true;
 	}
 
+	TSharedPtr<IOculusXRInputBase> FOculusXRInput::FunctionLibraryImpl = nullptr;
+
+	TSharedPtr<IOculusXRInputBase> FOculusXRInput::GetOculusXRInputBaseImpl()
+	{
+		if (FunctionLibraryImpl == nullptr)
+		{
+			const FName SystemName(TEXT("OpenXR"));
+			const bool IsOpenXR = GEngine->XRSystem.IsValid() && (GEngine->XRSystem->GetSystemName() == SystemName);
+
+			if (OculusXRHMD::FOculusXRHMD::GetOculusXRHMD() != nullptr)
+			{
+				FunctionLibraryImpl = MakeShared<FOculusXRInputOVR>();
+			}
+			else if (IsOpenXR)
+			{
+				FunctionLibraryImpl = MakeShared<FOculusXRInputOpenXR>();
+			}
+		}
+		return FunctionLibraryImpl;
+	}
+
 	float FOculusXRInput::GetControllerSampleRateHz(EControllerHand Hand)
 	{
-		float sampleRateHz = 0.f;
-		const ovrpController OvrpController = (EControllerHand(Hand) == EControllerHand::Left) ? ovrpController_LTouch : ovrpController_RTouch;
-		if (OVRP_FAILURE(FOculusXRHMDModule::GetPluginWrapper().GetControllerSampleRateHz(OvrpController, &sampleRateHz)))
-		{
-			UE_LOG(LogOcInput, Error, TEXT("GetControllerSampleRateHz failed."));
-		}
-		return sampleRateHz;
+		TSharedPtr<IOculusXRInputBase> Impl = GetOculusXRInputBaseImpl();
+		return Impl->GetControllerSampleRateHz(Hand);
 	}
 
 	int FOculusXRInput::GetMaxHapticDuration(EControllerHand Hand)
 	{
-		const ovrpController OvrpController = (EControllerHand(Hand) == EControllerHand::Left) ? ovrpController_LTouch : ovrpController_RTouch;
-		if (!GetOvrpHapticsDesc((int32)Hand))
-			return 0;
-
-		return OvrpHapticsDesc.MaximumBufferSamplesCount / OvrpHapticsDesc.SampleRateHz;
+		TSharedPtr<IOculusXRInputBase> Impl = GetOculusXRInputBaseImpl();
+		return Impl->GetMaxHapticDuration(Hand);
 	}
 } // namespace OculusXRInput
 

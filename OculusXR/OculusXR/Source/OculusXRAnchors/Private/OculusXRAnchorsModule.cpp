@@ -7,8 +7,8 @@
 #include "OculusXRHMDModule.h"
 #include "OculusXRHMD.h"
 #include "OculusXRAnchors.h"
-#include "OculusXRAnchorManager.h"
-#include "OculusXRRoomLayoutManager.h"
+#include "OculusXRAnchorsEventPolling.h"
+#include "OculusXRAnchorComponents.h"
 
 DEFINE_LOG_CATEGORY(LogOculusXRAnchors);
 
@@ -36,15 +36,57 @@ void FOculusXRAnchorsModule::StartupModule()
 		return;
 	}
 
-	HMD->AddEventPollingDelegate(OculusXRHMD::FOculusXRHMDEventPollingDelegate::CreateStatic(&OculusXRAnchors::FOculusXRAnchorManager::OnPollEvent));
-	HMD->AddEventPollingDelegate(OculusXRHMD::FOculusXRHMDEventPollingDelegate::CreateStatic(&OculusXRAnchors::FOculusXRRoomLayoutManager::OnPollEvent));
+	HMD->AddEventPollingDelegate(OculusXRHMD::FOculusXRHMDEventPollingDelegate::CreateStatic(&OculusXRAnchors::FOculusXRAnchorsEventPolling::OnPollEvent));
 
 	Anchors.Initialize();
+
+	AddCreateAnchorComponentInterface(this);
 }
 
 void FOculusXRAnchorsModule::ShutdownModule()
 {
 	Anchors.Teardown();
+}
+
+void FOculusXRAnchorsModule::AddCreateAnchorComponentInterface(IOculusXRCreateAnchorComponent* CastInterface)
+{
+	CreateComponentInterfaces.AddUnique(CastInterface);
+}
+
+void FOculusXRAnchorsModule::RemoveCreateAnchorComponentInterface(IOculusXRCreateAnchorComponent* CastInterface)
+{
+	CreateComponentInterfaces.Remove(CastInterface);
+}
+
+UOculusXRBaseAnchorComponent* FOculusXRAnchorsModule::CreateAnchorComponent(uint64 AnchorHandle, EOculusXRSpaceComponentType Type, UObject* Outer)
+{
+	for (auto& it : CreateComponentInterfaces)
+	{
+		auto comp = it->TryCreateAnchorComponent(AnchorHandle, Type, Outer);
+		if (IsValid(comp))
+		{
+			return comp;
+		}
+	}
+
+	return nullptr;
+}
+
+UOculusXRBaseAnchorComponent* FOculusXRAnchorsModule::TryCreateAnchorComponent(uint64 AnchorHandle, EOculusXRSpaceComponentType Type, UObject* Outer)
+{
+	switch (Type)
+	{
+		case EOculusXRSpaceComponentType::Locatable:
+			return UOculusXRBaseAnchorComponent::FromSpace<UOculusXRLocatableAnchorComponent>(AnchorHandle, Outer);
+		case EOculusXRSpaceComponentType::SpaceContainer:
+			return UOculusXRBaseAnchorComponent::FromSpace<UOculusXRSpaceContainerAnchorComponent>(AnchorHandle, Outer);
+		case EOculusXRSpaceComponentType::Sharable:
+			return UOculusXRBaseAnchorComponent::FromSpace<UOculusXRSharableAnchorComponent>(AnchorHandle, Outer);
+		case EOculusXRSpaceComponentType::Storable:
+			return UOculusXRBaseAnchorComponent::FromSpace<UOculusXRStorableAnchorComponent>(AnchorHandle, Outer);
+		default:
+			return nullptr;
+	}
 }
 
 OculusXRAnchors::FOculusXRAnchors* FOculusXRAnchorsModule::GetOculusAnchors()

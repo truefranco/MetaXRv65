@@ -38,7 +38,7 @@ public:
 };
 
 /**
- * Load anchor data from device.
+ * A datastrcture to hold the data of a single anchor. It also provides functions to load the data from device or json.
  */
 UCLASS(ClassGroup = MRUtilityKit, Hidden)
 class MRUTILITYKIT_API UMRUKAnchorData : public UObject
@@ -57,7 +57,7 @@ public:
 
 	bool NeedAnchorLocalization = false;
 
-	void LoadFromDevice(const FOculusXRAnchorsDiscoverResult& AnchorsDiscoverResult, int32 MaxQueries = 64);
+	void LoadFromDevice(const FOculusXRAnchorsDiscoverResult& AnchorsDiscoverResult);
 	void LoadFromJson(const FJsonValue& Value);
 };
 
@@ -88,7 +88,7 @@ public:
 	UPROPERTY()
 	AMRUKLocalizer* LocalizationActor = nullptr;
 
-	void LoadFromDevice(const FOculusXRAnchorsDiscoverResult& AnchorsDiscoverResult, int32 MaxQueries = 64);
+	void LoadFromDevice(const FOculusXRAnchorsDiscoverResult& AnchorsDiscoverResult);
 	void LoadFromJson(const FJsonValue& Value);
 
 private:
@@ -120,7 +120,7 @@ public:
 	UPROPERTY()
 	TArray<TObjectPtr<UMRUKRoomData>> RoomsData;
 
-	void LoadFromDevice(int32 MaxQueries = 64);
+	void LoadFromDevice();
 	void LoadFromJson(const FString& Json);
 
 private:

@@ -10,7 +10,9 @@
 class AMRUKRoom;
 
 /**
- * Show a guardian if the player gets close to any furniture or walls.
+ * This class helps with spawning a guardian if the player gets close to any furniture or walls. This is useful if your application has a full VR mode.
+ * It can spawn a guardian for each room in the scene. It can also spawn a guardian for the current room only.
+ * For details about the guardian see the AMRUKGuardian class.
  */
 UCLASS(ClassGroup = MRUtilityKit, meta = (DisplayName = "MR Utility Kit Guardian"))
 class MRUTILITYKIT_API AMRUKGuardianSpawner : public AActor

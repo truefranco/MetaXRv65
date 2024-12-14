@@ -1,5 +1,5 @@
 // Copyright (c) Meta Platforms, Inc. and affiliates.
-#include "CoreMinimal.h"
+
 #include "Misc/AutomationTest.h"
 #include "OculusXRRuleProcessorSubsystem.h"
 #include "OculusXRSetupRule.h"

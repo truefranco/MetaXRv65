@@ -4,6 +4,7 @@
 
 #include "Kismet/BlueprintAsyncActionBase.h"
 #include "Templates/SharedPointer.h"
+#include "OculusXRAnchors.h"
 #include "OculusXRAnchorTypes.h"
 #include "OculusXRAnchorComponent.h"
 #include "OculusXRAnchorComponents.h"
@@ -45,6 +46,9 @@ DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOculusXR_LatentAction_DiscoverAncho
 
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(FOculusXR_LatentAction_GetSharedAnchors_Success, const TArray<FOculusXRAnchorsDiscoverResult>&, SharedAnchors, EOculusXRAnchorResult::Type, Result);
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOculusXR_LatentAction_GetSharedAnchors_Failure, EOculusXRAnchorResult::Type, Result);
+
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_FourParams(FOculusXR_LatentAction_ShareAnchorsWithGroups_Complete, bool, Success, const TArray<FOculusXRUUID>&, Groups, const TArray<FOculusXRUInt64>&, AnchorHandles, EOculusXRAnchorResult::Type, Result);
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_ThreeParams(FOculusXR_LatentAction_GetSharedAnchorsFromGroup_Complete, bool, Success, const TArray<FOculusXRAnchor>&, Anchors, EOculusXRAnchorResult::Type, Result);
 
 //
 // Create Anchor
@@ -394,27 +398,47 @@ private:
 	void HandleGetSharedAnchorsResult(EOculusXRAnchorResult::Type Result, const TArray<FOculusXRAnchorsDiscoverResult>& SharedAnchors);
 };
 
+//
+// Share with groups
+//
 UCLASS()
-class OCULUSXRANCHORS_API UOculusXRAnchorLaunchCaptureFlow : public UBlueprintAsyncActionBase
+class OCULUSXRANCHORS_API UOculusXRAsyncAction_ShareAnchorsWithGroups : public UBlueprintAsyncActionBase
 {
 	GENERATED_BODY()
 public:
-	DECLARE_DYNAMIC_MULTICAST_DELEGATE(FOculusXRAnchorCaptureFlowFinished);
+	virtual void Activate() override;
 
-	UFUNCTION(BlueprintCallable, Category = "OculusXR|SpatialAnchor", meta = (WorldContext = "WorldContext", BlueprintInternalUseOnly = "true"))
-	static UOculusXRAnchorLaunchCaptureFlow* LaunchCaptureFlowAsync(const UObject* WorldContext);
-
-	void Activate() override;
+	UFUNCTION(BlueprintCallable, meta = (BlueprintInternalUseOnly = "true"))
+	static UOculusXRAsyncAction_ShareAnchorsWithGroups* OculusXRShareAnchorsWithGroupsAsync(const TArray<FOculusXRUUID>& GroupUUIDs, const TArray<FOculusXRUInt64>& AnchorHandles);
 
 	UPROPERTY(BlueprintAssignable)
-	FOculusXRAnchorCaptureFlowFinished Success;
+	FOculusXR_LatentAction_ShareAnchorsWithGroups_Complete Complete;
 
-	UPROPERTY(BlueprintAssignable)
-	FOculusXRAnchorCaptureFlowFinished Failure;
+	TArray<FOculusXRUUID> GroupUUIDs;
+	TArray<FOculusXRUInt64> AnchorHandles;
 
 private:
-	uint64 Request = 0;
+	void HandleShareComplete(const OculusXRAnchors::FShareAnchorsWithGroups::FResultType& Result);
+};
 
-	UFUNCTION(CallInEditor)
-	void OnCaptureFinish(FOculusXRUInt64 RequestId, bool bSuccess);
+//
+// Get shared anchors from groups
+//
+UCLASS()
+class OCULUSXRANCHORS_API UOculusXRAsyncAction_GetSharedAnchorsFromGroup : public UBlueprintAsyncActionBase
+{
+	GENERATED_BODY()
+public:
+	virtual void Activate() override;
+
+	UFUNCTION(BlueprintCallable, meta = (BlueprintInternalUseOnly = "true"))
+	static UOculusXRAsyncAction_GetSharedAnchorsFromGroup* OculusXRGetSharedAnchorsFromGroupAsync(const FOculusXRUUID& GroupUUIDs);
+
+	UPROPERTY(BlueprintAssignable)
+	FOculusXR_LatentAction_GetSharedAnchorsFromGroup_Complete Complete;
+
+	FOculusXRUUID GroupUuid;
+
+private:
+	void HandleGetSharedAnchorsComplete(const OculusXRAnchors::FGetAnchorsSharedWithGroup::FResultType& Result);
 };

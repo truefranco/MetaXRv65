@@ -43,8 +43,8 @@ namespace OculusXRPassthroughRules
 
 	bool FAllowAlphaToneMapperPassthroughRule::IsApplied() const
 	{
-		URendererSettings* Settings = GetMutableDefault<URendererSettings>();
 PRAGMA_DISABLE_DEPRECATION_WARNINGS
+		URendererSettings* Settings = GetMutableDefault<URendererSettings>();
 		return Settings->bEnableAlphaChannelInPostProcessing == EAlphaChannelMode::AllowThroughTonemapper;
 PRAGMA_ENABLE_DEPRECATION_WARNINGS
 	}
@@ -60,8 +60,8 @@ PRAGMA_ENABLE_DEPRECATION_WARNINGS
 	{
 PRAGMA_DISABLE_DEPRECATION_WARNINGS
 		OCULUSXR_UPDATE_SETTINGS(URendererSettings, bEnableAlphaChannelInPostProcessing, EAlphaChannelMode::AllowThroughTonemapper);
-PRAGMA_ENABLE_DEPRECATION_WARNINGS
 		OutShouldRestartEditor = true;
+PRAGMA_ENABLE_DEPRECATION_WARNINGS
 	}
 } // namespace OculusXRPassthroughRules
 

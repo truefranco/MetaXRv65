@@ -14,11 +14,9 @@
 
 #if PLATFORM_ANDROID
 #include "Android/AndroidJNI.h"
-
 #if USE_ANDROID_OPENGL 
-   #include "Android/AndroidEGL.h"
+#include "Android/AndroidEGL.h"
 #endif
-
 #include "Android/AndroidApplication.h"
 #include "Android/AndroidPlatformMisc.h"
 #endif
@@ -384,8 +382,14 @@ namespace OculusXRHMD
 		return RHITextureSwapChain;
 	}
 
-	void FCustomPresent::CopyTexture_RenderThread(FRHICommandListImmediate& RHICmdList, FRHITexture* DstTexture, FRHITexture* SrcTexture,
-		FIntRect DstRect, FIntRect SrcRect, bool bAlphaPremultiply, bool bNoAlphaWrite, bool bInvertY, bool sRGBSource, bool bInvertAlpha) const
+	void FCustomPresent::CopyTexture_RenderThread(FRHICommandListImmediate& RHICmdList, FRHITexture* DstTexture, FRHITexture* SrcTexture, FIntRect DstRect, FIntRect SrcRect, bool bAlphaPremultiply, bool bNoAlphaWrite, bool bInvertY, bool sRGBSource, bool bInvertAlpha)
+	{
+		FCustomPresent::CopyTexture_RenderThread(RHICmdList, RendererModule, DstTexture, SrcTexture, OculusXRHMD->GetSettings_RenderThread()->CurrentFeatureLevel, RenderAPI == ovrpRenderAPI_Vulkan,
+			DstRect, SrcRect, bAlphaPremultiply, bNoAlphaWrite, bInvertY, sRGBSource, bInvertAlpha);
+	}
+
+	void FCustomPresent::CopyTexture_RenderThread(FRHICommandListImmediate& RHICmdList, IRendererModule* RendererModule, FRHITexture* DstTexture, FRHITexture* SrcTexture, FStaticFeatureLevel FeatureLevel, bool bUsingVulkan,
+		FIntRect DstRect, FIntRect SrcRect, bool bAlphaPremultiply, bool bNoAlphaWrite, bool bInvertY, bool sRGBSource, bool bInvertAlpha)
 	{
 		CheckInRenderThread();
 
@@ -472,7 +476,6 @@ namespace OculusXRHMD
 		GraphicsPSOInit.DepthStencilState = TStaticDepthStencilState<false, CF_Always>::GetRHI();
 		GraphicsPSOInit.PrimitiveType = PT_TriangleList;
 
-		const auto FeatureLevel = OculusXRHMD->GetSettings_RenderThread()->CurrentFeatureLevel;
 		auto ShaderMap = GetGlobalShaderMap(FeatureLevel);
 		TShaderMapRef<FScreenVS> VertexShader(ShaderMap);
 		GraphicsPSOInit.BoundShaderState.VertexDeclarationRHI = GFilterVertexDeclaration.VertexDeclarationRHI;
@@ -590,7 +593,7 @@ namespace OculusXRHMD
 				FRHIRenderPassInfo RPInfo(DstTexture, ERenderTargetActions::Load_Store);
 
 				// On Vulkan the positive and negative Y faces of the cubemap need to be flipped
-				if (RenderAPI == ovrpRenderAPI_Vulkan)
+				if (bUsingVulkan)
 				{
 					int NewFaceIndex = 0;
 

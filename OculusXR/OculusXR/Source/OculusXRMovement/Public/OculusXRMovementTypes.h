@@ -320,6 +320,7 @@ public:
 	EFaceTrackingDataSource DataSource;
 };
 
+
 USTRUCT(BlueprintType)
 struct OCULUSXRMOVEMENT_API FOculusXRFaceExpressionModifier
 {

@@ -50,6 +50,8 @@ namespace
 #endif // !UE_BUILD_SHIPPING
 #endif // !PLATFORM_ANDROID
 
+const FName IOculusXRHMDModule::NAME_OculusXRHMD(TEXT("OculusXRHMD"));
+
 //-------------------------------------------------------------------------------------------------
 // FOculusXRHMDModule
 //-------------------------------------------------------------------------------------------------
@@ -124,7 +126,7 @@ void FOculusXRHMDModule::ShutdownModule()
 #endif
 }
 
-OculusXR::FOculusXRExtensionPluginManager& FOculusXRHMDModule::GetExtensionPluginManager()
+OculusXR::FExtensionPluginManager& FOculusXRHMDModule::GetExtensionPluginManager()
 {
 	return ExtensionPluginManager;
 }
@@ -135,7 +137,7 @@ extern bool AndroidThunkCpp_IsOculusMobileApplication();
 
 FString FOculusXRHMDModule::GetModuleKeyName() const
 {
-	return FString(TEXT("OculusXRHMD"));
+	return NAME_OculusXRHMD.ToString();
 }
 
 void FOculusXRHMDModule::GetModuleAliases(TArray<FString>& AliasesOut) const

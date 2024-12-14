@@ -5,6 +5,11 @@
 #include "CoreMinimal.h"
 #include "IOculusXRProjectSetupModule.h"
 
+class FSlateStyleSet;
+class SDockTab;
+class FSpawnTabArgs;
+struct IConsoleCommand;
+
 DECLARE_LOG_CATEGORY_EXTERN(LogProjectSetupTool, Log, All);
 
 /**

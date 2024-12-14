@@ -13,6 +13,7 @@ namespace OculusXR
 	struct FAsyncRequest : public FAsyncRequestBase
 	{
 	public:
+		typedef TValueType FResultValueType;
 		typedef FAsyncResult<TResultEnum, TValueType, TResultSuccess> FResultType;
 		DECLARE_DELEGATE_OneParam(FCompleteDelegate, const FResultType&);
 

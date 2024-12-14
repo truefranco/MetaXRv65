@@ -822,7 +822,7 @@ PRAGMA_ENABLE_DEPRECATION_WARNINGS
 						if (MotionVectorDepthTextures.Num() && MotionVectorDepthTextures[0] != (unsigned long long)nullptr)
 						{
 							ETextureCreateFlags MVDepthTexCreateFlags = TexCreate_ShaderResource | TexCreate_DepthStencilTargetable;
-							MotionVectorDepthSwapChain = CustomPresent->CreateSwapChain_RenderThread(MotionVectorDepthTextureSize.w, MotionVectorDepthTextureSize.h, PF_DepthStencil, FClearValueBinding::Black, 1, 1, 1, ResourceType, MotionVectorDepthTextures, MVDepthTexCreateFlags, *FString::Printf(TEXT("Oculus MV Depth Swapchain %d"), OvrpLayerId));
+							MotionVectorDepthSwapChain = CustomPresent->CreateSwapChain_RenderThread(MotionVectorDepthTextureSize.w, MotionVectorDepthTextureSize.h, PF_DepthStencil, FClearValueBinding::DepthZero, 1, 1, 1, ResourceType, MotionVectorDepthTextures, MVDepthTexCreateFlags, *FString::Printf(TEXT("Oculus MV Depth Swapchain %d"), OvrpLayerId));
 						}
 						else
 						{
@@ -1096,30 +1096,6 @@ PRAGMA_ENABLE_DEPRECATION_WARNINGS
 
 				bUpdateTexture = false;
 			}
-#if PLATFORM_WINDOWS
-			// Generate mips
-			FRDGBuilder GraphBuilder(RHICmdList);
-			if (SwapChain->GetTextureRef()->GetNumMips() > 1 && SwapChain->GetTextureRef()->GetTextureCube() == nullptr)
-			{	
-
-				TRefCountPtr<IPooledRenderTarget> PooledRenderTarget = CreateRenderTarget(SwapChain->GetTextureRef(), TEXT("MipGeneration"));
-				FRDGTextureRef TextureRDG = GraphBuilder.RegisterExternalTexture(PooledRenderTarget);
-				ERHIFeatureLevel::Type FeatureLevel = GMaxRHIFeatureLevel;
-				FGenerateMips::Execute(GraphBuilder, FeatureLevel, TextureRDG, FGenerateMipsParams());
-
-			}
-
-			
-			
-			if (RightSwapChain.IsValid())
-			{
-				TRefCountPtr<IPooledRenderTarget> PooledRenderTarget = CreateRenderTarget(SwapChain->GetTextureRef(), TEXT("MipGeneration"));
-				FRDGTextureRef TextureRDG = GraphBuilder.RegisterExternalTexture(PooledRenderTarget);
-				ERHIFeatureLevel::Type FeatureLevel = GMaxRHIFeatureLevel;
-				FGenerateMips::Execute(GraphBuilder, FeatureLevel, TextureRDG, FGenerateMipsParams());
-			}
-			GraphBuilder.Execute();
-#endif
 		}
 
 		if (Id == 0 && SwapChain.IsValid() && InvAlphaTexture)

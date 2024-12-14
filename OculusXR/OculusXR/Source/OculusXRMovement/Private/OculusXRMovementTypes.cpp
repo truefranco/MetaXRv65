@@ -51,6 +51,7 @@ FOculusXRFaceState::FOculusXRFaceState()
 	ExpressionWeightConfidences.SetNum(static_cast<int32>(EOculusXRFaceConfidence::COUNT));
 }
 
+
 FOculusXRFaceExpressionModifier::FOculusXRFaceExpressionModifier()
 	: MinValue(0.f)
 	, MaxValue(1.f)

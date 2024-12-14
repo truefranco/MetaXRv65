@@ -4,6 +4,7 @@
 
 #include "MRUtilityKitGridSliceResizer.h"
 #include "ProceduralMeshComponent.h"
+#include "SceneManagement.h"
 
 namespace
 {

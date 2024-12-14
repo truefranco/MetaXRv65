@@ -11,7 +11,6 @@ struct OCULUSXRSCENE_API FSceneTypesPlaceholder
 public:
 };
 
-
 UENUM(BlueprintType)
 enum class EOculusXRBoundaryVisibility : uint8
 {

@@ -11,6 +11,8 @@
 #include "Engine/PostProcessVolume.h"
 #include "Engine/RendererSettings.h"
 #include "Misc/EngineVersionComparison.h"
+#include "Editor.h"
+#include "Kismet/KismetSystemLibrary.h"
 
 namespace OculusXRRenderingRules
 {
@@ -217,14 +219,31 @@ namespace OculusXRRenderingRules
 		OCULUSXR_UPDATE_SETTINGS(URendererSettings, bMobileUniformLocalLights, true);
 		OutShouldRestartEditor = true;
 	}
+
+	bool FEnableEmulatedUniformBuffersRule::IsApplied() const
+	{
+		const URendererSettings* Settings = GetMutableDefault<URendererSettings>();
+		return Settings->bVulkanUseEmulatedUBs;
+	}
+
+	void FEnableEmulatedUniformBuffersRule::ApplyImpl(bool& OutShouldRestartEditor)
+	{
+		OCULUSXR_UPDATE_SETTINGS(URendererSettings, bVulkanUseEmulatedUBs, true);
+		OutShouldRestartEditor = true;
+	}
 #endif
 
 	bool FDisableLensFlareRule::IsApplied() const
 	{
 		const URendererSettings* Settings = GetMutableDefault<URendererSettings>();
+		if (!Settings->bMobilePostProcessing)
+		{
+			return true;
+		}
+
 		for (TActorIterator<APostProcessVolume> ActorItr(GEditor->GetEditorWorldContext().World()); ActorItr; ++ActorItr)
 		{
-			if (ActorItr->Settings.LensFlareIntensity > 0.0f)
+			if (ActorItr->Settings.bOverride_LensFlareIntensity && ActorItr->Settings.LensFlareIntensity > 0.0f)
 			{
 				return false;
 			}
@@ -236,11 +255,16 @@ namespace OculusXRRenderingRules
 	{
 		OCULUSXR_UPDATE_SETTINGS(URendererSettings, bDefaultFeatureLensFlare, false);
 
+		UKismetSystemLibrary::BeginTransaction("ProjectSetupTool", NSLOCTEXT("OculusXRRenderingRules", "DisableLensFlare", "Disable Lens Flare"), nullptr);
 		for (TActorIterator<APostProcessVolume> ActorItr(GEditor->GetEditorWorldContext().World()); ActorItr; ++ActorItr)
 		{
-			ActorItr->Settings.LensFlareIntensity = 0.0f;
+			if (ActorItr->Settings.bOverride_LensFlareIntensity)
+			{
+				UKismetSystemLibrary::TransactObject(*ActorItr);
+				ActorItr->Settings.bOverride_LensFlareIntensity = false;
+			}
 		}
-		GetMutableDefault<URendererSettings>()->SaveConfig();
+		UKismetSystemLibrary::EndTransaction();
 		OutShouldRestartEditor = false;
 	}
 
@@ -328,13 +352,13 @@ namespace OculusXRRenderingRules
 
 	bool FDisableMobileShaderAllowMovableDirectionalLightsRule::IsApplied() const
 	{
-		return false; // !GetMutableDefault<URendererSettings>()->bMobileAllowMovableDirectionalLights;
+		return !GetMutableDefault<URendererSettings>()->bMobileEnableMovableLightCSMShaderCulling;
 	}
 
 	void FDisableMobileShaderAllowMovableDirectionalLightsRule::ApplyImpl(bool& OutShouldRestartEditor)
 	{
-		//OCULUSXR_UPDATE_SETTINGS(URendererSettings, bMobileAllowMovableDirectionalLights, false);
-		//OutShouldRestartEditor = true;
+		OCULUSXR_UPDATE_SETTINGS(URendererSettings, bMobileEnableMovableLightCSMShaderCulling, false);
+		OutShouldRestartEditor = true;
 	}
 
 	bool FDisableMobileShaderAllowMovableDirectionalLightsRule::IsValid()

@@ -87,11 +87,11 @@ public:
 	UOculusXRPassthroughColorLut* ColorLUTTarget;
 
 	/** Color value that will be multiplied to the current color map*/
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Passthrough Properties", meta = (EditCondition = "bEnableColorMap", EditConditionHides))
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Passthrough Properties", meta = (EditCondition = "bEnableColorMap && ColorMapType == 1", EditConditionHides))
 	FLinearColor ColorScale = FLinearColor::White;
 
 	/** Color value that will be added to the current color map*/
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Passthrough Properties", meta = (EditCondition = "bEnableColorMap", EditConditionHides))
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Passthrough Properties", meta = (EditCondition = "bEnableColorMap && ColorMapType == 1", EditConditionHides))
 	FLinearColor ColorOffset = FLinearColor::Black;
 
 	UFUNCTION(BlueprintCallable, Category = "Components|Stereo Layer")

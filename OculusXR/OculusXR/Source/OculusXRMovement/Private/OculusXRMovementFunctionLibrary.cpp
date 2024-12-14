@@ -59,6 +59,7 @@ bool UOculusXRMovementFunctionLibrary::TryGetFaceState(FOculusXRFaceState& outFa
 	return OculusXRMovement::GetFaceState(outFaceState);
 }
 
+
 bool UOculusXRMovementFunctionLibrary::IsFaceTrackingEnabled()
 {
 	return OculusXRMovement::IsFaceTrackingEnabled();

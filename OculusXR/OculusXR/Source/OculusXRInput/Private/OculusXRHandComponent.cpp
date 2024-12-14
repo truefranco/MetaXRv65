@@ -2,6 +2,8 @@
 // Copyright Epic Games, Inc. All Rights Reserved.
 #include "OculusXRHandComponent.h"
 #include "OculusXRInput.h"
+#include "OculusXRInputModule.h"
+#include "OpenXR/OculusXROpenXRUtilities.h"
 
 #include "Engine/SkeletalMesh.h"
 #include "Components/InputComponent.h"
@@ -47,6 +49,12 @@ void UOculusXRHandComponent::BeginPlay()
 
 void UOculusXRHandComponent::InitializeSkeletalMesh()
 {
+	const FOculusXRInputModule* InputModule = static_cast<FOculusXRInputModule*>(&FOculusXRInputModule::Get());
+	if (OculusXR::IsOpenXRSystem() && !InputModule->GetHandTrackingOpenXRExtension()->bIsInitialized)
+	{
+		return;
+	}
+
 	if (RuntimeSkeletalMesh)
 	{
 		if (UOculusXRInputFunctionLibrary::GetHandSkeletalMesh(RuntimeSkeletalMesh, SkeletonType, MeshType))
@@ -74,6 +82,12 @@ void UOculusXRHandComponent::TickComponent(float DeltaTime, enum ELevelTick Tick
 
 #if WITH_EDITOR
 	if (!bSkeletalMeshInitialized && !bCustomHandMesh)
+	{
+		InitializeSkeletalMesh();
+	}
+#else
+	// OpenXR session is created after the hand component is initialized
+	if (OculusXR::IsOpenXRSystem() && !bSkeletalMeshInitialized && !bCustomHandMesh)
 	{
 		InitializeSkeletalMesh();
 	}
@@ -109,7 +123,7 @@ void UOculusXRHandComponent::TickComponent(float DeltaTime, enum ELevelTick Tick
 			// Update Bone Pose Rotations
 			if (GetSkinnedAsset())
 			{
-				UpdateBonePose();
+				UpdateBonePose(SkeletonType);
 			}
 
 #if OCULUS_INPUT_SUPPORTED_PLATFORMS
@@ -146,8 +160,22 @@ void UOculusXRHandComponent::TickComponent(float DeltaTime, enum ELevelTick Tick
 	}
 }
 
-void UOculusXRHandComponent::UpdateBonePose()
+void UOculusXRHandComponent::UpdateBonePose(EOculusXRHandType HandType)
 {
+	FQuat HandRootFixupRotation = HandRootFixupRotationOVR;
+	if (OculusXR::IsOpenXRSystem())
+	{
+		check(HandType == EOculusXRHandType::HandLeft || HandType == EOculusXRHandType::HandRight);
+		if (HandType == EOculusXRHandType::HandLeft)
+		{
+			HandRootFixupRotation = LeftHandRootFixupRotationOpenXR;
+		}
+		else if (HandType == EOculusXRHandType::HandRight)
+		{
+			HandRootFixupRotation = RightHandRootFixupRotationOpenXR;
+		}
+	}
+
 	if (bCustomHandMesh)
 	{
 		for (auto& BoneElem : BoneNameMappings)

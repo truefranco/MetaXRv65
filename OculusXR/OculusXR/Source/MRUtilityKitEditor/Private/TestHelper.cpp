@@ -6,6 +6,7 @@
 #include "UnrealEdGlobals.h"
 #include "Editor/UnrealEdEngine.h"
 #include "Tests/AutomationEditorCommon.h"
+#include "UObject/ConstructorHelpers.h"
 
 bool StartPIE(bool bSimulateInEditor)
 {

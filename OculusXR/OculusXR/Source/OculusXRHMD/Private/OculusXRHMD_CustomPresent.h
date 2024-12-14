@@ -3,7 +3,9 @@
 
 #pragma once
 #include "OculusXRHMDPrivate.h"
+
 #define USE_ANDROID_OPENGL 0
+
 #if OCULUS_HMD_SUPPORTED_PLATFORMS
 #include "OculusXRHMD_Settings.h"
 #include "OculusXRHMD_GameFrame.h"
@@ -69,7 +71,10 @@ namespace OculusXRHMD
 		virtual FTextureRHIRef CreateTexture_RenderThread(uint32 InSizeX, uint32 InSizeY, EPixelFormat InFormat, FClearValueBinding InBinding, uint32 InNumMips, uint32 InNumSamples, uint32 InNumSamplesTileMem, ERHIResourceType InResourceType, ovrpTextureHandle InTexture, ETextureCreateFlags TexCreateFlags) = 0;
 		FXRSwapChainPtr CreateSwapChain_RenderThread(uint32 InSizeX, uint32 InSizeY, EPixelFormat InFormat, FClearValueBinding InBinding, uint32 InNumMips, uint32 InNumSamples, uint32 InNumSamplesTileMem, ERHIResourceType InResourceType, const TArray<ovrpTextureHandle>& InTextures, ETextureCreateFlags InTexCreateFlags, const TCHAR* DebugName);
 		TArray<FTextureRHIRef> CreateSwapChainTextures_RenderThread(uint32 InSizeX, uint32 InSizeY, EPixelFormat InFormat, FClearValueBinding InBinding, uint32 InNumMips, uint32 InNumSamples, uint32 InNumSamplesTileMem, ERHIResourceType InResourceType, const TArray<ovrpTextureHandle>& InTextures, ETextureCreateFlags InTexCreateFlags, const TCHAR* DebugName);
-		void CopyTexture_RenderThread(FRHICommandListImmediate& RHICmdList, FRHITexture* DstTexture, FRHITexture* SrcTexture, FIntRect DstRect = FIntRect(), FIntRect SrcRect = FIntRect(), bool bAlphaPremultiply = false, bool bNoAlphaWrite = false, bool bInvertY = true, bool sRGBSource = false, bool bInvertAlpha = false) const;
+
+		void CopyTexture_RenderThread(FRHICommandListImmediate& RHICmdList, FRHITexture* DstTexture, FRHITexture* SrcTexture, FIntRect DstRect = FIntRect(), FIntRect SrcRect = FIntRect(), bool bAlphaPremultiply = false, bool bNoAlphaWrite = false, bool bInvertY = true, bool sRGBSource = false, bool bInvertAlpha = false);
+		OCULUSXRHMD_API static void CopyTexture_RenderThread(FRHICommandListImmediate& RHICmdList, IRendererModule* RendererModule, FRHITexture* DstTexture, FRHITexture* SrcTexture, FStaticFeatureLevel FeatureLevel, bool bUsingVulkan, FIntRect DstRect = FIntRect(), FIntRect SrcRect = FIntRect(), bool bAlphaPremultiply = false, bool bNoAlphaWrite = false, bool bInvertY = true, bool sRGBSource = false, bool bInvertAlpha = false);
+
 		void SubmitGPUCommands_RenderThread(FRHICommandListImmediate& RHICmdList);
 		virtual void SubmitGPUFrameTime(float GPUFrameTime) {}
 		// This is a hack to turn force FSR off when we allocate our FDM to avoid a crash on Quest 3

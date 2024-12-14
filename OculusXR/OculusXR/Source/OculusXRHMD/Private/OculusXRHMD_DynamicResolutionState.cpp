@@ -39,8 +39,8 @@ namespace OculusXRHMD
 		if (IsEnabled())
 		{
 			// Compute desired resolution fraction range
-			float MinResolutionFraction = Settings->PixelDensityMin;
-			float MaxResolutionFraction = Settings->PixelDensityMax;
+			float MinResolutionFraction = Settings->GetPixelDensityMin();
+			float MaxResolutionFraction = Settings->GetPixelDensityMax();
 
 			// Clamp resolution fraction to what the renderer can do.
 			MinResolutionFraction = FMath::Max(MinResolutionFraction, ISceneViewFamilyScreenPercentage::kMinResolutionFraction);

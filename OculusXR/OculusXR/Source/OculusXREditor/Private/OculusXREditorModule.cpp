@@ -40,6 +40,7 @@
 #include "Interfaces/IProjectManager.h"
 #include "Widgets/Notifications/SNotificationList.h"
 #include "Editor/EditorPerformanceSettings.h"
+#include "HAL/FileManager.h"
 
 #define LOCTEXT_NAMESPACE "OculusXREditor"
 

@@ -111,6 +111,28 @@ enum class EMRUKAlignMode : uint8
 	Custom,
 };
 
+/**
+ * This enum is used to specify the component type, scene anchors can either have plane or volume components associated with them or both.
+ */
+UENUM(meta = (Bitflags, UseEnumValuesAsMaskValuesInEditor = "true"))
+enum class EMRUKComponentType
+{
+	/// No component type.
+	None = 0 UMETA(Hidden),
+	/// Plane component type.
+	Plane = 1 << 0,
+	/// Volume component type.
+	Volume = 1 << 1,
+	/// Mesh component type.
+	Mesh = 1 << 2,
+	/// All component types.
+	All = Plane | Volume | Mesh UMETA(Hidden),
+};
+ENUM_CLASS_FLAGS(EMRUKComponentType);
+
+/**
+ * Describes a Raycast hit in the MRUK (Mixed Reality Utility Kit). This structure is created by the AMRUKAnchor::Raycast and AMRUKAnchor::RaycastAll methods. You can read the position where the raycast hit, the normal of the surface that was hit, and the distance from the origin to the raycast hit position.
+ */
 USTRUCT(BlueprintType)
 struct MRUTILITYKIT_API FMRUKHit
 {
@@ -135,6 +157,10 @@ struct MRUTILITYKIT_API FMRUKHit
 	float HitDistance = 0.0f;
 };
 
+/**
+ * Label filter to use in MRUK (Mixed Reality Utility Kit). You can use this to filter anchors by their labels.
+ * use the IncludedLabels and ExcludedLabels list to specify which labels to include and exclude.
+ */
 USTRUCT(BlueprintType)
 struct MRUTILITYKIT_API FMRUKLabelFilter
 {
@@ -155,6 +181,12 @@ struct MRUTILITYKIT_API FMRUKLabelFilter
 	TArray<FString> ExcludedLabels;
 
 	/**
+	 * Enum flags representing component types to include, by default include all component types.
+	 */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "MR Utility Kit", meta = (Bitmask, BitmaskEnum = "EMRUKComponentType"))
+	int32 ComponentTypes = static_cast<int32>(EMRUKComponentType::All);
+
+	/**
 	 * Check if the labels pass the given label filter
 	 * @param Labels The labels to check.
 	 * @return Whether the filter passes or not.
@@ -162,6 +194,11 @@ struct MRUTILITYKIT_API FMRUKLabelFilter
 	bool PassesFilter(const TArray<FString>& Labels) const;
 };
 
+/**
+ * Represents a configuration for adjusting the UV texture coordinates of a plane.
+ *
+ * It contains properties to specify an offset and scale to be applied to the UV texture coordinates.
+ */
 USTRUCT(BlueprintType)
 struct MRUTILITYKIT_API FMRUKPlaneUV
 {
@@ -180,6 +217,9 @@ struct MRUTILITYKIT_API FMRUKPlaneUV
 	FVector2D Scale = FVector2D::UnitVector;
 };
 
+/**
+ * Texture coordinate modes for MRUK (Mixed Reality Utility Kit). You can use this to specify the texture coordinate mode for the U and V directions.
+ */
 USTRUCT(BlueprintType)
 struct MRUTILITYKIT_API FMRUKTexCoordModes
 {
@@ -198,6 +238,12 @@ struct MRUTILITYKIT_API FMRUKTexCoordModes
 	EMRUKCoordModeV V = EMRUKCoordModeV::Metric;
 };
 
+/**
+ * This struct represents a configuration for spawning an actor in the scene.
+ *
+ * It contains properties to specify the class of the actor to spawn, whether to match the aspect ratio of the volume,
+ * whether to calculate the facing direction of the actor, and what scaling and alignment modes to apply to the actor.
+ */
 USTRUCT(BlueprintType)
 struct MRUTILITYKIT_API FMRUKSpawnActor
 {
@@ -243,6 +289,10 @@ struct MRUTILITYKIT_API FMRUKSpawnActor
 	EMRUKAlignMode AlignMode = EMRUKAlignMode::Default;
 };
 
+/**
+ * This enum is used to specify the fallback behaviour when spawning an scene actor.
+ * Specify whether to fallback to a procedural mesh or not.
+ */
 UENUM(BlueprintType)
 enum class EMRUKFallbackToProceduralOverwrite : uint8
 {
@@ -254,6 +304,12 @@ enum class EMRUKFallbackToProceduralOverwrite : uint8
 	NoFallback,
 };
 
+/**
+ * Holds a configuration for spawning a group of actors.
+ *
+ * It contains properties to specify a list of actors to choose from, the selection mode when multiple actors are specified,
+ * and whether to fall back to spawning a procedural mesh if no actor class has been specified for this label.
+ */
 USTRUCT(BlueprintType)
 struct MRUTILITYKIT_API FMRUKSpawnGroup
 {
@@ -282,7 +338,7 @@ struct MRUTILITYKIT_API FMRUKSpawnGroup
 };
 
 /**
- * Implements the settings for the MRUtilityKit plugin.
+ * Implements the settings for the MRUtilityKit plugin. This is Unreal specific and not part of the MR Utility Kit library.
  */
 UCLASS(config = Game, defaultconfig)
 class MRUTILITYKIT_API UMRUKSettings : public UObject
@@ -299,9 +355,14 @@ public:
 	 */
 	UPROPERTY(config, EditAnywhere, Category = "MR Utility Kit")
 	bool EnableWorldLock = true;
-
 };
 
+/**
+ * MRUK (Mixed Reality Utility Kit) labels. These are the labels that are used by the MR Utility Kit library.
+ * Those labels are used to identify the different types of objects in the scene, such as walls, floors, etc.
+ *
+ * Furthermore you also use those labels to filter, for queries and other tools such as the Raycast and RaycastAll methods.
+ */
 struct MRUTILITYKIT_API FMRUKLabels
 {
 	static const FString Floor;
@@ -322,6 +383,9 @@ struct MRUTILITYKIT_API FMRUKLabels
 	static const FString Other;
 };
 
+/**
+ * This spawnmode controls how the MR Utility Kit handles spawning actors in the scene, either for all rooms, only for the current room or not at all.
+ */
 UENUM(BlueprintType)
 enum class EMRUKSpawnMode : uint8
 {
@@ -336,6 +400,9 @@ enum class EMRUKSpawnMode : uint8
 	AllRooms
 };
 
+/**
+ * UE Module interface impelmentation
+ */
 class FMRUKModule : public IModuleInterface
 {
 public:

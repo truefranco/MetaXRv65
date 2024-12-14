@@ -162,7 +162,8 @@ public:
 	FPlatformDownloadTask(FUpdateLogTextDel textDel, FEvent* saveEvent);
 
 	void OnDownloadRequestComplete(FHttpRequestPtr HttpRequest, FHttpResponsePtr HttpResponse, bool bSucceeded);
-	void OnRequestDownloadProgress(FHttpRequestPtr HttpRequest, uint64 BytesSend, uint64 InBytesReceived);
+	void OnRequestDownloadProgress64(FHttpRequestPtr HttpRequest, uint64 BytesSend, uint64 InBytesReceived);
+	void OnRequestDownloadProgress(FHttpRequestPtr HttpRequest, int32 BytesSend, int32 InBytesReceived);
 
 protected:
 	void DoWork();

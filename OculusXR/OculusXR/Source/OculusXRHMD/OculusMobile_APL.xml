@@ -60,8 +60,8 @@
 		<setBoolFromProperty result="bAnchorSupportEnabled" ini="Engine" section="/Script/OculusXRHMD.OculusXRHMDRuntimeSettings" property="bAnchorSupportEnabled" default="false"/>
 		<setBoolFromProperty result="bAnchorSharingEnabled" ini="Engine" section="/Script/OculusXRHMD.OculusXRHMDRuntimeSettings" property="bAnchorSharingEnabled" default="false"/>
 		<setBoolFromProperty result="bSceneSupportEnabled" ini="Engine" section="/Script/OculusXRHMD.OculusXRHMDRuntimeSettings" property="bSceneSupportEnabled" default="false"/>
-		
 		<setBoolFromProperty result="bBoundaryVisibilitySupportEnabled" ini="Engine" section="/Script/OculusXRHMD.OculusXRHMDRuntimeSettings" property="bBoundaryVisibilitySupportEnabled" default="false"/>
+		<setBoolFromProperty result="bColocationSessionsEnabled" ini="Engine" section="/Script/OculusXRHMD.OculusXRHMDRuntimeSettings" property="bColocationSessionsEnabled" default="false"/>
 		<setBoolFromProperty result="bSupportEyeTrackedFoveatedRendering" ini="Engine" section="/Script/OculusXRHMD.OculusXRHMDRuntimeSettings" property="bSupportEyeTrackedFoveatedRendering" default="false"/>
 		<setStringFromProperty result="ProcessorFavor" ini="Engine" section="/Script/OculusXRHMD.OculusXRHMDRuntimeSettings" property="ProcessorFavor" default="FavorEqually"/>
 		<setBoolIsEqual result="bProcessorFavorEqually" arg1="$S(ProcessorFavor)" arg2="FavorEqually"/>
@@ -254,11 +254,16 @@
 						<addPermission android:name="com.oculus.permission.PLANE_TRACKING"/>
 					</true>
 				</if>
-				
 				<if condition="bBoundaryVisibilitySupportEnabled">
 					<true>
 						<!-- Add Flags for boundary visibility-->
 						<addPermission android:name="com.oculus.permission.BOUNDARY_VISIBILITY"/>
+					</true>
+				</if>
+				<if condition="bColocationSessionsEnabled">
+					<true>
+						<!-- Add Flags for Colocation Sessions -->
+						<addPermission android:name="com.oculus.permission.USE_COLOCATION_DISCOVERY_API"/>
 					</true>
 				</if>
 			</true>

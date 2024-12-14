@@ -72,7 +72,6 @@ class OCULUSXRSCENE_API AOculusXRSceneActor : public AActor
 {
 	GENERATED_BODY()
 public:
-
 	UFUNCTION(BlueprintCallable, Category = "OculusXR|Scene Actor")
 	void LaunchCaptureFlow();
 
@@ -120,7 +119,6 @@ public:
 	UPROPERTY(EditAnywhere, Category = "OculusXR|Scene Actor")
 	TMap<FString, FOculusXRSpawnedSceneAnchorProperties> SceneVolumeSpawnedSceneAnchorProperties;
 
-
 public:
 	AOculusXRSceneActor(const FObjectInitializer& ObjectInitializer);
 
@@ -166,7 +164,6 @@ private:
 
 	// Spawns a scene anchor
 	AActor* SpawnOrUpdateSceneAnchor(AActor* Anchor, const FOculusXRUInt64& Space, const FOculusXRUInt64& RoomSpaceID, const FVector& BoundedPos, const FVector& BoundedSize, const TArray<FString>& SemanticClassifications, const EOculusXRSpaceComponentType AnchorComponentType);
-
 
 	// Components for room layout and spatial anchors functionalities
 	UOculusXRRoomLayoutManagerComponent* RoomLayoutManagerComponent = nullptr;

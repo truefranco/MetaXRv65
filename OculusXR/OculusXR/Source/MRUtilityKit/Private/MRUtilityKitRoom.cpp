@@ -248,13 +248,15 @@ AMRUKAnchor* AMRUKRoom::SpawnAnchor()
 
 void AMRUKRoom::AddAnchorToRoom(AMRUKAnchor* Anchor)
 {
+	const FString Semantics = FString::Join(Anchor->SemanticClassifications, TEXT("-"));
 #if WITH_EDITOR
 	if (Anchor->SemanticClassifications.Num() > 0)
 	{
-		const FString Semantics = FString::Join(Anchor->SemanticClassifications, TEXT("-"));
 		Anchor->SetActorLabel(Semantics);
 	}
 #endif
+
+	UE_LOG(LogMRUK, Log, TEXT("Add '%s' anchor '%s' to room '%s'"), *Semantics, *Anchor->AnchorUUID.ToString(), *AnchorUUID.ToString());
 
 	if (Anchor->AnchorUUID == RoomLayout.FloorUuid)
 	{
@@ -505,7 +507,6 @@ void AMRUKRoom::ComputeRoomEdges()
 	}
 }
 
-
 bool AMRUKRoom::IsPositionInRoom(const FVector& Position, bool TestVerticalBounds)
 {
 	if (!FloorAnchor)
@@ -722,7 +723,7 @@ AMRUKAnchor* AMRUKRoom::Raycast(const FVector& Origin, const FVector& Direction,
 			continue;
 		}
 		FMRUKHit HitResult;
-		if (Anchor->Raycast(Origin, Direction, MaxDist, HitResult))
+		if (Anchor->Raycast(Origin, Direction, MaxDist, HitResult, LabelFilter.ComponentTypes))
 		{
 			// Prevent further hits which are further away from being found
 			MaxDist = HitResult.HitDistance;
@@ -742,7 +743,7 @@ bool AMRUKRoom::RaycastAll(const FVector& Origin, const FVector& Direction, floa
 		{
 			continue;
 		}
-		if (Anchor->RaycastAll(Origin, Direction, MaxDist, OutHits))
+		if (Anchor->RaycastAll(Origin, Direction, MaxDist, OutHits, LabelFilter.ComponentTypes))
 		{
 			HitAnything = true;
 			// For each element in OutHits we want an equivalent entry in OutAnchors with the same index
@@ -1208,6 +1209,7 @@ UProceduralMeshComponent* AMRUKRoom::GetOrCreateGlobalMeshProceduralMeshComponen
 	const auto ProceduralMesh = NewObject<UProceduralMeshComponent>(GlobalMeshAnchor, TEXT("GlobalMesh"));
 	ProceduralMesh->ComponentTags.Add("GlobalMesh");
 	ProceduralMesh->RegisterComponent();
+	GlobalMeshAnchor->AddInstanceComponent(ProceduralMesh);
 	OutExistedAlready = false;
 	return ProceduralMesh;
 }

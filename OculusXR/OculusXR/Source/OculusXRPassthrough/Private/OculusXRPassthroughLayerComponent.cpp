@@ -350,7 +350,11 @@ bool UOculusXRPassthroughLayerComponent::CanEditChange(const FProperty* InProper
 		|| PropertyName == GET_MEMBER_NAME_CHECKED(UOculusXRPassthroughLayerComponent, bNoAlphaChannel)
 		|| PropertyName == GET_MEMBER_NAME_CHECKED(UOculusXRPassthroughLayerComponent, bQuadPreserveTextureRatio)
 #ifdef WITH_OCULUS_BRANCH
+			// clang-format off
+		PRAGMA_DISABLE_DEPRECATION_WARNINGS
 		|| PropertyName == GET_MEMBER_NAME_CHECKED(UOculusXRPassthroughLayerComponent, bBicubicFiltering)
+		PRAGMA_ENABLE_DEPRECATION_WARNINGS
+	// clang-format on
 #endif
 #if !UE_VERSION_OLDER_THAN(5, 4, 0)
 		|| PropertyName == GET_MEMBER_NAME_CHECKED(UOculusXRPassthroughLayerComponent, AdditionalFlags)

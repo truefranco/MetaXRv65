@@ -28,6 +28,12 @@ public:
 
 	void OnPostEngineInit();
 
+	TWeakPtr<XRPassthrough::FPassthroughXR, ESPMode::ThreadSafe> GetPassthroughExtensionPlugin()
+	{
+		return PassthroughXR;
+	}
+
+private:
 	typedef TSharedPtr<XRPassthrough::FPassthroughXR, ESPMode::ThreadSafe> FPassthroughXRPtr;
 	FPassthroughXRPtr PassthroughXR;
 };

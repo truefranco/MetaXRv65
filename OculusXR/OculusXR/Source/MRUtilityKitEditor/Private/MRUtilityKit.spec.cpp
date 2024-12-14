@@ -9,6 +9,7 @@
 #include "Editor/UnrealEdEngine.h"
 #include "UnrealEdGlobals.h"
 #include "TestHelper.h"
+#include "Editor.h"
 
 BEGIN_DEFINE_SPEC(FMRUKSpec, TEXT("MR Utility Kit"), EAutomationTestFlags::ProductFilter | EAutomationTestFlags::CommandletContext)
 UMRUKSubsystem* ToolkitSubsystem;
@@ -843,6 +844,7 @@ void FMRUKSpec::Define()
 				FVector Position;
 				FVector Direction;
 				float MaxDist;
+				EMRUKComponentType ComponentTypes;
 				// Output
 				FString Label;
 				FVector HitPosition;
@@ -851,28 +853,30 @@ void FMRUKSpec::Define()
 			};
 			TArray<FRecordedRaycast> RecordedRaycasts = {
 				// Hits
-				{ { 37.393, -14.003, -24.613 }, { 0.990, -0.048, -0.129 }, 0.0f, FMRUKLabels::Screen, { 84.823, -16.322, -30.780 }, { -0.995, 0.100, 0.000 }, 47.885 },
-				{ { 37.393, -14.003, -24.613 }, { 0.990, -0.048, -0.129 }, 50.0f, FMRUKLabels::Screen, { 84.823, -16.322, -30.780 }, { -0.995, 0.100, 0.000 }, 47.885 },
-				{ { -7.405, 27.794, -12.428 }, { 0.844, 0.003, -0.536 }, 0.0f, FMRUKLabels::Table, { 53.665, 28.008, -51.185 }, { 0.000, 0.000, 1.000 }, 72.33 },
-				{ { -22.253, 36.487, 1.660 }, { 0.211, 0.054, -0.976 }, 0.0f, FMRUKLabels::Floor, { 6.171, 43.785, -129.629 }, { 0.000, -0.000, 1.000 }, 134.529 },
-				{ { -22.253, 36.487, 1.660 }, { 0.432, 0.270, 0.861 }, 0.0f, FMRUKLabels::Ceiling, { 43.807, 77.766, 133.376 }, { 0.000, -0.000, -1.000 }, 153.026 },
-				{ { -77.859, 204.433, -26.619 }, { 0.110, -0.534, -0.839 }, 0.0f, FMRUKLabels::Couch, { -70.131, 166.787, -85.797 }, { -0.180, 0.984, -0.000 }, 70.561 },
-				{ { -127.986, 126.202, -94.119 }, { 0.606, -0.593, -0.530 }, 0.0f, FMRUKLabels::Floor, { -87.385, 86.442, -129.629 }, { 0.000, -0.000, 1.000 }, 67.009 },
-				{ { -138.228, 108.241, -74.798 }, { -0.950, -0.240, -0.201 }, 0.0f, FMRUKLabels::Couch, { -187.570, 95.756, -85.245 }, { -0.000, 0.000, 1.000 }, 51.958 },
-				{ { -298.759, 101.686, -76.521 }, { 0.968, -0.146, -0.204 }, 0.0f, FMRUKLabels::Couch, { -246.590, 93.797, -87.543 }, { -0.984, -0.180, -0.000 }, 53.901 },
-				{ { -196.813, 0.663, -71.069 }, { 0.250, 0.908, -0.335 }, 0.0f, FMRUKLabels::Couch, { -181.948, 54.632, -91.002 }, { 0.180, -0.984, 0.000 }, 59.422 },
-				{ { -115.905, 47.604, -6.411 }, { -0.199, 0.488, -0.850 }, 0.0f, FMRUKLabels::Couch, { -131.525, 85.882, -73.090 }, { -0.000, 0.000, 1.000 }, 78.456 },
-				{ { -127.926, 109.603, 59.458 }, { -0.274, 0.955, -0.115 }, 0.0f, FMRUKLabels::WallArt, { -144.809, 168.482, 52.371 }, { 0.136, -0.991, -0.000 }, 61.66 },
-				{ { 17.710, 137.262, 55.542 }, { 0.902, 0.409, -0.139 }, 0.0f, FMRUKLabels::WindowFrame, { 85.375, 167.955, 45.100 }, { -0.978, -0.207, -0.000 }, 75.031 },
+				{ { 37.393, -14.003, -24.613 }, { 0.990, -0.048, -0.129 }, 0.0f, EMRUKComponentType::All, FMRUKLabels::Screen, { 84.823, -16.322, -30.780 }, { -0.995, 0.100, 0.000 }, 47.885 },
+				{ { 37.393, -14.003, -24.613 }, { 0.990, -0.048, -0.129 }, 50.0f, EMRUKComponentType::All, FMRUKLabels::Screen, { 84.823, -16.322, -30.780 }, { -0.995, 0.100, 0.000 }, 47.885 },
+				{ { -7.405, 27.794, -12.428 }, { 0.844, 0.003, -0.536 }, 0.0f, EMRUKComponentType::All, FMRUKLabels::Table, { 53.665, 28.008, -51.185 }, { 0.000, 0.000, 1.000 }, 72.33 },
+				{ { -22.253, 36.487, 1.660 }, { 0.211, 0.054, -0.976 }, 0.0f, EMRUKComponentType::All, FMRUKLabels::Floor, { 6.171, 43.785, -129.629 }, { 0.000, -0.000, 1.000 }, 134.529 },
+				{ { -22.253, 36.487, 1.660 }, { 0.432, 0.270, 0.861 }, 0.0f, EMRUKComponentType::All, FMRUKLabels::Ceiling, { 43.807, 77.766, 133.376 }, { 0.000, -0.000, -1.000 }, 153.026 },
+				{ { -77.859, 204.433, -26.619 }, { 0.110, -0.534, -0.839 }, 0.0f, EMRUKComponentType::All, FMRUKLabels::Couch, { -70.131, 166.787, -85.797 }, { -0.180, 0.984, -0.000 }, 70.561 },
+				{ { -127.986, 126.202, -94.119 }, { 0.606, -0.593, -0.530 }, 0.0f, EMRUKComponentType::All, FMRUKLabels::Floor, { -87.385, 86.442, -129.629 }, { 0.000, -0.000, 1.000 }, 67.009 },
+				{ { -138.228, 108.241, -74.798 }, { -0.950, -0.240, -0.201 }, 0.0f, EMRUKComponentType::All, FMRUKLabels::Couch, { -187.570, 95.756, -85.245 }, { -0.000, 0.000, 1.000 }, 51.958 },
+				{ { -298.759, 101.686, -76.521 }, { 0.968, -0.146, -0.204 }, 0.0f, EMRUKComponentType::All, FMRUKLabels::Couch, { -246.590, 93.797, -87.543 }, { -0.984, -0.180, -0.000 }, 53.901 },
+				{ { -196.813, 0.663, -71.069 }, { 0.250, 0.908, -0.335 }, 0.0f, EMRUKComponentType::All, FMRUKLabels::Couch, { -181.948, 54.632, -91.002 }, { 0.180, -0.984, 0.000 }, 59.422 },
+				{ { -115.905, 47.604, -6.411 }, { -0.199, 0.488, -0.850 }, 0.0f, EMRUKComponentType::All, FMRUKLabels::Couch, { -131.525, 85.882, -73.090 }, { -0.000, 0.000, 1.000 }, 78.456 },
+				{ { -127.926, 109.603, 59.458 }, { -0.274, 0.955, -0.115 }, 0.0f, EMRUKComponentType::All, FMRUKLabels::WallArt, { -144.809, 168.482, 52.371 }, { 0.136, -0.991, -0.000 }, 61.66 },
+				{ { 17.710, 137.262, 55.542 }, { 0.902, 0.409, -0.139 }, 0.0f, EMRUKComponentType::All, FMRUKLabels::WindowFrame, { 85.375, 167.955, 45.100 }, { -0.978, -0.207, -0.000 }, 75.031 },
+				{ { -115.905, 47.604, -6.411 }, { -0.199, 0.488, -0.850 }, 0.0f, EMRUKComponentType::Plane, FMRUKLabels::Couch, { -134.361, 92.864, -85.245 }, { -0.000, 0.000, 1.000 }, 92.758 },
+				{ { -115.905, 47.604, -6.411 }, { -0.199, 0.488, -0.850 }, 0.0f, EMRUKComponentType::Volume, FMRUKLabels::Couch, { -131.525, 85.882, -73.090 }, { -0.000, 0.000, 1.000 }, 78.456 },
 				// Misses
-				{ { -77.859, 204.433, -26.619 }, { 0.000, 0.000, -1.000 }, 0.0f, TEXT(""), { 0.0f, 0.0f, 0.0f }, { 0.0f, 0.0f, 0.0f }, 0.0f },
-				{ { 37.393, -14.003, -24.613 }, { 0.990, -0.048, -0.129 }, 40.0f, TEXT(""), { 0.0f, 0.0f, 0.0f }, { 0.0f, 0.0f, 0.0f }, 0.0f },
-				{ { -7.405, 27.794, -12.428 }, { 0.844, 0.003, -0.536 }, 70.0f, TEXT(""), { 0.0f, 0.0f, 0.0f }, { 0.0f, 0.0f, 0.0f }, 0.0f },
+				{ { -77.859, 204.433, -26.619 }, { 0.000, 0.000, -1.000 }, 0.0f, EMRUKComponentType::All, TEXT(""), { 0.0f, 0.0f, 0.0f }, { 0.0f, 0.0f, 0.0f }, 0.0f },
+				{ { 37.393, -14.003, -24.613 }, { 0.990, -0.048, -0.129 }, 40.0f, EMRUKComponentType::All, TEXT(""), { 0.0f, 0.0f, 0.0f }, { 0.0f, 0.0f, 0.0f }, 0.0f },
+				{ { -7.405, 27.794, -12.428 }, { 0.844, 0.003, -0.536 }, 70.0f, EMRUKComponentType::All, TEXT(""), { 0.0f, 0.0f, 0.0f }, { 0.0f, 0.0f, 0.0f }, 0.0f },
 			};
 			for (const auto& Recorded : RecordedRaycasts)
 			{
 				FMRUKHit Result;
-				auto Anchor = Room->Raycast(Recorded.Position, Recorded.Direction, Recorded.MaxDist, {}, Result);
+				auto Anchor = Room->Raycast(Recorded.Position, Recorded.Direction, Recorded.MaxDist, { .ComponentTypes = static_cast<int32>(Recorded.ComponentTypes) }, Result);
 				// This is a fairly generous tolerance, but necessary because ray pos and direction were only recorded
 				// up to 3 decimal places and small changes in direction can result in fairly large differences in hit position
 				// over long distances.
@@ -913,23 +917,34 @@ void FMRUKSpec::Define()
 				FVector Position;
 				FVector Direction;
 				float MaxDist;
+				EMRUKComponentType ComponentTypes;
 				// Output
 				TArray<FRecordedRaycastHit> Hits;
 			};
 			TArray<FRecordedRaycastAll> RecordedRaycasts = {
-				{ { 83.193, 58.82, 11.548 }, { 0.044, -0.904, -0.426 }, 0.0f, {
-																				  { FMRUKLabels::WallFace, { 90.736, -95.398, -61.109 }, { -0.151, 0.989, 0 }, 170.643 },
-																				  { FMRUKLabels::Table, { 89.705, -74.333, -51.185 }, { 0, 0, 1 }, 147.335 },
-																				  { FMRUKLabels::Table, { 89.705, -74.333, -51.185 }, { 0, 0, 1 }, 147.335 },
-																				  { FMRUKLabels::Screen, { 84.702, 27.972, -2.986 }, { 0, -0, 1 }, 34.133 },
-																				  { FMRUKLabels::Screen, { 86.2, -2.658, -17.416 }, { -0.995, 0.1, 0 }, 68.026 },
-																			  } }
+				{ { 83.193, 58.82, 11.548 }, { 0.044, -0.904, -0.426 }, 0.0f, EMRUKComponentType::All, {
+																										   { FMRUKLabels::WallFace, { 90.736, -95.398, -61.109 }, { -0.151, 0.989, 0 }, 170.643 },
+																										   { FMRUKLabels::Table, { 89.705, -74.333, -51.185 }, { 0, 0, 1 }, 147.335 },
+																										   { FMRUKLabels::Table, { 89.705, -74.333, -51.185 }, { 0, 0, 1 }, 147.335 },
+																										   { FMRUKLabels::Screen, { 84.702, 27.972, -2.986 }, { 0, -0, 1 }, 34.133 },
+																										   { FMRUKLabels::Screen, { 86.2, -2.658, -17.416 }, { -0.995, 0.1, 0 }, 68.026 },
+																									   } },
+				{ { 83.193, 58.82, 11.548 }, { 0.044, -0.904, -0.426 }, 0.0f, EMRUKComponentType::Plane, {
+																											 { FMRUKLabels::WallFace, { 90.736, -95.398, -61.109 }, { -0.151, 0.989, 0 }, 170.643 },
+																											 { FMRUKLabels::Table, { 89.705, -74.333, -51.185 }, { 0, 0, 1 }, 147.335 },
+																										 } },
+				{ { 83.193, 58.82, 11.548 }, { 0.044, -0.904, -0.426 }, 0.0f, EMRUKComponentType::Volume, {
+																											  { FMRUKLabels::Table, { 89.705, -74.333, -51.185 }, { 0, 0, 1 }, 147.335 },
+																											  { FMRUKLabels::Screen, { 84.702, 27.972, -2.986 }, { 0, -0, 1 }, 34.133 },
+																											  { FMRUKLabels::Screen, { 86.2, -2.658, -17.416 }, { -0.995, 0.1, 0 }, 68.026 },
+																										  } }
+
 			};
 			for (const auto& Recorded : RecordedRaycasts)
 			{
 				TArray<FMRUKHit> Hits;
 				TArray<AMRUKAnchor*> Anchors;
-				Room->RaycastAll(Recorded.Position, Recorded.Direction, Recorded.MaxDist, {}, Hits, Anchors);
+				Room->RaycastAll(Recorded.Position, Recorded.Direction, Recorded.MaxDist, { .ComponentTypes = static_cast<int32>(Recorded.ComponentTypes) }, Hits, Anchors);
 				// This is a fairly generous tolerance, but necessary because ray pos and direction were only recorded
 				// up to 3 decimal places and small changes in direction can result in fairly large differences in hit position
 				// over long distances.
@@ -1136,7 +1151,7 @@ void FMRUKSpec::Define()
 
 			// NOTE: There are a number of valid ways to triangulate the mesh, and it doesn't need to be exactly like this but
 			// this will at least highlight if we unexpectedly caused the mesh generation to change its output.
-			TArray<int32> ExpectedIndexBuffer = { 7, 0, 1, 1, 2, 3, 7, 1, 3, 7, 3, 4, 7, 4, 5, 5, 6, 7 };
+			TArray<int32> ExpectedIndexBuffer = { 6, 7, 0, 0, 1, 2, 4, 5, 6, 0, 2, 3, 4, 6, 0, 0, 3, 4 };
 			if (TestEqual(TEXT("Triangle index buffer size"), Section->ProcIndexBuffer.Num(), ExpectedIndexBuffer.Num()))
 			{
 				for (int i = 0; i < ExpectedIndexBuffer.Num(); i++)
@@ -1215,38 +1230,38 @@ void FMRUKSpec::Define()
 					TestEqual(TEXT("Vertex 1"), Section->ProcVertexBuffer[1].Position, FVector(0.0, 168.041, -131.505), Tolerance);
 					TestEqual(TEXT("Vertex 2"), Section->ProcVertexBuffer[2].Position, FVector(0.0, 168.041, 131.505), Tolerance);
 					TestEqual(TEXT("Vertex 3"), Section->ProcVertexBuffer[3].Position, FVector(0.0, -168.041, 131.505), Tolerance);
-					TestEqual(TEXT("Vertex 4"), Section->ProcVertexBuffer[4].Position, FVector(0.0, 28.075, 111.358), Tolerance);
-					TestEqual(TEXT("Vertex 5"), Section->ProcVertexBuffer[5].Position, FVector(0.0, 143.493, 111.358), Tolerance);
-					TestEqual(TEXT("Vertex 6"), Section->ProcVertexBuffer[6].Position, FVector(0.0, 143.493, -61.585), Tolerance);
-					TestEqual(TEXT("Vertex 7"), Section->ProcVertexBuffer[7].Position, FVector(0.0, 28.075, -61.585), Tolerance);
+					TestEqual(TEXT("Vertex 4"), Section->ProcVertexBuffer[4].Position, FVector(0.0, 28.075, -61.585), Tolerance);
+					TestEqual(TEXT("Vertex 5"), Section->ProcVertexBuffer[5].Position, FVector(0.0, 143.493, -61.585), Tolerance);
+					TestEqual(TEXT("Vertex 6"), Section->ProcVertexBuffer[6].Position, FVector(0.0, 143.493, 111.358), Tolerance);
+					TestEqual(TEXT("Vertex 7"), Section->ProcVertexBuffer[7].Position, FVector(0.0, 28.075, 111.358), Tolerance);
 				}
 
 				if (TestEqual(TEXT("Index buffer size"), Section->ProcIndexBuffer.Num(), 24))
 				{
-					TestEqual(TEXT("Index 0"), Section->ProcIndexBuffer[0], 1);
-					TestEqual(TEXT("Index 1"), Section->ProcIndexBuffer[1], 5);
-					TestEqual(TEXT("Index 2"), Section->ProcIndexBuffer[2], 6);
-					TestEqual(TEXT("Index 3"), Section->ProcIndexBuffer[3], 0);
-					TestEqual(TEXT("Index 4"), Section->ProcIndexBuffer[4], 1);
-					TestEqual(TEXT("Index 5"), Section->ProcIndexBuffer[5], 6);
-					TestEqual(TEXT("Index 6"), Section->ProcIndexBuffer[6], 0);
-					TestEqual(TEXT("Index 7"), Section->ProcIndexBuffer[7], 6);
+					TestEqual(TEXT("Index 0"), Section->ProcIndexBuffer[0], 3);
+					TestEqual(TEXT("Index 1"), Section->ProcIndexBuffer[1], 0);
+					TestEqual(TEXT("Index 2"), Section->ProcIndexBuffer[2], 4);
+					TestEqual(TEXT("Index 3"), Section->ProcIndexBuffer[3], 5);
+					TestEqual(TEXT("Index 4"), Section->ProcIndexBuffer[4], 4);
+					TestEqual(TEXT("Index 5"), Section->ProcIndexBuffer[5], 0);
+					TestEqual(TEXT("Index 6"), Section->ProcIndexBuffer[6], 3);
+					TestEqual(TEXT("Index 7"), Section->ProcIndexBuffer[7], 4);
 					TestEqual(TEXT("Index 8"), Section->ProcIndexBuffer[8], 7);
-					TestEqual(TEXT("Index 9"), Section->ProcIndexBuffer[9], 3);
+					TestEqual(TEXT("Index 9"), Section->ProcIndexBuffer[9], 5);
 					TestEqual(TEXT("Index 10"), Section->ProcIndexBuffer[10], 0);
-					TestEqual(TEXT("Index 11"), Section->ProcIndexBuffer[11], 7);
-					TestEqual(TEXT("Index 12"), Section->ProcIndexBuffer[12], 3);
-					TestEqual(TEXT("Index 13"), Section->ProcIndexBuffer[13], 7);
-					TestEqual(TEXT("Index 14"), Section->ProcIndexBuffer[14], 4);
-					TestEqual(TEXT("Index 15"), Section->ProcIndexBuffer[15], 3);
-					TestEqual(TEXT("Index 16"), Section->ProcIndexBuffer[16], 4);
-					TestEqual(TEXT("Index 17"), Section->ProcIndexBuffer[17], 5);
-					TestEqual(TEXT("Index 18"), Section->ProcIndexBuffer[18], 5);
-					TestEqual(TEXT("Index 19"), Section->ProcIndexBuffer[19], 1);
-					TestEqual(TEXT("Index 20"), Section->ProcIndexBuffer[20], 2);
-					TestEqual(TEXT("Index 21"), Section->ProcIndexBuffer[21], 5);
-					TestEqual(TEXT("Index 22"), Section->ProcIndexBuffer[22], 2);
-					TestEqual(TEXT("Index 23"), Section->ProcIndexBuffer[23], 3);
+					TestEqual(TEXT("Index 11"), Section->ProcIndexBuffer[11], 1);
+					TestEqual(TEXT("Index 12"), Section->ProcIndexBuffer[12], 2);
+					TestEqual(TEXT("Index 13"), Section->ProcIndexBuffer[13], 3);
+					TestEqual(TEXT("Index 14"), Section->ProcIndexBuffer[14], 7);
+					TestEqual(TEXT("Index 15"), Section->ProcIndexBuffer[15], 6);
+					TestEqual(TEXT("Index 16"), Section->ProcIndexBuffer[16], 5);
+					TestEqual(TEXT("Index 17"), Section->ProcIndexBuffer[17], 1);
+					TestEqual(TEXT("Index 18"), Section->ProcIndexBuffer[18], 2);
+					TestEqual(TEXT("Index 19"), Section->ProcIndexBuffer[19], 7);
+					TestEqual(TEXT("Index 20"), Section->ProcIndexBuffer[20], 6);
+					TestEqual(TEXT("Index 21"), Section->ProcIndexBuffer[21], 6);
+					TestEqual(TEXT("Index 22"), Section->ProcIndexBuffer[22], 1);
+					TestEqual(TEXT("Index 23"), Section->ProcIndexBuffer[23], 2);
 				}
 			}
 		});

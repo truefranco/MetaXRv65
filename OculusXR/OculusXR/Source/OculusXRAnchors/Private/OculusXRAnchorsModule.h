@@ -15,7 +15,7 @@
 
 DECLARE_LOG_CATEGORY_EXTERN(LogOculusXRAnchors, Log, All);
 
-class FOculusXRAnchorsModule : public IOculusXRAnchorsModule
+class FOculusXRAnchorsModule : public IOculusXRAnchorsModule, IOculusXRCreateAnchorComponent
 {
 public:
 	virtual ~FOculusXRAnchorsModule() = default;
@@ -24,9 +24,18 @@ public:
 	virtual void StartupModule() override;
 	virtual void ShutdownModule() override;
 
+	// IOculusXRAnchorsModule
+	virtual void AddCreateAnchorComponentInterface(IOculusXRCreateAnchorComponent* CastInterface) override;
+	virtual void RemoveCreateAnchorComponentInterface(IOculusXRCreateAnchorComponent* CastInterface) override;
+	virtual UOculusXRBaseAnchorComponent* CreateAnchorComponent(uint64 AnchorHandle, EOculusXRSpaceComponentType Type, UObject* Outer) override;
+
+	// IOculusXRAnchorComponentCaster
+	virtual UOculusXRBaseAnchorComponent* TryCreateAnchorComponent(uint64 AnchorHandle, EOculusXRSpaceComponentType Type, UObject* Outer) override;
+
 	static OculusXRAnchors::FOculusXRAnchors* GetOculusAnchors();
 
 private:
+	TArray<IOculusXRCreateAnchorComponent*> CreateComponentInterfaces;
 	OculusXRAnchors::FOculusXRAnchors Anchors;
 };
 

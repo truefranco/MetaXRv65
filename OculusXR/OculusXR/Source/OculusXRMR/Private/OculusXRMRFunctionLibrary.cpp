@@ -84,8 +84,7 @@ OculusXRHMD::FOculusXRHMD* UOculusXRMRFunctionLibrary::GetOculusXRHMD()
 #if OCULUS_HMD_SUPPORTED_PLATFORMS
 	if (GEngine && GEngine->XRSystem.IsValid())
 	{
-		static const FName OculusSystemName(TEXT("OculusXRHMD"));
-		if (GEngine->XRSystem->GetSystemName() == OculusSystemName)
+		if (GEngine->XRSystem->GetSystemName() == IOculusXRHMDModule::NAME_OculusXRHMD)
 		{
 			return static_cast<OculusXRHMD::FOculusXRHMD*>(GEngine->XRSystem.Get());
 		}

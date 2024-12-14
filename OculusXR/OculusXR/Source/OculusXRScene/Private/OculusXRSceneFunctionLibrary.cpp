@@ -5,10 +5,11 @@
 #include "Engine/GameInstance.h"
 #include "OculusXRAnchorBPFunctionLibrary.h"
 #include "OculusXRScene.h"
+#include "OculusXRSceneModule.h"
 #include "OculusXRSceneSubsystem.h"
+#include "OculusXRAnchors.h"
 #include "OculusXRHMDPrivate.h"
 #include "OculusXRHMD.h"
-
 
 bool UOculusXRSceneFunctionLibrary::GetBoundaryVisibility(const UObject* WorldContext, EOculusXRBoundaryVisibility& OutVisibility)
 {
@@ -59,3 +60,42 @@ bool UOculusXRSceneFunctionLibrary::RequestBoundaryVisibility(const UObject* Wor
 
 	return true;
 }
+
+bool UOculusXRSceneFunctionLibrary::GetRoomLayout(FOculusXRUInt64 Space, FOculusXRRoomLayout& RoomLayoutOut, int32 MaxWallsCapacity)
+{
+	if (MaxWallsCapacity <= 0)
+	{
+		return false;
+	}
+
+	FOculusXRUUID OutCeilingUuid;
+	FOculusXRUUID OutFloorUuid;
+	TArray<FOculusXRUUID> OutWallsUuid;
+
+	auto result = OculusXRScene::FOculusXRScene::GetRoomLayout(Space.Value, static_cast<uint32>(MaxWallsCapacity), OutCeilingUuid, OutFloorUuid, OutWallsUuid);
+	auto bSuccess = UOculusXRAnchorBPFunctionLibrary::IsAnchorResultSuccess(result);
+
+	if (bSuccess)
+	{
+		RoomLayoutOut.CeilingUuid = OutCeilingUuid;
+		RoomLayoutOut.FloorUuid = OutFloorUuid;
+		RoomLayoutOut.WallsUuid.InsertZeroed(0, OutWallsUuid.Num());
+
+		for (int32 i = 0; i < OutWallsUuid.Num(); ++i)
+		{
+			RoomLayoutOut.WallsUuid[i] = OutWallsUuid[i];
+		}
+
+		TArray<FOculusXRUUID> spaceUUIDs;
+		EOculusXRAnchorResult::Type getContainerUUIDsResult;
+		OculusXRAnchors::FOculusXRAnchors::GetSpaceContainerUUIDs(Space, spaceUUIDs, getContainerUUIDsResult);
+
+		if (UOculusXRAnchorBPFunctionLibrary::IsAnchorResultSuccess(getContainerUUIDsResult))
+		{
+			RoomLayoutOut.RoomObjectUUIDs = spaceUUIDs;
+		}
+	}
+
+	return bSuccess;
+}
+

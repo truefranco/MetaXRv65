@@ -141,7 +141,7 @@ void UOculusXRInputFunctionLibrary::PlayBufferHapticEffect(class UHapticFeedback
 
 void UOculusXRInputFunctionLibrary::PlayAmplitudeEnvelopeHapticEffect(class UHapticFeedbackEffect_Buffer* HapticEffect, EControllerHand Hand)
 {
-	OculusXRInput::FOculusXRControllerTracking::PlayHapticEffect(Hand, HapticEffect->Amplitudes, HapticEffect->SampleRate, false, false);
+	OculusXRInput::FOculusXRControllerTracking::PlayAmplitudeEnvelopeHapticEffect(Hand, HapticEffect->Amplitudes, HapticEffect->SampleRate);
 }
 
 void UOculusXRInputFunctionLibrary::PlaySoundWaveHapticEffect(class UHapticFeedbackEffect_SoundWave* HapticEffect, EControllerHand Hand, bool bAppend, float Scale, bool bLoop)

@@ -38,7 +38,6 @@ namespace EOculusXRAnchorResult
 		Failure_SpaceNetworkTimeout = -2003,
 		Failure_SpaceNetworkRequestFailed = -2004,
 
-
 		/// APD warnings and error cases
 		Failure_SpaceInsufficientResources = -9000,
 		Failure_SpaceStorageAtCapacity = -9001,
@@ -168,6 +167,23 @@ struct OCULUSXRANCHORS_API FOculusXRUInt64
 	void SetValue(const uint64 Val) { Value = Val; };
 };
 
+USTRUCT(BlueprintType)
+struct OCULUSXRANCHORS_API FOculusXRAnchor
+{
+	GENERATED_BODY()
+public:
+	FOculusXRAnchor()
+		: AnchorHandle(0), Uuid() {}
+	FOculusXRAnchor(FOculusXRUInt64 SpaceHandle, FOculusXRUUID ID)
+		: AnchorHandle(SpaceHandle), Uuid(ID) {}
+
+	UPROPERTY(BlueprintReadWrite, Category = "OculusXR|SpatialAnchor")
+	FOculusXRUInt64 AnchorHandle;
+
+	UPROPERTY(BlueprintReadWrite, Category = "OculusXR|SpatialAnchor")
+	FOculusXRUUID Uuid;
+};
+
 template <>
 struct TStructOpsTypeTraits<FOculusXRUInt64> : public TStructOpsTypeTraitsBase2<FOculusXRUInt64>
 {
@@ -183,6 +199,7 @@ enum class EOculusXRSpaceQueryFilterType : uint8
 	None = 0 UMETA(DisplayName = "No Filter"),
 	FilterByIds = 1 UMETA(DisplayName = "Filter queries by UUIDs"),
 	FilterByComponentType = 2 UMETA(DisplayName = "Filter queries by component type"),
+	FilterByGroup = 3 UMETA(DisplayName = "Filter queries by group UUID")
 };
 
 // This is used as a bit-mask
@@ -244,6 +261,9 @@ public:
 
 	UPROPERTY(BlueprintReadWrite, Category = "OculusXR|SpatialAnchor")
 	TArray<EOculusXRSpaceComponentType> ComponentFilter;
+
+	UPROPERTY(BlueprintReadWrite, Category = "OculusXR|SpatialAnchor")
+	FOculusXRUUID GroupUUIDFilter;
 };
 
 USTRUCT(BlueprintType)

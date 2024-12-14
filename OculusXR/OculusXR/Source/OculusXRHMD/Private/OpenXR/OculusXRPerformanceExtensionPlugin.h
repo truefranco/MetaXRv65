@@ -32,7 +32,7 @@ namespace OculusXR
 		CPUCoreLast = CPUCore7UtilizationFloat,
 	};
 
-	class FOculusXRPerformanceExtensionPlugin : public IOculusXRExtensionPlugin
+	class FPerformanceExtensionPlugin : public IOculusXRExtensionPlugin
 	{
 	private:
 		XrInstance Instance;
@@ -47,7 +47,7 @@ namespace OculusXR
 		uint64 PerformanceMetricsMask;
 
 	public:
-		FOculusXRPerformanceExtensionPlugin();
+		FPerformanceExtensionPlugin();
 
 		// IOpenXRExtensionPlugin
 		virtual bool GetRequiredExtensions(TArray<const ANSICHAR*>& OutExtensions) override;

@@ -2,7 +2,13 @@
 
 #include "OculusXRFunctionLibraryOpenXR.h"
 
+#include "OpenXR\OculusXRXRFunctions.h"
 #include "OculusXRHMD.h"
+#include "IOpenXRHMD.h"
+#include "OpenXR\OculusXROpenXRUtilities.h"
+#include "IOpenXRHMD.h"
+#include "IOpenXRHMDModule.h"
+#include "OpenXRBlueprintFunctionLibrary.h"
 
 namespace
 {
@@ -142,19 +148,34 @@ namespace OculusXRHMD
 
 	void FOculusXRFunctionLibraryOpenXR::GetSuggestedCpuAndGpuPerformanceLevels(EOculusXRProcessorPerformanceLevel& CpuPerfLevel, EOculusXRProcessorPerformanceLevel& GpuPerfLevel)
 	{
-		OculusXR::FOculusXRPerformanceExtensionPlugin& PerfPlugin = FOculusXRHMDModule::Get().GetExtensionPluginManager().GetPerformanceExtensionPlugin();
+		OculusXR::FPerformanceExtensionPlugin& PerfPlugin = FOculusXRHMDModule::Get().GetExtensionPluginManager().GetPerformanceExtensionPlugin();
 		PerfPlugin.GetSuggestedCpuAndGpuPerformanceLevels(CpuPerfLevel, GpuPerfLevel);
 	}
 
 	void FOculusXRFunctionLibraryOpenXR::SetSuggestedCpuAndGpuPerformanceLevels(EOculusXRProcessorPerformanceLevel CpuPerfLevel, EOculusXRProcessorPerformanceLevel GpuPerfLevel)
 	{
-		OculusXR::FOculusXRPerformanceExtensionPlugin& PerfPlugin = FOculusXRHMDModule::Get().GetExtensionPluginManager().GetPerformanceExtensionPlugin();
+		OculusXR::FPerformanceExtensionPlugin& PerfPlugin = FOculusXRHMDModule::Get().GetExtensionPluginManager().GetPerformanceExtensionPlugin();
 		PerfPlugin.SetSuggestedCpuAndGpuPerformanceLevels(CpuPerfLevel, GpuPerfLevel);
 	}
 
 	bool FOculusXRFunctionLibraryOpenXR::GetUserProfile(FOculusXRHmdUserProfile& Profile)
 	{
-		NOT_IMPLEMENTED();
+		IXRTrackingSystem* TrackingSystem = OculusXR::GetOpenXRTrackingSystem();
+		if (TrackingSystem != nullptr)
+		{
+			const IHeadMountedDisplay* Hmd = TrackingSystem->GetHMDDevice();
+			if (Hmd != nullptr)
+			{
+				const float IPD = Hmd->GetInterpupillaryDistance();
+				Profile.Name = "";
+				Profile.Gender = "Unknown";
+				Profile.PlayerHeight = 0.0f;
+				Profile.EyeHeight = DefaultHeadModel.HeadModelHeight;
+				Profile.IPD = IPD;
+				Profile.NeckToEyeDistance = FVector2D(DefaultHeadModel.HeadModelDepth, 0.0f);
+			}
+			return true;
+		}
 		return false;
 	}
 
@@ -180,19 +201,35 @@ namespace OculusXRHMD
 
 	bool FOculusXRFunctionLibraryOpenXR::HasInputFocus()
 	{
-		NOT_IMPLEMENTED();
+		IXRTrackingSystem* TrackingSystem = OculusXR::GetOpenXRTrackingSystem();
+		if (TrackingSystem != nullptr)
+		{
+			IOpenXRHMD* OpenXRHMD = TrackingSystem->GetIOpenXRHMD();
+			if (OpenXRHMD != nullptr)
+			{
+				return OpenXRHMD->IsFocused();
+			}
+		}
 		return false;
 	}
 
 	bool FOculusXRFunctionLibraryOpenXR::HasSystemOverlayPresent()
 	{
-		NOT_IMPLEMENTED();
+		IXRTrackingSystem* TrackingSystem = OculusXR::GetOpenXRTrackingSystem();
+		if (TrackingSystem != nullptr)
+		{
+			IOpenXRHMD* OpenXRHMD = TrackingSystem->GetIOpenXRHMD();
+			if (OpenXRHMD != nullptr)
+			{
+				return !OpenXRHMD->IsFocused();
+			}
+		}
 		return false;
 	}
 
 	void FOculusXRFunctionLibraryOpenXR::GetGPUUtilization(bool& IsGPUAvailable, float& GPUUtilization)
 	{
-		OculusXR::FOculusXRPerformanceExtensionPlugin& PerfPlugin = FOculusXRHMDModule::Get().GetExtensionPluginManager().GetPerformanceExtensionPlugin();
+		OculusXR::FPerformanceExtensionPlugin& PerfPlugin = FOculusXRHMDModule::Get().GetExtensionPluginManager().GetPerformanceExtensionPlugin();
 		const FOculusXRPerformanceMetrics& PerformanceMetrics = PerfPlugin.GetPerformanceMetrics();
 		if (PerfPlugin.IsPerformanceMetricsSupported(OculusXR::GPUUtilizationFloat))
 		{
@@ -204,14 +241,14 @@ namespace OculusXRHMD
 
 	float FOculusXRFunctionLibraryOpenXR::GetGPUFrameTime()
 	{
-		OculusXR::FOculusXRPerformanceExtensionPlugin& PerfPlugin = FOculusXRHMDModule::Get().GetExtensionPluginManager().GetPerformanceExtensionPlugin();
+		OculusXR::FPerformanceExtensionPlugin& PerfPlugin = FOculusXRHMDModule::Get().GetExtensionPluginManager().GetPerformanceExtensionPlugin();
 		const FOculusXRPerformanceMetrics& PerformanceMetrics = PerfPlugin.GetPerformanceMetrics();
 		return PerformanceMetrics.AppGpuTime;
 	}
 
 	void FOculusXRFunctionLibraryOpenXR::GetPerformanceMetrics(FOculusXRPerformanceMetrics& PerformanceMetrics)
 	{
-		OculusXR::FOculusXRPerformanceExtensionPlugin& PerfPlugin = FOculusXRHMDModule::Get().GetExtensionPluginManager().GetPerformanceExtensionPlugin();
+		OculusXR::FPerformanceExtensionPlugin& PerfPlugin = FOculusXRHMDModule::Get().GetExtensionPluginManager().GetPerformanceExtensionPlugin();
 		PerformanceMetrics = PerfPlugin.GetPerformanceMetrics();
 	}
 
@@ -264,19 +301,20 @@ namespace OculusXRHMD
 
 	TArray<float> FOculusXRFunctionLibraryOpenXR::GetAvailableDisplayFrequencies()
 	{
-		NOT_IMPLEMENTED();
-		return TArray<float>();
+		OculusXR::FSystemInfoExtensionPlugin& SystemPlugin = FOculusXRHMDModule::Get().GetExtensionPluginManager().GetSystemInfoExtensionPlugin();
+		return SystemPlugin.GetSystemDisplayAvailableFrequencies();
 	}
 
 	float FOculusXRFunctionLibraryOpenXR::GetCurrentDisplayFrequency()
 	{
-		NOT_IMPLEMENTED();
-		return 0.0f;
+		OculusXR::FSystemInfoExtensionPlugin& SystemPlugin = FOculusXRHMDModule::Get().GetExtensionPluginManager().GetSystemInfoExtensionPlugin();
+		return SystemPlugin.GetSystemDisplayFrequency();
 	}
 
 	void FOculusXRFunctionLibraryOpenXR::SetDisplayFrequency(float RequestedFrequency)
 	{
-		NOT_IMPLEMENTED();
+		OculusXR::FSystemInfoExtensionPlugin& SystemPlugin = FOculusXRHMDModule::Get().GetExtensionPluginManager().GetSystemInfoExtensionPlugin();
+		return SystemPlugin.SetSystemDisplayFrequency(RequestedFrequency);
 	}
 
 	void FOculusXRFunctionLibraryOpenXR::EnablePositionTracking(bool bPositionTracking)
@@ -302,38 +340,70 @@ namespace OculusXRHMD
 
 	bool FOculusXRFunctionLibraryOpenXR::IsGuardianConfigured()
 	{
-		NOT_IMPLEMENTED();
-		return false;
+		OculusXR::FGuardianExtensionPlugin& Plugin = FOculusXRHMDModule::Get().GetExtensionPluginManager().GetGuardianExtensionPlugin();
+		return Plugin.IsGuardianConfigured();
 	}
 
 	bool FOculusXRFunctionLibraryOpenXR::IsGuardianDisplayed()
 	{
-		NOT_IMPLEMENTED();
+		// deprecated
 		return false;
 	}
 
 	TArray<FVector> FOculusXRFunctionLibraryOpenXR::GetGuardianPoints(EOculusXRBoundaryType BoundaryType, bool UsePawnSpace /* = false */)
 	{
-		NOT_IMPLEMENTED();
-		TArray<FVector> BoundaryPointList;
-		return BoundaryPointList;
+		if (BoundaryType != EOculusXRBoundaryType::Boundary_PlayArea)
+		{
+			UE_LOG(LogHMD, Log, TEXT("GetGuardianPoints: Only Boundary_PlayArea is applicable in OpenXR"));
+			return TArray<FVector>();
+		}
+
+		TArray<FVector> BoundaryPoints;
+		IXRTrackingSystem* TrackingSystem = OculusXR::GetOpenXRTrackingSystem();
+
+		if (TrackingSystem != nullptr)
+		{
+			OculusXR::FGuardianExtensionPlugin& Plugin = FOculusXRHMDModule::Get().GetExtensionPluginManager().GetGuardianExtensionPlugin();
+			Plugin.GetGuardianPoints(BoundaryPoints);
+		}
+
+		return BoundaryPoints;
 	}
 
 	FVector FOculusXRFunctionLibraryOpenXR::GetGuardianDimensions(EOculusXRBoundaryType BoundaryType)
 	{
-		NOT_IMPLEMENTED();
-		return FVector::ZeroVector;
+		OculusXR::FGuardianExtensionPlugin& Plugin = FOculusXRHMDModule::Get().GetExtensionPluginManager().GetGuardianExtensionPlugin();
+		return Plugin.GetGuardianDimensions();
 	}
 
 	FTransform FOculusXRFunctionLibraryOpenXR::GetPlayAreaTransform()
 	{
-		NOT_IMPLEMENTED();
+		IXRTrackingSystem* TrackingSystem = OculusXR::GetOpenXRTrackingSystem();
+		if (TrackingSystem != nullptr)
+		{
+			TArray<FVector> BoundaryPoints;
+			OculusXR::FGuardianExtensionPlugin& Plugin = FOculusXRHMDModule::Get().GetExtensionPluginManager().GetGuardianExtensionPlugin();
+			if (Plugin.GetGuardianPoints(BoundaryPoints))
+			{
+				check(BoundaryPoints.Num() == 4);
+				const float WorldToMetersScale = TrackingSystem->GetWorldToMetersScale();
+
+				const FVector Edge = BoundaryPoints[1] - BoundaryPoints[0];
+				const float Angle = FMath::Acos((Edge).GetSafeNormal() | FVector::RightVector);
+				const FQuat Rotation(FVector::UpVector, Edge.X < 0 ? Angle : -Angle);
+
+				const FVector Position = (BoundaryPoints[0] + BoundaryPoints[1] + BoundaryPoints[2] + BoundaryPoints[3]) / 4;
+				const FVector Scale(FVector::Distance(BoundaryPoints[3], BoundaryPoints[0]) / WorldToMetersScale, FVector::Distance(BoundaryPoints[1], BoundaryPoints[0]) / WorldToMetersScale, 1.0);
+
+				return FTransform(Rotation, Position, Scale);
+			}
+		}
 		return FTransform();
 	}
 
 	FOculusXRGuardianTestResult FOculusXRFunctionLibraryOpenXR::GetPointGuardianIntersection(const FVector Point, EOculusXRBoundaryType BoundaryType)
 	{
-		NOT_IMPLEMENTED();
+		// deprecated
 		FOculusXRGuardianTestResult InteractionInfo;
 		memset(&InteractionInfo, 0, sizeof(FOculusXRGuardianTestResult));
 		return InteractionInfo;
@@ -341,7 +411,7 @@ namespace OculusXRHMD
 
 	FOculusXRGuardianTestResult FOculusXRFunctionLibraryOpenXR::GetNodeGuardianIntersection(EOculusXRTrackedDeviceType DeviceType, EOculusXRBoundaryType BoundaryType)
 	{
-		NOT_IMPLEMENTED();
+		// deprecated
 		FOculusXRGuardianTestResult InteractionInfo;
 		memset(&InteractionInfo, 0, sizeof(FOculusXRGuardianTestResult));
 		return InteractionInfo;
@@ -349,7 +419,7 @@ namespace OculusXRHMD
 
 	void FOculusXRFunctionLibraryOpenXR::SetGuardianVisibility(bool GuardianVisible)
 	{
-		NOT_IMPLEMENTED();
+		// deprecated
 	}
 
 	bool FOculusXRFunctionLibraryOpenXR::GetSystemHmd3DofModeEnabled()
@@ -360,67 +430,85 @@ namespace OculusXRHMD
 
 	EOculusXRColorSpace FOculusXRFunctionLibraryOpenXR::GetHmdColorDesc()
 	{
-		NOT_IMPLEMENTED();
-		return EOculusXRColorSpace::Unknown;
+		OculusXR::FSystemInfoExtensionPlugin& SystemPlugin = FOculusXRHMDModule::Get().GetExtensionPluginManager().GetSystemInfoExtensionPlugin();
+		return SystemPlugin.GetColorSpace();
 	}
 
 	void FOculusXRFunctionLibraryOpenXR::SetClientColorDesc(EOculusXRColorSpace ColorSpace)
 	{
-		NOT_IMPLEMENTED();
+		OculusXR::FSystemInfoExtensionPlugin& SystemPlugin = FOculusXRHMDModule::Get().GetExtensionPluginManager().GetSystemInfoExtensionPlugin();
+		SystemPlugin.SetColorSpace(ColorSpace);
 	}
 
 	void FOculusXRFunctionLibraryOpenXR::SetLocalDimmingOn(bool LocalDimmingOn)
 	{
-		NOT_IMPLEMENTED();
+		OculusXR::FLayerExtensionPlugin& Plugin = FOculusXRHMDModule::Get().GetExtensionPluginManager().GetLayerExtensionPlugin();
+		return Plugin.SetEnableLocalDimming(LocalDimmingOn);
 	}
 
 	bool FOculusXRFunctionLibraryOpenXR::IsPassthroughSupported()
 	{
-		NOT_IMPLEMENTED();
-		return false;
+		OculusXR::FSystemInfoExtensionPlugin& SystemPlugin = FOculusXRHMDModule::Get().GetExtensionPluginManager().GetSystemInfoExtensionPlugin();
+		return SystemPlugin.IsPassthroughSupported();
 	}
 
 	bool FOculusXRFunctionLibraryOpenXR::IsColorPassthroughSupported()
 	{
-		NOT_IMPLEMENTED();
-		return false;
+		OculusXR::FSystemInfoExtensionPlugin& SystemPlugin = FOculusXRHMDModule::Get().GetExtensionPluginManager().GetSystemInfoExtensionPlugin();
+		return SystemPlugin.IsColorPassthroughSupported();
 	}
 
 	void FOculusXRFunctionLibraryOpenXR::StartEnvironmentDepth()
 	{
-		NOT_IMPLEMENTED();
+#ifdef WITH_OCULUS_BRANCH
+		auto& EnvDepthPlugin = FOculusXRHMDModule::Get().GetExtensionPluginManager().EnvironmentDepthExtensionPlugin;
+		EnvDepthPlugin.StartEnvironmentDepth();
+#endif
 	}
 
 	void FOculusXRFunctionLibraryOpenXR::StopEnvironmentDepth()
 	{
-		NOT_IMPLEMENTED();
+#ifdef WITH_OCULUS_BRANCH
+		auto& EnvDepthPlugin = FOculusXRHMDModule::Get().GetExtensionPluginManager().EnvironmentDepthExtensionPlugin;
+		EnvDepthPlugin.StopEnvironmentDepth();
+#endif
 	}
 
 	bool FOculusXRFunctionLibraryOpenXR::IsEnvironmentDepthStarted()
 	{
-		NOT_IMPLEMENTED();
+#ifdef WITH_OCULUS_BRANCH
+		const auto& EnvDepthPlugin = FOculusXRHMDModule::Get().GetExtensionPluginManager().EnvironmentDepthExtensionPlugin;
+		return !EnvDepthPlugin.IsEnvironmentDepthStarted();
+#else
 		return false;
+#endif
 	}
 
 	void FOculusXRFunctionLibraryOpenXR::SetEnvironmentDepthHandRemoval(bool RemoveHands)
 	{
-		NOT_IMPLEMENTED();
+#ifdef WITH_OCULUS_BRANCH
+		auto& EnvDepthPlugin = FOculusXRHMDModule::Get().GetExtensionPluginManager().EnvironmentDepthExtensionPlugin;
+		EnvDepthPlugin.SetEnvironmentDepthHandRemoval_RenderThread(RemoveHands);
+#endif
 	}
 
 	void FOculusXRFunctionLibraryOpenXR::SetXROcclusionsMode(UObject* WorldContextObject, EOculusXROcclusionsMode Mode)
 	{
-		NOT_IMPLEMENTED();
+#ifdef WITH_OCULUS_BRANCH
+		auto& EnvDepthPlugin = FOculusXRHMDModule::Get().GetExtensionPluginManager().EnvironmentDepthExtensionPlugin;
+		EnvDepthPlugin.SetXROcclusionsMode(WorldContextObject, Mode);
+#endif
 	}
 
 	void FOculusXRFunctionLibraryOpenXR::SetEyeBufferSharpenType(EOculusXREyeBufferSharpenType EyeBufferSharpenType)
 	{
-		NOT_IMPLEMENTED();
+		OculusXR::FLayerExtensionPlugin& Plugin = FOculusXRHMDModule::Get().GetExtensionPluginManager().GetLayerExtensionPlugin();
+		Plugin.SetEyeBufferSharpenType(EyeBufferSharpenType);
 	}
 
 	bool FOculusXRFunctionLibraryOpenXR::IsPassthroughRecommended()
 	{
-		NOT_IMPLEMENTED();
-		return false;
+		OculusXR::FSystemInfoExtensionPlugin& SystemPlugin = FOculusXRHMDModule::Get().GetExtensionPluginManager().GetSystemInfoExtensionPlugin();
+		return SystemPlugin.IsPassthroughRecommended();
 	}
-
 } // namespace OculusXRHMD

@@ -2,8 +2,10 @@
 
 #pragma once
 #include "CoreMinimal.h"
-#include "Misc/EngineVersionComparison.h"
+#include "OculusXREnvironmentDepthExtensionPlugin.h"
 #include "OculusXRCoreExtensionPlugin.h"
+#include "OculusXRGuardianExtensionPlugin.h"
+#include "OculusXRLayerExtensionPlugin.h"
 #include "OculusXRPerformanceExtensionPlugin.h"
 #include "OculusXRSimulatorExtensionPlugin.h"
 #include "OculusXRSystemInfoExtensionPlugin.h"
@@ -11,20 +13,28 @@
 namespace OculusXR
 {
 
-	class FOculusXRExtensionPluginManager
+	class FExtensionPluginManager
 	{
 	public:
-		FOculusXRExtensionPluginManager(){};
-		virtual ~FOculusXRExtensionPluginManager() {}
+		FExtensionPluginManager(){};
+		virtual ~FExtensionPluginManager() {}
 
 		void StartupOpenXRPlugins();
 
-		FOculusXRCoreExtensionPlugin OculusXRCoreExtensionPlugin;
-		FOculusXRPerformanceExtensionPlugin OculusXRPerformanceExtensionPlugin;
-		FOculusXRSimulatorExtensionPlugin OculusXRSimulatorExtensionPlugin;
+		FCoreExtensionPlugin CoreExtensionPlugin;
+		FPerformanceExtensionPlugin PerformanceExtensionPlugin;
+		FXRSimulatorExtensionPlugin XRSimulatorExtensionPlugin;
+		FGuardianExtensionPlugin GuardianExtensionPlugin;
+		FLayerExtensionPlugin LayerExtensionPlugin;
+#ifdef WITH_OCULUS_BRANCH
+		FEnvironmentDepthExtensionPlugin EnvironmentDepthExtensionPlugin;
+#endif
+
 		FSystemInfoExtensionPlugin SystemInfoExtensionPlugin;
-		FOculusXRPerformanceExtensionPlugin& GetPerformanceExtensionPlugin();
+		FPerformanceExtensionPlugin& GetPerformanceExtensionPlugin();
 		FSystemInfoExtensionPlugin& GetSystemInfoExtensionPlugin();
+		FGuardianExtensionPlugin& GetGuardianExtensionPlugin();
+		FLayerExtensionPlugin& GetLayerExtensionPlugin();
 	};
 
 } // namespace OculusXR

@@ -1439,7 +1439,11 @@ void FPlatformDownloadTask::DoWork()
 	TSharedRef<IHttpRequest, ESPMode::ThreadSafe> httpRequest = FHttpModule::Get().CreateRequest();
 
 	httpRequest->OnProcessRequestComplete().BindRaw(this, &FPlatformDownloadTask::OnDownloadRequestComplete);
-	httpRequest->OnRequestProgress64().BindRaw(this, &FPlatformDownloadTask::OnRequestDownloadProgress);
+#if UE_VERSION_OLDER_THAN(5, 4, 0)
+	httpRequest->OnRequestProgress().BindRaw(this, &FPlatformDownloadTask::OnRequestDownloadProgress);
+#else
+	httpRequest->OnRequestProgress64().BindRaw(this, &FPlatformDownloadTask::OnRequestDownloadProgress64);
+#endif
 	httpRequest->SetURL(UrlPlatformUtil);
 	httpRequest->SetVerb("GET");
 
@@ -1474,7 +1478,7 @@ void FPlatformDownloadTask::UpdateProgressLog(int progress)
 	UpdateLogText.Execute(FString::Format(*ToolConsoleLog, { progress }));
 }
 
-void FPlatformDownloadTask::OnRequestDownloadProgress(FHttpRequestPtr HttpRequest, uint64 BytesSend, uint64 InBytesReceived)
+void FPlatformDownloadTask::OnRequestDownloadProgress64(FHttpRequestPtr HttpRequest, uint64 BytesSend, uint64 InBytesReceived)
 {
 	// Update progress on download in tool console log
 	FHttpResponsePtr httpResponse = HttpRequest->GetResponse();
@@ -1483,6 +1487,11 @@ void FPlatformDownloadTask::OnRequestDownloadProgress(FHttpRequestPtr HttpReques
 		int progress = ((float)InBytesReceived / (float)httpResponse->GetContentLength()) * 100;
 		UpdateProgressLog(progress);
 	}
+}
+
+void FPlatformDownloadTask::OnRequestDownloadProgress(FHttpRequestPtr HttpRequest, int32 BytesSend, int32 InBytesReceived)
+{
+	OnRequestDownloadProgress64(HttpRequest, BytesSend, InBytesReceived);
 }
 
 void FPlatformDownloadTask::OnDownloadRequestComplete(FHttpRequestPtr HttpRequest, FHttpResponsePtr HttpResponse, bool bSucceeded)

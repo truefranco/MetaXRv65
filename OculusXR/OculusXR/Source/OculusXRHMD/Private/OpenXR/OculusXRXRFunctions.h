@@ -11,6 +11,11 @@ namespace OculusXR
 	extern TOptional<PFN_xrQueryPerformanceMetricsCounterMETA> xrQueryPerformanceMetricsCounterMETA;
 	extern TOptional<PFN_xrEnumeratePerformanceMetricsCounterPathsMETA> xrEnumeratePerformanceMetricsCounterPathsMETA;
 	extern TOptional<PFN_xrSetPerformanceMetricsStateMETA> xrSetPerformanceMetricsStateMETA;
+	extern TOptional<PFN_xrGetDisplayRefreshRateFB> xrGetDisplayRefreshRateFB;
+	extern TOptional<PFN_xrRequestDisplayRefreshRateFB> xrRequestDisplayRefreshRateFB;
+	extern TOptional<PFN_xrEnumerateDisplayRefreshRatesFB> xrEnumerateDisplayRefreshRatesFB;
+	extern TOptional<PFN_xrSetColorSpaceFB> xrSetColorSpaceFB;
+	extern TOptional<PFN_xrGetPassthroughPreferencesMETA> xrGetPassthroughPreferencesMETA;
 
 	void InitOpenXRFunctions(XrInstance InInstance);
 } // namespace OculusXR

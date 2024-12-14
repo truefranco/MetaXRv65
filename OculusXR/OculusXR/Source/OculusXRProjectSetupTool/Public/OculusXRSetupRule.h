@@ -3,10 +3,9 @@
 #pragma once
 
 #include "CoreMinimal.h"
-#if WITH_EDITOR
-#include "EditorViewportClient.h"
-#include "Editor/EditorEngine.h"
-#endif
+
+#include "OculusXRSetupRule.generated.h"
+
 /**
  * Rule categories
  */

@@ -4,8 +4,9 @@
 #include "OculusAudioMixer.h"
 #include "OculusAudioSettings.h"
 #include "OculusAudioContextManager.h"
-#include "Engine/Engine.h"
+
 #include "Sound/SoundSubmix.h"
+#include "Engine/Engine.h"
 
 namespace
 {

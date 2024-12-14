@@ -761,6 +761,9 @@ OVRP_EXPORT ovrpResult ovrp_GetFoveationEyeTrackedCenter(ovrpVector2f fovCenter[
 
 
 
+
+
+
 /// Return true if the device supports GPU Util querying
 OVRP_EXPORT ovrpResult ovrp_GetGPUUtilSupported(ovrpBool* gpuUtilSupported);
 
@@ -839,9 +842,7 @@ OVRP_EXPORT ovrpResult ovrp_AreControllerDrivenHandPosesNatural(ovrpBool* natura
 OVRP_EXPORT ovrpResult ovrp_SetWideMotionModeHandPoses(ovrpBool wideMotionModeHandPoses);
 OVRP_EXPORT ovrpResult ovrp_IsWideMotionModeHandPosesEnabled(ovrpBool* enabled);
 
-
-
-
+OVRP_EXPORT ovrpResult ovrp_SetHandSkeletonVersion(ovrHandSkeletonVersion version);
 
 
 
@@ -856,9 +857,7 @@ ovrp_GetCurrentDetachedInteractionProfile(ovrpHand hand, ovrpInteractionProfile*
 OVRP_EXPORT ovrpResult ovrp_GetHandTrackingEnabled(ovrpBool* handTrackingEnabled);
 OVRP_EXPORT ovrpResult ovrp_GetHandState(ovrpStep step, ovrpHand hand, ovrpHandState* handState);
 OVRP_EXPORT ovrpResult ovrp_GetHandState2(ovrpStep step, int frameIndex, ovrpHand hand, ovrpHandState* handState);
-
-
-
+OVRP_EXPORT ovrpResult ovrp_GetHandState3(ovrpStep step, int frameIndex, ovrpHand hand, ovrpHandState3* handState);
 
 
 
@@ -993,10 +992,6 @@ ovrp_AreHandPosesGeneratedByControllerData(ovrpStep step, ovrpNode nodeId, ovrpB
 OVRP_EXPORT ovrpResult ovrp_SetSimultaneousHandsAndControllersEnabled(ovrpBool enabled);
 OVRP_EXPORT ovrpResult ovrp_GetControllerIsInHand(ovrpStep step, ovrpNode nodeId, ovrpBool* isInHand);
 
-
-
-
-
 OVRP_EXPORT ovrpResult ovrp_GetRenderModelPaths(unsigned int index, char* path);
 OVRP_EXPORT ovrpResult ovrp_GetRenderModelProperties(const char* path, ovrpRenderModelProperties* properties);
 OVRP_EXPORT ovrpResult ovrp_GetRenderModelProperties2(
@@ -1031,9 +1026,7 @@ OVRP_EXPORT ovrpResult ovrp_EnumerateSpaceSupportedComponents(
     ovrpUInt32* componentTypesCountOutput,
     ovrpSpaceComponentType* componentTypes);
 OVRP_EXPORT ovrpResult ovrp_QuerySpaces(const ovrpSpaceQueryInfo* queryInfo, ovrpUInt64* requestId);
-
-
-
+OVRP_EXPORT ovrpResult ovrp_QuerySpaces2(const ovrpSpaceQueryInfo2* queryInfo, ovrpUInt64* requestId);
 OVRP_EXPORT ovrpResult ovrp_RetrieveSpaceQueryResults(
     ovrpUInt64* requestId,
     ovrpUInt32 resultCapacityInput,
@@ -1061,6 +1054,9 @@ OVRP_EXPORT ovrpResult ovrp_ShareSpaces(
     const ovrpUser* users,
     ovrpUInt32 numUsers,
     ovrpUInt64* requestId);
+
+// XR_META_spatial_entity_sharing
+OVRP_EXPORT ovrpResult ovrp_ShareSpaces2(const ovrpShareSpacesInfo* info, ovrpUInt64* requestId);
 
 OVRP_EXPORT ovrpResult ovrp_GetSpaceContainer(const ovrpSpace* space, ovrpSpaceContainer* container);
 
@@ -1137,25 +1133,12 @@ OVRP_EXPORT ovrpResult ovrp_GetEyeGazesState(ovrpStep step, int frameIndex, ovrp
 
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+// XR_META_colocation_discovery
+OVRP_EXPORT ovrpResult ovrp_StartColocationDiscovery(ovrpUInt64* requestId);
+OVRP_EXPORT ovrpResult ovrp_StopColocationDiscovery(ovrpUInt64* requestId);
+OVRP_EXPORT ovrpResult
+ovrp_StartColocationAdvertisement(const ovrpColocationAdvertisementStartInfo* info, ovrpUInt64* requestId);
+OVRP_EXPORT ovrpResult ovrp_StopColocationAdvertisement(ovrpUInt64* requestId);
 
 OVRP_EXPORT ovrpResult
 ovrp_FeatureFidelitySetFeatureEnable(ovrpFeatureType feature, ovrpFeatureEnableState featureEnableState);
@@ -1224,10 +1207,6 @@ OVRP_EXPORT ovrpResult ovrp_EraseSpaces(
 
 
 
-
-
-
-
 OVRP_EXPORT ovrpResult ovrp_RequestBoundaryVisibility(ovrpBoundaryVisibility boundaryVisibility);
 OVRP_EXPORT ovrpResult ovrp_GetBoundaryVisibility(ovrpBoundaryVisibility* boundaryVisibility);
 
@@ -1252,12 +1231,13 @@ OVRP_EXPORT ovrpResult ovrp_StartEnvironmentDepth();
 OVRP_EXPORT ovrpResult ovrp_StopEnvironmentDepth();
 OVRP_EXPORT ovrpResult ovrp_GetEnvironmentDepthFrameDesc(ovrpEye eyeId, ovrpEnvironmentDepthFrameDesc* frameDesc);
 
-
-
-
-
-
-
+OVRP_EXPORT ovrpResult ovrp_CreateDynamicObjectTracker(ovrpDynamicObjectTracker* trackerOut);
+OVRP_EXPORT ovrpResult ovrp_DestroyDynamicObjectTracker(ovrpDynamicObjectTracker tracker);
+OVRP_EXPORT ovrpResult ovrp_SetDynamicObjectTrackedClasses(
+    ovrpDynamicObjectTracker tracker,
+    const ovrpDynamicObjectTrackedClassesSetInfo* setInfo);
+OVRP_EXPORT ovrpResult ovrp_GetSpaceDynamicObjectData(const ovrpSpace* space, ovrpDynamicObjectData* data);
+OVRP_EXPORT ovrpResult ovrp_GetDynamicObjectTrackerSupported(ovrpBool* supported);
 
 
 
@@ -1309,6 +1289,31 @@ OVRP_EXPORT ovrpResult ovrp_GetLowPowerModeEnabled(ovrpBool* enabled);
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+// XR_EXT_future
+OVRP_EXPORT ovrpResult ovrp_PollFuture(ovrpFuture future, ovrpFutureState* state);
+OVRP_EXPORT ovrpResult ovrp_CancelFuture(ovrpFuture future);
+
+OVRP_EXPORT ovrpResult ovrp_GetGroupId(ovrpUuid* groupId);
 
 #ifdef __cplusplus
 }

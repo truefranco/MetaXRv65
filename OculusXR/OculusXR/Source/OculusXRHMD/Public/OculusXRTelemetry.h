@@ -20,6 +20,8 @@ namespace OculusXRTelemetry
 
 	OCULUSXRHMD_API FString GetProjectId();
 
+	OCULUSXRHMD_API bool IsConsentGiven();
+
 	template <typename Backend = FTelemetryBackend>
 	class OCULUSXRHMD_API TMarkerPoint : FNoncopyable
 	{
@@ -40,6 +42,12 @@ namespace OculusXRTelemetry
 		const int Handle{ -1 };
 	};
 
+	enum class EAnnotationType
+	{
+		Required,
+		Optional,
+	};
+
 	template <int MarkerId, typename Backend = FTelemetryBackend>
 	class TMarker
 	{
@@ -56,9 +64,12 @@ namespace OculusXRTelemetry
 			Backend::MarkerStart(MarkerId, InstanceKey, Timestamp);
 			return *this;
 		}
-		const TMarker& AddAnnotation(const char* Key, const char* Value) const
+		const TMarker& AddAnnotation(const char* Key, const char* Value, EAnnotationType bExtraAnnotation = EAnnotationType::Required) const
 		{
-			Backend::MarkerAnnotation(MarkerId, Key, Value, InstanceKey);
+			if (bExtraAnnotation == EAnnotationType::Required || IsConsentGiven())
+			{
+				Backend::MarkerAnnotation(MarkerId, Key, Value, InstanceKey);
+			}
 			return *this;
 		}
 		const TMarker& AddPoint(const char* Name, const FTelemetryTimestamp Timestamp = AutoSetTimestamp) const
@@ -122,7 +133,7 @@ namespace OculusXRTelemetry
 				}
 
 				const FString ProjectIdString = GetProjectId();
-				const auto& AnnotatedWithProjectId = AddAnnotation("project_hash", StringCast<ANSICHAR>(*ProjectIdString).Get());
+				const auto& AnnotatedWithProjectId = AddAnnotation("project_hash", StringCast<ANSICHAR>(*ProjectIdString).Get(), EAnnotationType::Optional);
 
 			}
 		}
@@ -152,9 +163,9 @@ namespace OculusXRTelemetry
 			return *this;
 		}
 
-		const TScopedMarker& AddAnnotation(const char* Key, const char* Value) const
+		const TScopedMarker& AddAnnotation(const char* Key, const char* Value, EAnnotationType bExtraAnnotation = EAnnotationType::Required) const
 		{
-			if (Marker)
+			if (Marker && (bExtraAnnotation == EAnnotationType::Required || IsConsentGiven()))
 			{
 				Marker->AddAnnotation(Key, Value);
 			}

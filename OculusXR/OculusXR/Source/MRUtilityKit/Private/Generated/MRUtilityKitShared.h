@@ -25,7 +25,7 @@ struct MRUKShared
 
     struct MrukPolygon2f
     {
-        FVector2f* points;
+        const FVector2f* points;
         uint32_t numPoints;
     };
 

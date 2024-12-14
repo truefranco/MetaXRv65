@@ -3,6 +3,7 @@
 
 #include "OculusXRHMD_Settings.h"
 #include "Engine/Engine.h"
+#include "OculusXRHMDTypes.h"
 
 #if OCULUS_HMD_SUPPORTED_PLATFORMS
 
@@ -17,8 +18,6 @@ namespace OculusXRHMD
 		: BaseOffset(0, 0, 0)
 		, BaseOrientation(FQuat::Identity)
 		, PixelDensity(1.0f)
-		, PixelDensityMin(0.8f)
-		, PixelDensityMax(1.2f)
 		, SystemHeadset(ovrpSystemHeadset_None)
 		, SuggestedCpuPerfLevel(EOculusXRProcessorPerformanceLevel::SustainedLow)
 		, SuggestedGpuPerfLevel(EOculusXRProcessorPerformanceLevel::SustainedHigh)
@@ -69,6 +68,7 @@ namespace OculusXRHMD
 		Flags.bSceneSupportEnabled = false;
 		Flags.bBoundaryVisibilitySupportEnabled = false;
 		Flags.bDefaultBoundaryVisibilitySuppressed = false;
+		Flags.bColocationSessionsEnabled = false;
 		Flags.bBodyTrackingEnabled = false;
 		Flags.bEyeTrackingEnabled = false;
 		Flags.bFaceTrackingEnabled = false;
@@ -100,11 +100,21 @@ namespace OculusXRHMD
 		return NewSettings;
 	}
 
+	float FSettings::GetPixelDensityMin() const
+	{
+		static const IConsoleVariable* CVarPixelDensityMin = IConsoleManager::Get().FindConsoleVariable(VAR_PixelDensityMin);
+		return CVarPixelDensityMin ? CVarPixelDensityMin->GetFloat() : 0.8f;
+	}
+	float FSettings::GetPixelDensityMax() const
+	{
+		static const IConsoleVariable* CVarPixelDensityMax = IConsoleManager::Get().FindConsoleVariable(VAR_PixelDensityMax);
+		return CVarPixelDensityMax ? CVarPixelDensityMax->GetFloat() : 1.2f;
+	}
 	void FSettings::SetPixelDensity(float NewPixelDensity)
 	{
 		if (Flags.bPixelDensityAdaptive)
 		{
-			PixelDensity = FMath::Clamp(NewPixelDensity, PixelDensityMin, PixelDensityMax);
+			PixelDensity = FMath::Clamp(NewPixelDensity, GetPixelDensityMin(), GetPixelDensityMax());
 		}
 		else
 		{
@@ -122,26 +132,12 @@ namespace OculusXRHMD
 		float NewClampedPixelDensity = FMath::Clamp(NewPixelDensity, PixelDensity - MaxPerFrameDecrease, PixelDensity + MaxPerFrameIncrease);
 		if (Flags.bPixelDensityAdaptive)
 		{
-			PixelDensity = FMath::Clamp(NewClampedPixelDensity, PixelDensityMin, PixelDensityMax);
+			PixelDensity = FMath::Clamp(NewClampedPixelDensity, GetPixelDensityMin(), GetPixelDensityMax());
 		}
 		else
 		{
 			PixelDensity = FMath::Clamp(NewClampedPixelDensity, ClampPixelDensityMin, ClampPixelDensityMax);
 		}
-	}
-
-	void FSettings::SetPixelDensityMin(float NewPixelDensityMin)
-	{
-		PixelDensityMin = FMath::Clamp(NewPixelDensityMin, ClampPixelDensityMin, ClampPixelDensityMax);
-		PixelDensityMax = FMath::Max(PixelDensityMin, PixelDensityMax);
-		SetPixelDensity(PixelDensity);
-	}
-
-	void FSettings::SetPixelDensityMax(float NewPixelDensityMax)
-	{
-		PixelDensityMax = FMath::Clamp(NewPixelDensityMax, ClampPixelDensityMin, ClampPixelDensityMax);
-		PixelDensityMin = FMath::Min(PixelDensityMin, PixelDensityMax);
-		SetPixelDensity(PixelDensity);
 	}
 
 } // namespace OculusXRHMD

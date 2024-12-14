@@ -56,6 +56,7 @@ namespace MetaXRMovement
 		}
 	}
 
+
 	template <typename MetaXRState, typename RoleTypeStaticData, typename RoleTypeFrameData, typename Role>
 	FLiveLinkStaticDataStruct TSubject<MetaXRState, RoleTypeStaticData, RoleTypeFrameData, Role>::StaticData() const
 	{
@@ -213,7 +214,8 @@ namespace MetaXRMovement
 	}
 
 	LiveLinkSource::LiveLinkSource()
-		: bAnySupported(FEyeSubject::IsSupported() || FFaceSubject::IsSupported() || FBodySubject::IsSupported())
+		: bAnySupported(FEyeSubject::IsSupported() || FFaceSubject::IsSupported() ||
+			  FBodySubject::IsSupported())
 	{
 		OculusXRTelemetry::TScopedMarker<OculusXRTelemetry::Events::FMovementSDKLiveLinkCreated>();
 	}
@@ -237,7 +239,8 @@ namespace MetaXRMovement
 		Client = nullptr;
 		SourceGuid.Invalidate();
 
-		if (!(Body.Stop() && Face.Stop() && Eye.Stop()))
+		if (!(Body.Stop() && Face.Stop()
+				&& Eye.Stop()))
 		{
 			UE_LOG(LogOculusXRMovement, Error, TEXT("At least one of the trackers cannot stop."));
 		}

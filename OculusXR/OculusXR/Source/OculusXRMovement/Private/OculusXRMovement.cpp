@@ -324,6 +324,7 @@ bool OculusXRMovement::GetFaceState(FOculusXRFaceState& outOculusXRFaceState)
 	return false;
 }
 
+
 bool OculusXRMovement::IsFaceTrackingEnabled()
 {
 	// Prevent calling plugin functions if the plugin is not available
@@ -366,6 +367,7 @@ bool OculusXRMovement::IsFaceTrackingSupported()
 	return bResult;
 }
 
+
 bool OculusXRMovement::StartFaceTracking()
 {
 	// Prevent calling plugin functions if the plugin is not available
@@ -377,6 +379,7 @@ bool OculusXRMovement::StartFaceTracking()
 	const auto* OculusXRHMD = OculusXRHMD::FOculusXRHMD::GetOculusXRHMD();
 	if (OculusXRHMD)
 	{
+
 		ovrpFaceTrackingDataSource2 dataSources[ovrpFaceConstants_FaceTrackingDataSourcesCount];
 		int count = 0;
 		for (auto Iterator = OculusXRHMD->GetSettings()->FaceTrackingDataSource.CreateConstIterator(); Iterator; ++Iterator)

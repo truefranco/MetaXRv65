@@ -4,6 +4,13 @@
 
 #include "OculusXRProjectSetupToolModule.h"
 #include "OculusXRRuleProcessorSubsystem.h"
+#include "Styling/AppStyle.h"
+#include "Styling/SlateStyle.h"
+#include "Widgets/SBoxPanel.h"
+#include "Widgets/SOverlay.h"
+#include "Widgets/Images/SImage.h"
+#include "Widgets/Input/SButton.h"
+#include "Engine/Engine.h"
 
 #define LOCTEXT_NAMESPACE "OculusXRStatusBarWidget"
 

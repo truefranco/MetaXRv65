@@ -8,7 +8,7 @@ DECLARE_LOG_CATEGORY_EXTERN(LogOculusXRSimulatorPlugin, Log, All);
 namespace OculusXR
 {
 
-	class FOculusXRSimulatorExtensionPlugin : public IOculusXRExtensionPlugin
+	class FXRSimulatorExtensionPlugin : public IOculusXRExtensionPlugin
 	{
 	public:
 		// IOpenXRExtensionPlugin

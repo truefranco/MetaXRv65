@@ -16,6 +16,7 @@ UOculusXRControllerComponent::UOculusXRControllerComponent(const FObjectInitiali
 	// Why do these need to be hardcoded and not come from the skeleton etc?
 	// It seems like the offset comes from somewhere in unreal in the first place,
 	// not from a bone position, so there's not a place to load the correct orientation from.
+	
 {
 	_meshLoadingState = MeshLoadingState::None;
 	PrimaryComponentTick.bCanEverTick = true;

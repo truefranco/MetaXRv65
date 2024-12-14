@@ -6,10 +6,15 @@
 #include "OculusXRPSTEvents.h"
 #include "OculusXRPSTSettings.h"
 #include "OculusXRTelemetry.h"
-#include "Widgets/Layout/SScrollBox.h"
+#include "Widgets/SOverlay.h"
+#include "Widgets/Images/SImage.h"
 #include "Widgets/Input/SButton.h"
+#include "Widgets/Layout/SBox.h"
+#include "Widgets/Layout/SScrollBox.h"
+#include "Widgets/Text/STextBlock.h"
 #include "Styling/SlateStyle.h"
 #include "Styling/SlateStyleMacros.h"
+#include "Framework/Application/SlateApplication.h"
 
 #define LOCTEXT_NAMESPACE "OculusXRProjectTutorialWidget"
 

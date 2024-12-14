@@ -20,6 +20,12 @@ namespace UnrealBuildTool.Rules
                     "ProceduralMeshComponent",
                 });
 
+            PublicDependencyModuleNames.AddRange(
+                new string[]
+                {
+                    "OculusXRAsyncRequest",
+                });
+
             PrivateIncludePaths.AddRange(
                 new string[] {
                     // Relative to Engine\Plugins\Runtime\Oculus\OculusVR\Source

@@ -13,6 +13,13 @@
 class AMRUKRoom;
 class UMRUKAnchorData;
 
+/**
+ * Represents an anchor in the Mixed Reality Utility Kit. This combines an Unreal actor with the scene anchor.
+ * The actor is placed at the position of the anchor and the actor's rotation is set to match the rotation of the anchor.
+ * Provides functions to check if a position is inside the volume or plane of the anchor, raycast against the anchor, etc...
+ * @see https://developer.oculus.com/documentation/unreal/unreal-spatial-anchors/
+ * for more information about anchors in the Mixed Reality Utility Kit.
+ */
 UCLASS(ClassGroup = MRUtilityKit, meta = (DisplayName = "MR Utility Kit Anchor"))
 class MRUTILITYKIT_API AMRUKAnchor : public AActor
 {
@@ -110,25 +117,29 @@ public:
 
 	/**
 	 * Cast a ray and return the closest hit against the volume and plane bounds.
-	 * @param Origin    Origin The origin of the ray.
-	 * @param Direction Direction The direction of the ray.
-	 * @param MaxDist   The maximum distance the ray should travel.
-	 * @param OutHit    The closest hit.
-	 * @return          Whether the ray hit anything
+	 * @param Origin         Origin The origin of the ray.
+	 * @param Direction      Direction The direction of the ray.
+	 * @param MaxDist        The maximum distance the ray should travel.
+	 * @param OutHit         The closest hit.
+	 * @param ComponentTypes The component types to include in the raycast.
+	 * @return               Whether the ray hit anything
 	 */
 	UFUNCTION(BlueprintCallable, Category = "MR Utility Kit")
-	bool Raycast(const FVector& Origin, const FVector& Direction, float MaxDist, FMRUKHit& OutHit);
+	bool Raycast(const FVector& Origin, const FVector& Direction, float MaxDist, FMRUKHit& OutHit, UPARAM(meta = (Bitmask, BitmaskEnum = "EMRUKComponentType")) int32 ComponentTypes = 7 /* EMRUKComponentType::All */);
+	static_assert(static_cast<int32>(EMRUKComponentType::All) == 7, "If this changes, please update the hardcoded default parameter in the Raycast function above");
 
 	/**
 	 * Cast a ray and collect hits against the volume and plane bounds. The order of the hits in the array is not specified.
-	 * @param Origin    Origin The origin of the ray.
-	 * @param Direction Direction The direction of the ray.
-	 * @param MaxDist   The maximum distance the ray should travel.
-	 * @param OutHits   The hits the ray collected.
-	 * @return          Whether the ray hit anything
+	 * @param Origin         Origin The origin of the ray.
+	 * @param Direction      Direction The direction of the ray.
+	 * @param MaxDist        The maximum distance the ray should travel.
+	 * @param OutHits        The hits the ray collected.
+	 * @param ComponentTypes The component types to include in the raycast.
+	 * @return               Whether the ray hit anything
 	 */
 	UFUNCTION(BlueprintCallable, Category = "MR Utility Kit")
-	bool RaycastAll(const FVector& Origin, const FVector& Direction, float MaxDist, TArray<FMRUKHit>& OutHits);
+	bool RaycastAll(const FVector& Origin, const FVector& Direction, float MaxDist, TArray<FMRUKHit>& OutHits, UPARAM(meta = (Bitmask, BitmaskEnum = "EMRUKComponentType")) int32 ComponentTypes = 7 /* EMRUKComponentType::All */);
+	static_assert(static_cast<int32>(EMRUKComponentType::All) == 7, "If this changes, please update the hardcoded default parameter in the RaycastAll function above");
 
 	/**
 	 * Attach a procedural mesh to the anchor. The mesh will match the size, position and shape of the volume and/or plane
@@ -226,8 +237,22 @@ public:
 public:
 	AMRUKAnchor(const FObjectInitializer& ObjectInitializer);
 
+	/**
+	 * Load the anchor from a MRUKAnchorData. This is used to load or update the anchor from device or from a JSON file.
+	 *
+	 * @param AnchorData The data to load from.
+	 * @return true if the anchor was loaded successfully.
+	 * @return false if the anchor could not be loaded.
+	 */
 	bool LoadFromData(UMRUKAnchorData* AnchorData);
 
+	/**
+	 * Attach a procedural mesh to the anchor. The mesh will match the size, position and shape of the volume and/or plane.
+	 *
+	 * @param CutHoleLabels Labels for which the generated mesh should have holes. Only works with planes. Example values: "WindowFrame", "DoorFrame".
+	 * @param GenerateCollision Whether to generate collision geometry or not.
+	 * @param ProceduralMaterial Material to use on the procedural generated mesh.
+	 */
 	void AttachProceduralMesh(const TArray<FString>& CutHoleLabels = {}, bool GenerateCollision = true, UMaterialInterface* ProceduralMaterial = nullptr);
 
 	TSharedRef<FJsonObject> JsonSerialize();

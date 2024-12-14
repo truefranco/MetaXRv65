@@ -65,10 +65,6 @@ void FMRUKModule::StartupModule()
 			GetMutableDefault<UMRUKSettings>());
 	}
 #endif // WITH_EDITOR
-	const auto Plugin = IPluginManager::Get().FindPlugin(TEXT("OculusXR"));
-	const FString PluginDirectory = FPaths::ConvertRelativePathToFull(Plugin->GetBaseDir());
-	const FString ShaderDirectory = FPaths::Combine(PluginDirectory, TEXT("Shaders"));
-	AddShaderSourceDirectoryMapping("/OculusXR", ShaderDirectory);
 }
 
 void FMRUKModule::ShutdownModule()

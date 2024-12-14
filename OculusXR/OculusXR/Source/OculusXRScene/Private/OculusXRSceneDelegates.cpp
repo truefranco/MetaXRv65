@@ -2,5 +2,6 @@
 
 #include "OculusXRSceneDelegates.h"
 
-
 FOculusXRSceneEventDelegates::FOculusXRBoundaryVisibilityChanged FOculusXRSceneEventDelegates::OculusBoundaryVisibilityChanged;
+
+FOculusXRSceneEventDelegates::FOculusXRSceneCaptureCompleteDelegate FOculusXRSceneEventDelegates::OculusSceneCaptureComplete;

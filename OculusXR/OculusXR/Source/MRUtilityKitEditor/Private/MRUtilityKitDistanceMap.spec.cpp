@@ -8,6 +8,9 @@
 #include "Editor/UnrealEdEngine.h"
 #include "Engine/CanvasRenderTarget2D.h"
 #include "Tests/AutomationEditorCommon.h"
+#include "HAL/PlatformFileManager.h"
+#include "Editor.h"
+#include "TextureResource.h"
 
 static void WriteTGA(const FString& FilePath, const TArray<FColor>& Pixels, int32 Width, int32 Height)
 {

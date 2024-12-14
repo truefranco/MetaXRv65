@@ -23,12 +23,32 @@
 
 DEFINE_LOG_CATEGORY_STATIC(LogOcInput, Log, All);
 
+#define OVR_HAP_LOGGING 0
+
 class UHapticFeedbackEffect_Base;
 struct FActiveHapticFeedbackEffect;
 struct FOculusXRHapticsDesc;
 
 namespace OculusXRInput
 {
+
+	class IOculusXRInputBase
+	{
+	public:
+		virtual ~IOculusXRInputBase() = default;
+
+		virtual void PlayHapticEffect(UHapticFeedbackEffect_Base* HapticEffect,
+			EControllerHand Hand,
+			EOculusXRHandHapticsLocation Location = EOculusXRHandHapticsLocation::Hand,
+			bool bAppend = false,
+			float Scale = 1.f,
+			bool bLoop = false) = 0;
+		virtual int PlayAmplitudeEnvelopeHapticEffect(EControllerHand Hand, int SamplesCount, void* Samples, int SampleRate = -1) = 0;
+		virtual void SetHapticsByValue(float Frequency, float Amplitude, EControllerHand Hand, EOculusXRHandHapticsLocation Location = EOculusXRHandHapticsLocation::Hand) = 0;
+
+		virtual float GetControllerSampleRateHz(EControllerHand Hand) const = 0;
+		virtual int GetMaxHapticDuration(EControllerHand Hand) const = 0;
+	};
 
 	//-------------------------------------------------------------------------------------------------
 	// FOculusXRInput
@@ -37,6 +57,7 @@ namespace OculusXRInput
 	class FOculusXRInput : public IInputDevice, public FXRMotionControllerBase, public IHapticDevice
 	{
 		friend class FOculusHandTracking;
+		friend class FOculusXRInputOVR;
 
 	public:
 		/** Constructor that takes an initial message handler that will receive motion controller events */
@@ -79,7 +100,7 @@ namespace OculusXRInput
 			bool bAppend = false,
 			float Scale = 1.f,
 			bool bLoop = false);
-		int PlayHapticEffect(EControllerHand Hand, int SamplesCount, void* Samples, int SampleRate = -1, bool bPCM = false, bool bAppend = false);
+		int PlayAmplitudeEnvelopeHapticEffect(EControllerHand Hand, int SamplesCount, void* Samples, int SampleRate = -1);
 		void SetHapticsByValue(float Frequency, float Amplitude, EControllerHand Hand, EOculusXRHandHapticsLocation Location = EOculusXRHandHapticsLocation::Hand);
 
 		virtual void GetHapticFrequencyRange(float& MinFrequency, float& MaxFrequency) const override;
@@ -90,6 +111,8 @@ namespace OculusXRInput
 
 		float GetControllerSampleRateHz(EControllerHand Hand);
 		int GetMaxHapticDuration(EControllerHand Hand);
+
+		static void ShutdownXRFunctionLibrary();
 
 	private:
 		/** Applies force feedback settings to the controller */
@@ -138,6 +161,10 @@ namespace OculusXRInput
 		static float ButtonRepeatDelay;
 
 		static bool bPulledHapticsDesc;
+
+	protected:
+		static TSharedPtr<IOculusXRInputBase> GetOculusXRInputBaseImpl();
+		static TSharedPtr<IOculusXRInputBase> FunctionLibraryImpl;
 	};
 
 } // namespace OculusXRInput

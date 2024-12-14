@@ -11,6 +11,8 @@
 #include "UObject/SoftObjectPath.h"
 #include "OculusXRHMDTypes.generated.h"
 
+static const TCHAR* VAR_PixelDensityMin = TEXT("r.Oculus.DynamicResolution.PixelDensityMin");
+static const TCHAR* VAR_PixelDensityMax = TEXT("r.Oculus.DynamicResolution.PixelDensityMax");
 /* Tracked device types corresponding to ovrTrackedDeviceType enum*/
 UENUM(BlueprintType)
 enum class EOculusXRTrackedDeviceType : uint8

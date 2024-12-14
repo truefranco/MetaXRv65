@@ -7,6 +7,7 @@
 #include "TestHelper.h"
 #include "UnrealEdGlobals.h"
 #include "Editor/UnrealEdEngine.h"
+#include "Editor.h"
 
 BEGIN_DEFINE_SPEC(FMRUKGridSliceResizerSpec, TEXT("MR Utility Kit"), EAutomationTestFlags::ProductFilter | EAutomationTestFlags::CommandletContext)
 END_DEFINE_SPEC(FMRUKGridSliceResizerSpec)

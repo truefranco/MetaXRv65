@@ -3,6 +3,7 @@
 #pragma once
 
 #include "OculusXRSetupRule.h"
+#include "Editor/EditorEngine.h"
 
 // Collection of rules related to rendering. Can be extended as needed
 namespace OculusXRRenderingRules
@@ -169,6 +170,21 @@ namespace OculusXRRenderingRules
 				  ESetupRuleSeverity::Performance,
 				  MetaQuest_All) {}
 
+		virtual bool IsApplied() const override;
+
+	protected:
+		virtual void ApplyImpl(bool& OutShouldRestartEditor) override;
+	};
+	class FEnableEmulatedUniformBuffersRule final : public ISetupRule
+	{
+	public:
+		FEnableEmulatedUniformBuffersRule()
+			: ISetupRule("Rendering_EnableEmulatedUniformBuffers",
+				  NSLOCTEXT("OculusXRRenderingRules", "EnableEmulatedUniformBuffers_DisplayName", "Enable Emulated Uniform Buffers"),
+				  NSLOCTEXT("OculusXRRenderingRules", "EnableEmulatedUniformBuffers_Description", "Optimizes performance by consolidating constant buffers into a single global uniform buffer for improved shader compiler optimization."),
+				  ESetupRuleCategory::Rendering,
+				  ESetupRuleSeverity::Performance,
+				  MetaQuest_All) {}
 		virtual bool IsApplied() const override;
 
 	protected:
@@ -355,6 +371,7 @@ namespace OculusXRRenderingRules
 #ifdef WITH_OCULUS_BRANCH
 		MakeShared<FEnableDynamicResolutionRule>(),
 		MakeShared<FEnableMobileUniformLocalLightsRule>(),
+		MakeShared<FEnableEmulatedUniformBuffersRule>(),
 #endif
 		MakeShared<FDisableLensFlareRule>(),
 		MakeShared<FDisablePostProcessingRule>(),

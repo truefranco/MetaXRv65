@@ -6,7 +6,7 @@
 #include "Components/SceneComponent.h"
 #include "MRUtilityKitGridSliceResizer.generated.h"
 
-UENUM(BlueprintType, Meta = (Bitflags))
+UENUM(BlueprintType, Meta = (Bitflags, UseEnumValuesAsMaskValuesInEditor = "true"))
 enum class EMRUKScaleCenterMode : uint8
 {
 	None = 0 UMETA(Hidden),
@@ -126,7 +126,7 @@ public:
 	 * In case the mesh gets scaled down and some of the center vertices fall outside of the scaled down center
 	 * all vertices that are inside the center will be scaled down uniformly.
 	 */
-	UPROPERTY(EditAnywhere, Category = "MR Utility Kit", meta = (Bitmask, BitmaskEnum = "EMRUKScaleCenterMode"))
+	UPROPERTY(EditAnywhere, Category = "MR Utility Kit", meta = (Bitmask, BitmaskEnum = "/Script/MRUtilityKit.EMRUKScaleCenterMode"))
 	uint8 ScaleCenterMode = 0;
 
 	/**

@@ -29,7 +29,7 @@
 // Note: OVRP_MINOR_VERSION == OCULUS_SDK_VERSION + 32
 
 #define OVRP_MAJOR_VERSION 1
-#define OVRP_MINOR_VERSION 101
+#define OVRP_MINOR_VERSION 103
 #define OVRP_PATCH_VERSION 0
 
 #define OVRP_VERSION OVRP_MAJOR_VERSION, OVRP_MINOR_VERSION, OVRP_PATCH_VERSION
@@ -130,6 +130,10 @@ typedef enum {
   ovrpSuccess_EventUnavailable = 1,
   ovrpSuccess_Pending = 2,
 
+  // XR_META_colocation_discovery
+  ovrpSuccess_ColocationDiscoveryAlreadyAdvertising = 3001,
+  ovrpSuccess_ColocationDiscoveryAlreadyDiscovering = 3002,
+
   /// Failure
   ovrpFailure = -1000,
   ovrpFailure_InvalidParameter = -1001,
@@ -159,18 +163,12 @@ typedef enum {
   ovrpFailure_SpaceComponentStatusPending = -2007,
   ovrpFailure_SpaceComponentStatusAlreadySet = -2008,
 
+  // XR_META_spatial_entity_group_sharing
+  ovrpFailure_SpaceGroupNotFound = -2009,
 
-
-
-
-
-
-
-
-
-
-
-
+  // XR_META_colocation_discovery
+  ovrpFailure_ColocationDiscoveryNetworkFailed = -3002,
+  ovrpFailure_ColocationDiscoveryNoDiscoveryMethodAvailable = -3003,
 
   /// XR_META_spatial_entity_persistence
   ovrpFailure_SpaceInsufficientResources = -9000,
@@ -183,6 +181,10 @@ typedef enum {
 
   /// Boundary Visibility cases
   ovrpWarning_BoundaryVisibilitySuppressionNotAllowed = 9030,
+
+  // XR_EXT_future
+  ovrpFailure_FuturePending = -10000,
+  ovrpFailure_FutureInvalid = -10001,
 } ovrpResult;
 
 #define OVRP_SUCCESS(result) ((result) >= 0)
@@ -2293,6 +2295,8 @@ typedef struct ovrpEyeGazesState_ {
 
 
 
+
+
 //-----------------------------------------------------------------
 // Color Space Management
 //-----------------------------------------------------------------
@@ -2406,9 +2410,8 @@ typedef enum ovrpEventType_ {
   ovrpEventType_SpaceShareResult = 56,
   ovrpEventType_SpaceListSaveResult = 57,
 
-
-
-
+  // XR_META_spatial_entity_sharing
+  ovrpEventType_ShareSpacesComplete = 58,
 
   ovrpEventType_SceneCaptureComplete = 100,
 
@@ -2441,40 +2444,22 @@ typedef enum ovrpEventType_ {
 
   ovrpEventType_PerfSettings = 304,
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+  // XR_META_colocation_discovery
+  ovrpEventType_StartColocationAdvertisementComplete = 370,
+  ovrpEventType_ColocationAdvertisementComplete = 371,
+  ovrpEventType_StopColocationAdvertisementComplete = 372,
+  ovrpEventType_StartColocationDiscoveryComplete = 373,
+  ovrpEventType_ColocationDiscoveryResult = 374,
+  ovrpEventType_ColocationDiscoveryComplete = 375,
+  ovrpEventType_StopColocationDiscoveryComplete = 376,
 
   ovrpEventType_PassthroughLayerResumed = 500,
 
   ovrpEventType_BoundaryVisibilityChanged = 510,
 
+  // XR_META_dynamic_object_tracker
+  ovrpEventType_CreateDynamicObjectTrackerResult = 650,
+  ovrpEventType_SetDynamicObjectTrackedClassesResult = 651,
 
 
 
@@ -2914,10 +2899,18 @@ typedef enum {
   ovrpSpaceComponentType_SemanticLabels = 5,
   ovrpSpaceComponentType_RoomLayout = 6,
   ovrpSpaceComponentType_SpaceContainer = 7,
+
+
+
+
+
+
   ovrpSpaceComponentType_TriangleMesh = 1000269000,
 
 
 
+  // XR_META_dynamic_object_tracker
+  ovrpSpaceComponentType_DynamicObject = 1000288006,
 
 
 
@@ -2963,12 +2956,7 @@ typedef enum {
   ovrpSpaceQueryFilterType_None = 0,
   ovrpSpaceQueryFilterType_Ids = 1,
   ovrpSpaceQueryFilterType_Components = 2,
-
-
-
-
-
-
+  ovrpSpaceQueryFilterType_GroupUuid = 3,
   ovrpSpaceQueryFilterType_Max = 0x7ffffff,
 } ovrpSpaceQueryFilterType;
 
@@ -2997,11 +2985,9 @@ typedef struct {
   int numComponents;
 } ovrpSpaceFilterComponentsInfo;
 
-
-
-
-
-
+typedef struct ovrpSpaceGroupUuidFilterInfo_ {
+  ovrpUuid groupUuid;
+} ovrpSpaceGroupUuidFilterInfo;
 
 typedef struct {
   // type of query to be performed
@@ -3021,44 +3007,29 @@ typedef struct {
   ovrpSpaceFilterIdInfo IdInfo;
   // use only when filter type is ovrpSpaceQueryFilterType_Components
   ovrpSpaceFilterComponentsInfo componentsInfo;
-
-
-
-
 } ovrpSpaceQueryInfo;
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+typedef struct {
+  // type of query to be performed
+  ovrpSpaceQueryType queryType;
+  // maximum number of spaces to be returned
+  int maxQuerySpaces;
+  // timeout wait on query
+  double timeout;
+  // location we are querying for the spaces from
+  ovrpSpaceStorageLocation location;
+  // action to be performed on queried items if query type is
+  // of type ovrpSpaceQueryType_Action
+  ovrpSpaceQueryActionType actionType;
+  // type of filtering we wish to use on the spaces we've queried
+  ovrpSpaceQueryFilterType filterType;
+  // use only when filter type is ovrpSpaceQueryFilterType_Ids
+  ovrpSpaceFilterIdInfo IdInfo;
+  // use only when filter type is ovrpSpaceQueryFilterType_Components
+  ovrpSpaceFilterComponentsInfo componentsInfo;
+  // use only when filter type is ovrpSpaceQueryFilterType_GroupUuid
+  ovrpSpaceGroupUuidFilterInfo groupUuidInfo;
+} ovrpSpaceQueryInfo2;
 
 typedef struct ovrpSpaceQueryResult {
   ovrpSpace space;
@@ -3287,7 +3258,6 @@ typedef struct ovrpTriangleMesh_ {
 
 
 
-
 typedef enum {
   ovrpInteractionProfile_None = 0,
   ovrpInteractionProfile_Touch = 1,
@@ -3321,333 +3291,86 @@ typedef struct ovrpPassthroughPreferences_ {
 
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+// XR_META_colocation_discovery
+// This should remain synced with XR_MAX_COLOCATION_DISCOVERY_BUFFER_SIZE_META in meta_colocation_discovery.h
+#define OVRP_MAX_COLOCATION_DISCOVERY_BUFFER_SIZE_META 1024
+
+typedef struct ovrpColocationAdvertisementStartInfo_ {
+  ovrpUInt32 BufferSize;
+  ovrpByte* Buffer;
+} ovrpColocationAdvertisementStartInfo;
+
+typedef struct ovrpEventStartColocationAdvertisementComplete_ {
+  ovrpEventType EventType;
+  ovrpUInt64 AdvertisementRequestId;
+  ovrpResult Result;
+  ovrpUuid AdvertisementUuid;
+} ovrpEventStartColocationAdvertisementComplete;
+
+typedef struct ovrpEventColocationAdvertisementComplete_ {
+  ovrpEventType EventType;
+  ovrpUInt64 AdvertisementRequestId;
+  ovrpResult Result;
+} ovrpEventColocationAdvertisementComplete;
+
+typedef struct ovrpEventStopColocationAdvertisementComplete_ {
+  ovrpEventType EventType;
+  ovrpUInt64 RequestId;
+  ovrpResult Result;
+} ovrpEventStopColocationAdvertisementComplete;
+
+typedef struct ovrpEventStartColocationDiscoveryComplete_ {
+  ovrpEventType EventType;
+  ovrpUInt64 DiscoveryRequestId;
+  ovrpResult Result;
+} ovrpEventStartColocationDiscoveryComplete;
+
+typedef struct ovrpEventColocationDiscoveryResult_ {
+  ovrpEventType EventType;
+  ovrpUInt64 DiscoveryRequestId;
+  ovrpUuid AdvertisementUuid;
+  ovrpUInt32 BufferSize;
+  ovrpByte Buffer[OVRP_MAX_COLOCATION_DISCOVERY_BUFFER_SIZE_META];
+} ovrpEventColocationDiscoveryResult;
+
+typedef struct ovrpEventColocationDiscoveryComplete_ {
+  ovrpEventType EventType;
+  ovrpUInt64 DiscoveryRequestId;
+  ovrpResult Result;
+} ovrpEventColocationDiscoveryComplete;
+
+typedef struct ovrpEventStopColocationDiscoveryComplete_ {
+  ovrpEventType EventType;
+  ovrpUInt64 RequestId;
+  ovrpResult Result;
+} ovrpEventStopColocationDiscoveryComplete;
+
+// XR_META_spatial_entity_sharing
+typedef struct ovrpEventShareSpacesComplete_ {
+  ovrpEventType EventType;
+  ovrpUInt64 RequestId;
+  ovrpResult Result;
+} ovrpEventShareSpacesComplete;
+
+typedef enum { ovrpShareSpacesRecipientType_Group = 1 } ovrpShareSpacesRecipientType;
+
+typedef struct ovrpShareSpacesInfo_ {
+  ovrpShareSpacesRecipientType RecipientType;
+  void* RecipientInfo;
+  ovrpUInt32 SpaceCount;
+  ovrpSpace* Spaces;
+} ovrpShareSpacesInfo;
+
+// XR_META_spatial_entity_group_sharing
+typedef struct ovrpShareSpacesGroupRecipientInfo_ {
+  ovrpUInt32 GroupCount;
+  ovrpUuid* GroupUuids;
+} ovrpShareSpacesGroupRecipientInfo;
 
 typedef enum {
   ovrpSpaceDiscoveryFilterType_None = 0,
   ovrpSpaceDiscoveryFilterType_Ids = 2,
   ovrpSpaceDiscoveryFilterType_Components = 3,
-
-
-
   ovrpSpaceDiscoveryFilterType_Max = 0x7ffffff,
 } ovrpSpaceDiscoveryFilterType;
 
@@ -3665,13 +3388,6 @@ typedef struct ovrpSpaceDiscoveryFilterComponents_ {
   ovrpSpaceDiscoveryFilterType Type;
   ovrpSpaceComponentType ComponentType;
 } ovrpSpaceDiscoveryFilterComponents;
-
-
-
-
-
-
-
 
 typedef struct ovrpSpaceDiscoveryInfo_ {
   ovrpUInt32 FilterCount;
@@ -3716,22 +3432,6 @@ typedef struct ovrpEventDataPassthroughLayerResumed_ {
   ovrpEventType EventType;
   int LayerId;
 } ovrpEventDataPassthroughLayerResumed;
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 typedef enum {
   ovrpBoundaryVisibility_NotSuppressed = 1,
@@ -3810,12 +3510,34 @@ typedef enum {
   ovrpEnvironmentDepthCreateFlag_RemoveHands = 1 << 0,
 } ovrpEnvironmentDepthCreateFlag;
 
+typedef enum ovrpDynamicObjectClass_ { ovrpDynamicObjectClass_Keyboard = 0 } ovrpDynamicObjectClass;
 
+typedef ovrpUInt64 ovrpDynamicObjectTracker;
 
+typedef struct ovrpDynamicObjectTrackerCreateInfo_ {
+  float placeHolder;
+} ovrpDynamicObjectTrackerCreateInfo;
 
+typedef struct ovrpDynamicObjectTrackedClassesSetInfo_ {
+  ovrpDynamicObjectClass* classes;
+  ovrpUInt32 classCount;
+} ovrpDynamicObjectTrackedClassesSetInfo;
 
+typedef struct ovrpDynamicObjectData_ {
+  ovrpDynamicObjectClass classType;
+} ovrpDynamicObjectData;
 
+typedef struct ovrpEventDataDynamicObjectTrackerCreateResult_ {
+  ovrpEventType eventType;
+  ovrpDynamicObjectTracker handle;
+  ovrpResult result;
+} ovrpEventDataDynamicObjectTrackerCreateResult;
 
+typedef struct ovrpEventDataDynamicObjectSetTrackedClassesResult_ {
+  ovrpEventType eventType;
+  ovrpDynamicObjectTracker handle;
+  ovrpResult result;
+} ovrpEventDataDynamicObjectSetTrackedClassesResult;
 
 
 
@@ -3878,34 +3600,12 @@ typedef enum {
 
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+typedef enum {
+  V1, // A hand skeleton specification used up to January 2023. This is supported for backwards compatability, but needs
+      // to be phased out because it is different from the OXR specification.
+  V2, // A new hand skeleton specification used after January 2023 which matches the OpenXR specification.
+      // This format exports hand joints in global rotation space & includes some extra bones compared to V1.
+} ovrHandSkeletonVersion;
 
 typedef enum {
   ovrpQplVariantType_None = 0,
@@ -4043,6 +3743,101 @@ typedef struct ovrpQplAnnotation_ {
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+typedef ovrpUInt64 ovrpFuture;
+typedef int ovrpFutureCompletionType;
+
+typedef enum {
+  ovrpFutureState_Pending = 1,
+  ovrpFutureState_Ready = 2,
+  ovrpFutureState_Max = 0x7FFFFFFF
+} ovrpFutureState;
+
+typedef struct ovrpFutureCompletionBaseHeader_ {
+  ovrpFutureCompletionType Type;
+  ovrpResult FutureResult;
+} ovrpFutureCompletionBaseHeader;
+
+typedef struct ovrpFutureCompletion_ {
+  ovrpFutureCompletionType Type;
+  ovrpResult FutureResult;
+} ovrpFutureCompletion;
 
 #ifdef __clang__
 #pragma clang diagnostic pop

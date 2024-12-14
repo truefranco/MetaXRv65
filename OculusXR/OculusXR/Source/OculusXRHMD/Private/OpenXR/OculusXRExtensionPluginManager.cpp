@@ -4,22 +4,37 @@
 
 namespace OculusXR
 {
-	void FOculusXRExtensionPluginManager::StartupOpenXRPlugins()
+	void FExtensionPluginManager::StartupOpenXRPlugins()
 	{
-		OculusXRCoreExtensionPlugin.RegisterOpenXRExtensionPlugin();
-		OculusXRPerformanceExtensionPlugin.RegisterOpenXRExtensionPlugin();
-		OculusXRSimulatorExtensionPlugin.RegisterOpenXRExtensionPlugin();
+		CoreExtensionPlugin.RegisterOpenXRExtensionPlugin();
+		PerformanceExtensionPlugin.RegisterOpenXRExtensionPlugin();
+		XRSimulatorExtensionPlugin.RegisterOpenXRExtensionPlugin();
 		SystemInfoExtensionPlugin.RegisterOpenXRExtensionPlugin();
+		GuardianExtensionPlugin.RegisterOpenXRExtensionPlugin();
+		LayerExtensionPlugin.RegisterOpenXRExtensionPlugin();
+#ifdef WITH_OCULUS_BRANCH
+		EnvironmentDepthExtensionPlugin.RegisterOpenXRExtensionPlugin();
+#endif
 	}
 
-	FOculusXRPerformanceExtensionPlugin& FOculusXRExtensionPluginManager::GetPerformanceExtensionPlugin()
+	FPerformanceExtensionPlugin& FExtensionPluginManager::GetPerformanceExtensionPlugin()
 	{
-		return OculusXRPerformanceExtensionPlugin;
+		return PerformanceExtensionPlugin;
 	}
 
-	FSystemInfoExtensionPlugin& FOculusXRExtensionPluginManager::GetSystemInfoExtensionPlugin()
+	FSystemInfoExtensionPlugin& FExtensionPluginManager::GetSystemInfoExtensionPlugin()
 	{
 		return SystemInfoExtensionPlugin;
+	}
+
+	FGuardianExtensionPlugin& FExtensionPluginManager::GetGuardianExtensionPlugin()
+	{
+		return GuardianExtensionPlugin;
+	}
+
+	FLayerExtensionPlugin& FExtensionPluginManager::GetLayerExtensionPlugin()
+	{
+		return LayerExtensionPlugin;
 	}
 
 } // namespace OculusXR

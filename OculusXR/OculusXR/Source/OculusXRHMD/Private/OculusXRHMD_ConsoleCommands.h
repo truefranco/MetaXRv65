@@ -24,8 +24,6 @@ namespace OculusXRHMD
 
 	private:
 		FAutoConsoleCommand UpdateOnRenderThreadCommand;
-		FAutoConsoleCommand PixelDensityMinCommand;
-		FAutoConsoleCommand PixelDensityMaxCommand;
 		FAutoConsoleCommand HQBufferCommand;
 		FAutoConsoleCommand HQDistortionCommand;
 		FAutoConsoleCommand ShowGlobalMenuCommand;

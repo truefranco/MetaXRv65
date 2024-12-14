@@ -20,7 +20,7 @@ public:
 
 	static inline FOculusXRHMDModule& Get()
 	{
-		return FModuleManager::LoadModuleChecked<FOculusXRHMDModule>("OculusXRHMD");
+		return FModuleManager::LoadModuleChecked<FOculusXRHMDModule>(NAME_OculusXRHMD);
 	}
 
 	// IModuleInterface
@@ -41,7 +41,7 @@ public:
 	virtual TSharedPtr<IHeadMountedDisplayVulkanExtensions, ESPMode::ThreadSafe> GetVulkanExtensions() override;
 	virtual bool IsStandaloneStereoOnlyDevice() override;
 
-	virtual OculusXR::FOculusXRExtensionPluginManager& GetExtensionPluginManager();
+	virtual OculusXR::FExtensionPluginManager& GetExtensionPluginManager();
 
 	// IOculusXRHMDModule
 	virtual void GetPose(FRotator& DeviceRotation, FVector& DevicePosition, FVector& NeckPosition, bool bUseOrienationForPlayerCamera = false, bool bUsePositionForPlayerCamera = false, const FVector PositionScale = FVector::ZeroVector) override
@@ -118,7 +118,7 @@ protected:
 	uint64 GraphicsAdapterLuid;
 	TWeakPtr<IHeadMountedDisplay, ESPMode::ThreadSafe> HeadMountedDisplay;
 	TSharedPtr<IHeadMountedDisplayVulkanExtensions, ESPMode::ThreadSafe> VulkanExtensions;
-	OculusXR::FOculusXRExtensionPluginManager ExtensionPluginManager;
+	OculusXR::FExtensionPluginManager ExtensionPluginManager;
 
 	friend class ::OculusXRHMD::FOculusXRHMD;
 
